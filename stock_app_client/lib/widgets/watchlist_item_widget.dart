@@ -387,7 +387,7 @@ class WatchlistItemWidget extends StatelessWidget {
     if (market.contains('北交所')) return '北';
     if (market.contains('深证')) return '深';
     if (market.contains('上证')) return '沪';
-    if (market.contains('ETF')) return 'E';
+    if (market.contains('ETF')) return '指';
     return '其他';
   }
 
