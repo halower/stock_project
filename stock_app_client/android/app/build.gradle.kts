@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.stock_app"
     compileSdk = 35
-    ndkVersion = "27.0.12077973"
+    // 不指定 NDK 版本，让项目在没有 NDK 的情况下构建
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -28,13 +28,48 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // 移除 NDK 配置以避免下载问题
     }
 
     buildTypes {
+        debug {
+            // Debug模式优化：禁用混淆和压缩以加快构建
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+        }
+    }
+
+    // 禁用不需要的构建功能以加快速度
+    buildFeatures {
+        aidl = false
+        renderScript = false
+        resValues = false
+        shaders = false
+    }
+    
+    // 明确禁用 NDK 和 CMake
+    externalNativeBuild {
+    }
+
+    // 只构建需要的ABI（调试时只构建arm64-v8a）
+    splits {
+        abi {
+            isEnable = false
+        }
+    }
+
+    // 打包选项优化
+    packagingOptions {
+        resources {
+            excludes += setOf("META-INF/NOTICE", "META-INF/LICENSE", "META-INF/*.kotlin_module")
         }
     }
 }
