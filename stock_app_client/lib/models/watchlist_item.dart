@@ -59,6 +59,11 @@ class WatchlistItem {
       else if (prefix == '900' || prefix == '200') {
         return 'B股';
       }
+      // ETF（通常以51、15开头）
+      else if (prefix == '510' || prefix == '511' || prefix == '512' || prefix == '513' || 
+               prefix == '515' || prefix == '518' || prefix == '159') {
+        return 'ETF';
+      }
     }
     
     // 根据市场代码推断
@@ -69,6 +74,8 @@ class WatchlistItem {
         return stockCode.startsWith('300') ? '创业板' : '主板';
       case 'BJ':
         return '北交所';
+      case 'ETF':
+        return 'ETF';
       default:
         return '其他';
     }
