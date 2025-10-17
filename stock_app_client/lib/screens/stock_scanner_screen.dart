@@ -20,7 +20,8 @@ class StockScannerScreen extends StatefulWidget {
 
 class _StockScannerScreenState extends State<StockScannerScreen> {
   String _selectedMarket = '全部';
-  final List<String> _markets = ['全部', '主板', '创业板', '科创板', '北交所'];
+  // 市场列表改为从ApiProvider动态获取，不再硬编码
+  List<String> _markets = ['全部']; // 默认只有"全部"，等待从后端加载
   // 当前选择的策略 - 从ApiProvider动态获取
   String _selectedStrategy = '';
   // 添加一个标记，控制是否自动加载数据
@@ -47,6 +48,9 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
       
       debugPrint('同步后的市场: $_selectedMarket');
       debugPrint('同步后的策略: $_selectedStrategy');
+      
+      // 加载市场类型列表
+      await _loadMarketTypes();
       
       // 首次进入时，检查是否需要加载数据
       if (_isFirstLoad) {
@@ -85,6 +89,44 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
       });
     } catch (e) {
       debugPrint('初始化策略失败: $e');
+    }
+  }
+
+  // 加载市场类型列表
+  Future<void> _loadMarketTypes() async {
+    try {
+      debugPrint('开始加载市场类型列表...');
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      
+      // 如果市场类型已加载，直接使用
+      if (apiProvider.marketTypesLoaded && apiProvider.marketTypes.isNotEmpty) {
+        debugPrint('市场类型已加载，使用现有数据: ${apiProvider.marketTypes.length} 个类型');
+        setState(() {
+          _markets = apiProvider.marketTypes.map((m) => m['name'] as String).toList();
+        });
+      } else {
+        debugPrint('市场类型未加载，从后端获取...');
+        await apiProvider.refreshMarketTypes();
+        
+        if (apiProvider.marketTypes.isNotEmpty) {
+          setState(() {
+            _markets = apiProvider.marketTypes.map((m) => m['name'] as String).toList();
+          });
+          debugPrint('成功加载市场类型: $_markets');
+        } else {
+          debugPrint('市场类型加载失败，使用默认列表');
+          // 使用默认市场列表作为降级方案
+          setState(() {
+            _markets = ['全部', '主板', '创业板', '科创板', '北交所', 'ETF'];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('加载市场类型失败: $e');
+      // 使用默认市场列表作为降级方案
+      setState(() {
+        _markets = ['全部', '主板', '创业板', '科创板', '北交所', 'ETF'];
+      });
     }
   }
 

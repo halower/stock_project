@@ -45,6 +45,10 @@ class ApiProvider with ChangeNotifier {
   // 策略列表
   List<Map<String, String>> _strategies = [];
   
+  // 市场类型列表
+  List<Map<String, dynamic>> _marketTypes = [];
+  bool _marketTypesLoaded = false;
+  
   // 添加一个变量来存储原始的全量数据
   List<StockIndicator> _allStocksCache = [];
   
@@ -70,6 +74,8 @@ class ApiProvider with ChangeNotifier {
   bool get isAIFiltering => _isAIFiltering;
   Stream<AIFilterResult> get aiFilterProgressStream => _aiFilterService.progressStream;
   List<Map<String, String>> get strategies => _strategies;
+  List<Map<String, dynamic>> get marketTypes => _marketTypes;
+  bool get marketTypesLoaded => _marketTypesLoaded;
   
   ApiProvider() {
     // 监听AI筛选进度
@@ -91,6 +97,10 @@ class ApiProvider with ChangeNotifier {
     // 立即从服务器加载策略
     debugPrint('ApiProvider初始化: 开始从后端加载策略列表');
     _loadStrategies();
+    
+    // 立即从服务器加载市场类型
+    debugPrint('ApiProvider初始化: 开始从后端加载市场类型列表');
+    _loadMarketTypes();
   }
   
   @override
@@ -159,6 +169,39 @@ class ApiProvider with ChangeNotifier {
       _selectedStrategy = _strategies.first['value']!;
       notifyListeners();
     }
+  }
+  
+  // 加载市场类型列表
+  Future<void> _loadMarketTypes() async {
+    try {
+      debugPrint('开始从后端加载市场类型列表...');
+      final marketTypes = await _apiService.getMarketTypes();
+      debugPrint('成功加载市场类型列表: ${marketTypes.length}个类型');
+      
+      if (marketTypes.isNotEmpty) {
+        _marketTypes = marketTypes;
+        _marketTypesLoaded = true;
+        
+        debugPrint('成功设置市场类型列表');
+        for (var market in _marketTypes) {
+          debugPrint('市场类型: ${market['code']} - ${market['name']}');
+        }
+        
+        notifyListeners();
+      } else {
+        debugPrint('后端返回的市场类型列表为空');
+        _marketTypesLoaded = false;
+      }
+    } catch (e) {
+      debugPrint('从后端加载市场类型列表失败: $e');
+      _marketTypesLoaded = false;
+    }
+  }
+  
+  // 刷新市场类型列表
+  Future<void> refreshMarketTypes() async {
+    _marketTypesLoaded = false;
+    await _loadMarketTypes();
   }
   
   // 刷新策略列表

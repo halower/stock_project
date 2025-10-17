@@ -878,6 +878,50 @@ class ApiService {
       return null;
     }
   }
+
+  // 获取市场类型列表
+  Future<List<Map<String, dynamic>>> getMarketTypes() async {
+    try {
+      final url = '$apiBaseUrl/api/market-types';
+      debugPrint('获取市场类型列表: $url');
+      
+      final response = await HttpClient.get(url);
+      
+      if (response.statusCode == 200) {
+        final responseBody = utf8.decode(response.bodyBytes);
+        final data = json.decode(responseBody);
+        
+        // 检查响应格式
+        if (data is Map && data['code'] == 200 && data['data'] != null) {
+          final marketData = data['data'] as Map<String, dynamic>;
+          final marketTypes = marketData['market_types'] as List<dynamic>;
+          debugPrint('获取到 ${marketTypes.length} 个市场类型');
+          return List<Map<String, dynamic>>.from(marketTypes);
+        } else {
+          debugPrint('市场类型数据格式不正确');
+          return _getDefaultMarketTypes();
+        }
+      } else {
+        debugPrint('获取市场类型失败: ${response.statusCode}, ${response.body}');
+        return _getDefaultMarketTypes();
+      }
+    } catch (e) {
+      debugPrint('获取市场类型出错: $e');
+      return _getDefaultMarketTypes();
+    }
+  }
+
+  // 默认市场类型列表（降级方案）
+  List<Map<String, dynamic>> _getDefaultMarketTypes() {
+    return [
+      {'code': 'all', 'name': '全部'},
+      {'code': 'main_board', 'name': '主板'},
+      {'code': 'gem', 'name': '创业板'},
+      {'code': 'star', 'name': '科创板'},
+      {'code': 'bse', 'name': '北交所'},
+      {'code': 'etf', 'name': 'ETF'},
+    ];
+  }
 }
 
 // 缓存的新闻数据类
