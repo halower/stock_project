@@ -103,8 +103,9 @@ class _CompactSwipeSwitcherState extends State<CompactSwipeSwitcher> {
         child: Container(
           constraints: BoxConstraints(
             maxWidth: widget.isLandscape ? 220 : 200,
+            minHeight: 55,
+            maxHeight: 60, // 增加最大高度，避免溢出
           ),
-          height: 55, // 固定高度，紧凑设计
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.75),
             borderRadius: BorderRadius.circular(8),
@@ -139,10 +140,11 @@ class _CompactSwipeSwitcherState extends State<CompactSwipeSwitcher> {
     final isSelected = index == _currentIndex;
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // 减少垂直padding
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min, // 确保Column不会超出容器
         children: [
           // 股票名称
           Text(
@@ -151,12 +153,13 @@ class _CompactSwipeSwitcherState extends State<CompactSwipeSwitcher> {
               color: Colors.white,
               fontSize: widget.isLandscape ? 14 : 13,
               fontWeight: FontWeight.w600,
+              height: 1.2, // 减少行高
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           
           // 股票代码和进度信息
           Row(

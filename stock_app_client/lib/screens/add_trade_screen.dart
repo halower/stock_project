@@ -3213,6 +3213,8 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
         elevation: 0,
         centerTitle: true,
         leading: Container(
+          width: 40,
+          height: 40,
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: isDarkMode 
@@ -3221,6 +3223,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
+            padding: EdgeInsets.zero,
             icon: const Icon(Icons.arrow_back_ios_new, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
@@ -3970,20 +3973,24 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 ),
               ),
               child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                leading: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.schedule,
-                    color: Colors.white,
-                    size: 20,
+                    child: const Icon(
+                      Icons.schedule,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
                 title: const Text(
@@ -4083,7 +4090,8 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             const SizedBox(height: 16),
 
             // 现代化仓位计算方式选择
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   '仓位计算:',
@@ -4092,38 +4100,44 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(height: 8),
                 Container(
+                  width: double.infinity,
                   decoration: BoxDecoration(
                     color: const Color(0xFF667EEA).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildToggleButton('仓位比例', _positionCalculationMethod == PositionCalculationMethod.percentage, () {
-                        setState(() {
-                          _positionCalculationMethod = PositionCalculationMethod.percentage;
-                        });
-                      }),
-                      _buildToggleButton('股票数量', _positionCalculationMethod == PositionCalculationMethod.quantity, () {
-                        setState(() {
-                          _positionCalculationMethod = PositionCalculationMethod.quantity;
-                          // 切换到股票数量模式时，清空数量输入框，避免自动填入计算值
-                          if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
-                            _planQuantityController.clear();
-                          }
-                        });
-                      }),
-                      _buildToggleButton('以损定仓', _positionCalculationMethod == PositionCalculationMethod.riskBased, () {
-                        setState(() {
-                          _positionCalculationMethod = PositionCalculationMethod.riskBased;
-                          // 切换到以损定仓模式时，清空数量输入框，避免自动填入计算值
-                          if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
-                            _planQuantityController.clear();
-                          }
-                        });
-                      }),
+                      Expanded(
+                        child: _buildToggleButton('仓位比例', _positionCalculationMethod == PositionCalculationMethod.percentage, () {
+                          setState(() {
+                            _positionCalculationMethod = PositionCalculationMethod.percentage;
+                          });
+                        }),
+                      ),
+                      Expanded(
+                        child: _buildToggleButton('股票数量', _positionCalculationMethod == PositionCalculationMethod.quantity, () {
+                          setState(() {
+                            _positionCalculationMethod = PositionCalculationMethod.quantity;
+                            // 切换到股票数量模式时，清空数量输入框，避免自动填入计算值
+                            if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
+                              _planQuantityController.clear();
+                            }
+                          });
+                        }),
+                      ),
+                      Expanded(
+                        child: _buildToggleButton('以损定仓', _positionCalculationMethod == PositionCalculationMethod.riskBased, () {
+                          setState(() {
+                            _positionCalculationMethod = PositionCalculationMethod.riskBased;
+                            // 切换到以损定仓模式时，清空数量输入框，避免自动填入计算值
+                            if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
+                              _planQuantityController.clear();
+                            }
+                          });
+                        }),
+                      ),
                     ],
                   ),
                 ),
