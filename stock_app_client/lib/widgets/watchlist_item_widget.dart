@@ -374,9 +374,10 @@ class WatchlistItemWidget extends StatelessWidget {
     if (market.contains('创业板')) return const Color(0xFFFF9800);
     if (market.contains('科创板')) return const Color(0xFFE91E63);
     if (market.contains('北交所')) return const Color(0xFF9C27B0);
-    if (market.contains('深证')) return const Color(0xFF4CAF50);
-    if (market.contains('上证')) return const Color(0xFF2196F3);
+    if (market.contains('深证主板') || market.contains('主板') && market.contains('深')) return const Color(0xFF4CAF50);
+    if (market.contains('上证主板') || market.contains('主板') && market.contains('上')) return const Color(0xFF2196F3);
     if (market.contains('ETF')) return const Color(0xFF9C27B0); // ETF使用紫色
+    if (market.contains('主板')) return const Color(0xFF3B82F6); // 通用的主板颜色
     return const Color(0xFF607D8B);
   }
 
@@ -385,9 +386,10 @@ class WatchlistItemWidget extends StatelessWidget {
     if (market.contains('创业板')) return '创';
     if (market.contains('科创板')) return '科';
     if (market.contains('北交所')) return '北';
-    if (market.contains('深证')) return '深';
-    if (market.contains('上证')) return '沪';
+    if (market.contains('深证主板') || market.contains('主板') && market.contains('深')) return '深';
+    if (market.contains('上证主板') || market.contains('主板') && market.contains('上')) return '沪';
     if (market.contains('ETF')) return '指';
+    if (market.contains('主板')) return '主'; // 通用的主板标识
     return '其他';
   }
 
