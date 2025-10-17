@@ -26,14 +26,14 @@ os.makedirs(CHART_DIR, exist_ok=True)
 @router.get("/api/stocks/{stock_code}/chart", summary="生成股票K线图表", dependencies=[Depends(verify_token)])
 async def generate_stock_chart(
     stock_code: str,
-    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(量能波动) 或 trend_continuation(趋势延续)")
+    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 trend_continuation(趋势延续)")
 ) -> Dict[str, Any]:
     """
     生成指定股票的K线图表
     
     Args:
         stock_code: 股票代码
-        strategy: 策略类型，可选 'volume_wave'(量能波动) 或 'trend_continuation'(趋势延续)
+        strategy: 策略类型，可选 'volume_wave'(动量守恒) 或 'trend_continuation'(趋势延续)
         
     Returns:
         图表URL和其他信息
@@ -237,7 +237,7 @@ async def generate_stock_chart(
             logger.error(f"策略应用失败 {stock_code}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"策略应用失败: {str(e)}")
         
-        # 为量能波动策略添加额外的EMA指标（仅用于图表展示）
+        # 为动量守恒策略添加额外的EMA指标（仅用于图表展示）
         if strategy == 'volume_wave':
             try:
                 close_values = processed_df['close'].to_numpy()

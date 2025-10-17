@@ -13,8 +13,8 @@ class VolumeWaveStrategy(BaseStrategy):
     
     # 策略元数据
     STRATEGY_CODE = "volume_wave"
-    STRATEGY_NAME = "量能波动"
-    STRATEGY_DESCRIPTION = "基于量能波动的短线交易策略，通过检测特定波动模式产生买卖信号"
+    STRATEGY_NAME = "动量守恒"
+    STRATEGY_DESCRIPTION = "基于动量守恒的短线交易策略，通过检测特定波动模式产生买卖信号"
     
     # 策略参数
     DEFAULT_PARAMS = {
