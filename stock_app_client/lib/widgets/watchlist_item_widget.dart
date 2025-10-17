@@ -24,162 +24,209 @@ class WatchlistItemWidget extends StatelessWidget {
         ? IndustryService.getIndustryColor(enhancedIndustry) 
         : null;
     
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: isDark 
-                ? Colors.black.withOpacity(0.4)
-                : Colors.grey.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: 0,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF1E1E1E),
+                    const Color(0xFF2D2D2D),
+                  ]
+                : [
+                    Colors.white,
+                    const Color(0xFFF8F9FA),
+                  ],
           ),
-        ],
-        border: Border.all(
-          color: isDark 
-              ? Colors.white.withOpacity(0.1) 
-              : Colors.grey.withOpacity(0.1),
-          width: 1,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: isDark 
+                  ? Colors.black.withOpacity(0.6)
+                  : Colors.grey.withOpacity(0.15),
+              blurRadius: 25,
+              offset: const Offset(0, 12),
+              spreadRadius: 0,
+            ),
+          ],
+          border: Border.all(
+            color: isDark 
+                ? Colors.white.withOpacity(0.08) 
+                : Colors.grey.withOpacity(0.08),
+            width: 1.5,
+          ),
         ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            // 准备股票列表数据，如果有备选池列表就使用，否则为null
-            List<Map<String, String>>? availableStocks;
-            if (allWatchlistItems != null && allWatchlistItems!.isNotEmpty) {
-              availableStocks = allWatchlistItems!.map((watchlistItem) => {
-                'code': watchlistItem.code,
-                'name': watchlistItem.name,
-              }).toList();
-            }
-            
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => StockDetailScreen(
-                  stockCode: item.code,
-                  stockName: item.name,
-                  strategy: item.strategy,
-                  availableStocks: availableStocks, // 传递备选池股票列表
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () {
+              List<Map<String, String>>? availableStocks;
+              if (allWatchlistItems != null && allWatchlistItems!.isNotEmpty) {
+                availableStocks = allWatchlistItems!.map((watchlistItem) => {
+                  'code': watchlistItem.code,
+                  'name': watchlistItem.name,
+                }).toList();
+              }
+              
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => StockDetailScreen(
+                    stockCode: item.code,
+                    stockName: item.name,
+                    strategy: item.strategy,
+                    availableStocks: availableStocks,
+                  ),
                 ),
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 第一行：股票基本信息
-                Row(
-                  children: [
-                    // 左侧行业色块指示器
-                    if (industryColor != null)
-                      Container(
-                        width: 4,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: industryColor,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    if (industryColor != null) const SizedBox(width: 12),
-                    
-                    // 股票信息
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 股票代码和市场
-                          Row(
-                            children: [
-                              Text(
-                                item.code,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
+              );
+            },
+            splashColor: Colors.blue.withOpacity(0.1),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 第一行：股票基本信息
+                  Row(
+                    children: [
+                      // 左侧行业色块指示器（美化版）
+                      if (industryColor != null)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          width: 5,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                industryColor,
+                                industryColor.withOpacity(0.8),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: industryColor.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
-                              const SizedBox(width: 10),
-                              _buildMarketBadge(item.market),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          // 股票名称
-                          Text(
-                            item.name,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: isDark ? Colors.grey[300] : Colors.grey[700],
-                              fontWeight: FontWeight.w500,
+                        ),
+                      if (industryColor != null) const SizedBox(width: 16),
+                      
+                      // 股票信息
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 股票代码和市场
+                            Row(
+                              children: [
+                                Text(
+                                  item.code,
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                _buildMarketBadge(item.market),
+                              ],
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            // 股票名称
+                            Text(
+                              item.name,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: isDark ? Colors.grey[400] : Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.3,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // 价格信息（美化版）
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (item.currentPrice != null) ...[
+                            Text(
+                              '¥${item.currentPrice!.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: _getPriceColor(item.changePercent),
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 10,
+                                    color: _getPriceColor(item.changePercent).withOpacity(0.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            if (item.changePercent != null)
+                              _buildPriceChangeBadge(item.changePercent!),
+                          ] else ...[
+                            Text(
+                              '获取中...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[500],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                    ),
-                    
-                    // 价格信息
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (item.currentPrice != null) ...[
-                          Text(
-                            '¥${item.currentPrice!.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: _getPriceColor(item.changePercent),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          if (item.changePercent != null)
-                            _buildPriceChangeBadge(item.changePercent!),
-                        ] else ...[
-                          Text(
-                            '获取中...',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // 第二行：标签区域（分开显示，避免拥挤）
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    // 行业标签（使用增强的行业信息）
-                    if (enhancedIndustry != null && enhancedIndustry.isNotEmpty)
-                      _buildIndustryBadge(enhancedIndustry, industryColor!),
-                    
-                    // 策略标签
-                    FutureBuilder<String>(
-                      future: StrategyConfigService.getStrategyName(item.strategy),
-                      builder: (context, snapshot) {
-                        final strategyName = snapshot.data ?? item.strategy;
-                        return _buildStrategyBadge(strategyName);
-                      },
-                    ),
-                    
-                    // 关注时长标签
-                    _buildWatchDurationBadge(item.watchDurationText),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // 第二行：标签区域（美化版）- 同一行显示
+                  Row(
+                    children: [
+                      // 行业标签
+                      if (enhancedIndustry != null && enhancedIndustry.isNotEmpty)
+                        _buildIndustryBadge(enhancedIndustry, industryColor!),
+                      
+                      // 策略标签
+                      if (enhancedIndustry != null && enhancedIndustry.isNotEmpty)
+                        const SizedBox(width: 8),
+                      FutureBuilder<String>(
+                        future: StrategyConfigService.getStrategyName(item.strategy),
+                        builder: (context, snapshot) {
+                          final strategyName = snapshot.data ?? item.strategy;
+                          return _buildStrategyBadge(strategyName);
+                        },
+                      ),
+                      
+                      // 关注时长标签
+                      const SizedBox(width: 8),
+                      _buildWatchDurationBadge(item.watchDurationText),
+                      
+                      // 弹性空间，确保标签靠左对齐
+                      const Expanded(child: SizedBox()),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -187,20 +234,30 @@ class WatchlistItemWidget extends StatelessWidget {
     );
   }
 
-  // 构建市场标签
+  // 构建市场标签（缩小版）
   Widget _buildMarketBadge(String market) {
-    return Container(
-      height: 32, // 统一高度
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    final marketColor = _getMarketColor(market);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _getMarketColor(market),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        gradient: LinearGradient(
+          colors: [
+            marketColor,
+            Color.lerp(marketColor, Colors.black, 0.1)!,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.4), width: 1),
         boxShadow: [
           BoxShadow(
-            color: _getMarketColor(market).withOpacity(0.3),
-            blurRadius: 4,
+            color: marketColor.withOpacity(0.3),
+            blurRadius: 6,
             offset: const Offset(0, 2),
+            spreadRadius: 0,
           ),
         ],
       ),
@@ -208,55 +265,38 @@ class WatchlistItemWidget extends StatelessWidget {
         child: Text(
           _getMarketShortName(market),
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             color: Colors.white,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
           ),
         ),
       ),
     );
   }
 
-  // 构建价格变化标签
+  // 构建价格变化标签（缩小版）
   Widget _buildPriceChangeBadge(double changePercent) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: _getPriceColor(changePercent),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        '${changePercent >= 0 ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  // 构建行业标签（升级版，使用更好的图标和样式）
-  Widget _buildIndustryBadge(String industry, Color color) {
-    return Container(
-      height: 32, // 统一高度
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    final priceColor = _getPriceColor(changePercent);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            color.withOpacity(0.15),
-            color.withOpacity(0.08),
+            priceColor,
+            Color.lerp(priceColor, Colors.black, 0.15)!,
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25), width: 1.2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: priceColor.withOpacity(0.3),
             blurRadius: 4,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -264,17 +304,17 @@ class WatchlistItemWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            IndustryService.getIndustryIcon(industry),
-            size: 14,
-            color: color,
+            changePercent >= 0 ? Icons.trending_up : Icons.trending_down,
+            size: 12,
+            color: Colors.white,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Text(
-            industry.length > 6 ? '${industry.substring(0, 6)}...' : industry,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600,
+            '${changePercent >= 0 ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
               letterSpacing: 0.2,
             ),
           ),
@@ -283,64 +323,27 @@ class WatchlistItemWidget extends StatelessWidget {
     );
   }
 
-  // 构建策略标签
-  Widget _buildStrategyBadge(String strategyName) {
-    return Container(
-      height: 32, // 统一高度
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2196F3).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2196F3).withOpacity(0.3), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2196F3).withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.timeline,
-            size: 14,
-            color: Color(0xFF2196F3),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            strategyName.length > 10 ? '${strategyName.substring(0, 10)}...' : strategyName,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF2196F3),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 构建关注时长标签（美化颜色）
-  Widget _buildWatchDurationBadge(String duration) {
-    return Container(
-      height: 32, // 统一高度
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  // 构建行业标签（缩小版）
+  Widget _buildIndustryBadge(String industry, Color color) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF8E24AA).withOpacity(0.15), // 紫色渐变
-            const Color(0xFF7B1FA2).withOpacity(0.12),
+            color.withOpacity(0.2),
+            color.withOpacity(0.1),
+            color.withOpacity(0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF8E24AA).withOpacity(0.4), width: 1),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8E24AA).withOpacity(0.15),
+            color: color.withOpacity(0.15),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -349,19 +352,140 @@ class WatchlistItemWidget extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.schedule,
-            size: 14,
-            color: Color(0xFF8E24AA),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              IndustryService.getIndustryIcon(industry),
+              size: 12,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            industry.length > 4 ? '${industry.substring(0, 4)}...' : industry,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建策略标签（缩小版）
+  Widget _buildStrategyBadge(String strategyName) {
+    const strategyColor = Color(0xFF2196F3);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            strategyColor.withOpacity(0.2),
+            strategyColor.withOpacity(0.1),
+            strategyColor.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: strategyColor.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: strategyColor.withOpacity(0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: strategyColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.analytics,
+              size: 12,
+              color: Color(0xFF2196F3),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            strategyName.length > 6 ? '${strategyName.substring(0, 6)}...' : strategyName,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Color(0xFF2196F3),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建关注时长标签（缩小版）
+  Widget _buildWatchDurationBadge(String duration) {
+    const durationColor = Color(0xFF8E24AA);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            durationColor.withOpacity(0.2),
+            durationColor.withOpacity(0.1),
+            durationColor.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: durationColor.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: durationColor.withOpacity(0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: durationColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.calendar_today,
+              size: 12,
+              color: Color(0xFF8E24AA),
+            ),
           ),
           const SizedBox(width: 4),
           Text(
             duration,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: Color(0xFF8E24AA),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
           ),
         ],
