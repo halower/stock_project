@@ -376,6 +376,7 @@ class WatchlistItemWidget extends StatelessWidget {
     if (market.contains('北交所')) return const Color(0xFF9C27B0);
     if (market.contains('深证')) return const Color(0xFF4CAF50);
     if (market.contains('上证')) return const Color(0xFF2196F3);
+    if (market.contains('ETF')) return const Color(0xFF9C27B0); // ETF使用紫色
     return const Color(0xFF607D8B);
   }
 
@@ -386,6 +387,7 @@ class WatchlistItemWidget extends StatelessWidget {
     if (market.contains('北交所')) return '北';
     if (market.contains('深证')) return '深';
     if (market.contains('上证')) return '沪';
+    if (market.contains('ETF')) return 'E';
     return '其他';
   }
 
