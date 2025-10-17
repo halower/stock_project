@@ -81,7 +81,13 @@ class AIConfig {
     // 必须包含主机名
     if (!uri.hasAuthority || uri.host.isEmpty) return false;
     
-    // 建议包含chat/completions路径
+    // 支持阿里百炼兼容模式格式：https://dashscope.aliyuncs.com/compatible-mode/v1
+    if (uri.host == 'dashscope.aliyuncs.com' && 
+        uri.path.startsWith('/compatible-mode/')) {
+      return true;
+    }
+    
+    // 支持标准OpenAI兼容格式
     return true;
   }
   
@@ -91,6 +97,7 @@ class AIConfig {
       'https://api.openai.com/v1/chat/completions',
       'https://api.deepseek.com/v1/chat/completions', 
       'https://api.siliconflow.cn/v1/chat/completions',
+      'https://dashscope.aliyuncs.com/compatible-mode/v1', // 阿里百炼兼容模式
       'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
     ];
   }

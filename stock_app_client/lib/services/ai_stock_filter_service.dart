@@ -349,7 +349,7 @@ class AIStockFilterService {
       重要提示：采用相对宽松的标准，只要部分符合条件就可以视为匹配，宁可多选也不要漏选。
       ''';
       
-      // 构建请求
+      // 构建请求 - 适配阿里百炼兼容模式
       final requestBody = {
         'model': effectiveModel,
         'messages': [
@@ -369,18 +369,51 @@ class AIStockFilterService {
         'top_k': AIConfig.topK,
         'min_p': 0.01, // 降低最小概率阈值使模型更宽松
         'frequency_penalty': AIConfig.frequencyPenalty,
-        'enable_thinking': AIConfig.enableThinking,
-        'thinking_budget': AIConfig.thinkingBudget,
       };
       
+      // 阿里百炼兼容模式需要额外的参数
+      if (effectiveUrl != null) {
+        final uri = Uri.parse(effectiveUrl);
+        if (uri.host == 'dashscope.aliyuncs.com' && uri.path.startsWith('/compatible-mode/')) {
+          // 移除阿里百炼不支持的参数
+          requestBody.remove('enable_thinking');
+          requestBody.remove('thinking_budget');
+        } else {
+          // 标准OpenAI兼容模式保留原有参数
+          requestBody['enable_thinking'] = AIConfig.enableThinking;
+          requestBody['thinking_budget'] = AIConfig.thinkingBudget;
+        }
+      } else {
+        // 如果没有URL，使用默认参数
+        requestBody['enable_thinking'] = AIConfig.enableThinking;
+        requestBody['thinking_budget'] = AIConfig.thinkingBudget;
+      }
+      
       try {
+        // 构建请求头 - 适配阿里百炼平台
+        Map<String, String> headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (effectiveUrl != null) {
+          final uri = Uri.parse(effectiveUrl);
+          if (uri.host == 'dashscope.aliyuncs.com' && uri.path.startsWith('/compatible-mode/')) {
+            // 阿里百炼平台使用特殊的认证方式
+            headers['Authorization'] = 'Bearer $effectiveApiKey';
+            // 阿里百炼可能需要额外的头部
+            headers['X-DashScope-Async'] = 'enable';
+          } else {
+            // 标准OpenAI兼容模式使用Bearer Token
+            headers['Authorization'] = 'Bearer $effectiveApiKey';
+          }
+        } else {
+          headers['Authorization'] = 'Bearer $effectiveApiKey';
+        }
+        
         // 发送请求
         final response = await http.post(
           Uri.parse(effectiveUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $effectiveApiKey',
-          },
+          headers: headers,
           body: jsonEncode(requestBody),
         );
         
@@ -591,7 +624,7 @@ class AIStockFilterService {
       ''';
       
       
-      // 构建请求
+      // 构建请求 - 适配阿里百炼兼容模式
       final requestBody = {
         'model': effectiveModel,
         'messages': [
@@ -611,22 +644,55 @@ class AIStockFilterService {
         'top_k': AIConfig.topK,
         'min_p': AIConfig.minP,
         'frequency_penalty': AIConfig.frequencyPenalty,
-        'enable_thinking': AIConfig.enableThinking,
-        'thinking_budget': AIConfig.thinkingBudget,
       };
+      
+      // 阿里百炼兼容模式需要额外的参数
+      if (effectiveUrl != null) {
+        final uri = Uri.parse(effectiveUrl);
+        if (uri.host == 'dashscope.aliyuncs.com' && uri.path.startsWith('/compatible-mode/')) {
+          // 移除阿里百炼不支持的参数
+          requestBody.remove('enable_thinking');
+          requestBody.remove('thinking_budget');
+        } else {
+          // 标准OpenAI兼容模式保留原有参数
+          requestBody['enable_thinking'] = AIConfig.enableThinking;
+          requestBody['thinking_budget'] = AIConfig.thinkingBudget;
+        }
+      } else {
+        // 如果没有URL，使用默认参数
+        requestBody['enable_thinking'] = AIConfig.enableThinking;
+        requestBody['thinking_budget'] = AIConfig.thinkingBudget;
+      }
       
       // 确保有有效的API配置
       if (effectiveApiKey == null || effectiveUrl == null) {
         return '筛选出 ${filteredStocks.length} 只符合条件的股票。(汇总报告生成失败: 未配置有效的API密钥或地址)';
       }
       
+      // 构建请求头 - 适配阿里百炼平台
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (effectiveUrl != null) {
+        final uri = Uri.parse(effectiveUrl);
+        if (uri.host == 'dashscope.aliyuncs.com' && uri.path.startsWith('/compatible-mode/')) {
+          // 阿里百炼平台使用特殊的认证方式
+          headers['Authorization'] = 'Bearer $effectiveApiKey';
+          // 阿里百炼可能需要额外的头部
+          headers['X-DashScope-Async'] = 'enable';
+        } else {
+          // 标准OpenAI兼容模式使用Bearer Token
+          headers['Authorization'] = 'Bearer $effectiveApiKey';
+        }
+      } else {
+        headers['Authorization'] = 'Bearer $effectiveApiKey';
+      }
+      
       // 发送请求
       final response = await http.post(
         Uri.parse(effectiveUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $effectiveApiKey',
-        },
+        headers: headers,
         body: jsonEncode(requestBody),
       );
       
