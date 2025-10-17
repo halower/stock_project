@@ -342,10 +342,22 @@ class ApiProvider with ChangeNotifier {
     if (market == '全部') {
       _scanResults = List.from(_allStocksCache);
     } else if (market == '主板') {
-      // 主板包括上证主板和深证主板
+      // 主板包括上证主板、深证主板，以及直接标记为"主板"的股票
       _scanResults = _allStocksCache
-          .where((stock) => stock.market == '上证主板' || stock.market == '深证主板')
+          .where((stock) => 
+              stock.market == '上证主板' || 
+              stock.market == '深证主板' ||
+              stock.market == '主板' ||
+              stock.market.contains('主板'))
           .toList();
+      debugPrint('主板筛选: 从${_allStocksCache.length}只股票中筛选出${_scanResults.length}只');
+      // 打印前5只股票的市场信息用于调试
+      if (_allStocksCache.isNotEmpty) {
+        debugPrint('缓存中前5只股票的市场信息:');
+        for (var i = 0; i < _allStocksCache.length && i < 5; i++) {
+          debugPrint('  ${_allStocksCache[i].name}(${_allStocksCache[i].code}): ${_allStocksCache[i].market}');
+        }
+      }
     } else {
       // 在前端筛选特定市场
       _scanResults = _allStocksCache
@@ -387,9 +399,13 @@ class ApiProvider with ChangeNotifier {
         if (_selectedMarket == '全部' || _selectedMarket.isEmpty) {
           _scanResults = List.from(_allStocksCache);
         } else if (_selectedMarket == '主板') {
-          // 主板包括上证主板和深证主板
+          // 主板包括上证主板、深证主板，以及直接标记为"主板"的股票
           _scanResults = _allStocksCache
-              .where((stock) => stock.market == '上证主板' || stock.market == '深证主板')
+              .where((stock) => 
+                  stock.market == '上证主板' || 
+                  stock.market == '深证主板' ||
+                  stock.market == '主板' ||
+                  stock.market.contains('主板'))
               .toList();
         } else {
           _scanResults = _allStocksCache
