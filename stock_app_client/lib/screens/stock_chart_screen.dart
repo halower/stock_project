@@ -42,8 +42,11 @@ class _StockChartScreenState extends State<StockChartScreen> {
     final String strategyParam = widget.strategy.isNotEmpty ? 
         widget.strategy : strategyVolumeWave;
     
-    // 构建图表URL，包含策略参数
-    _chartUrl = ApiConfig.getStockChartWithStrategyUrl(widget.stockCode, strategyParam);
+    // 获取当前主题
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    // 构建图表URL，包含策略参数和主题
+    _chartUrl = ApiConfig.getStockChartWithStrategyUrl(widget.stockCode, strategyParam, isDarkMode: isDarkMode);
     
     _initWebView();
     // 添加调试输出

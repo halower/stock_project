@@ -23,19 +23,24 @@ class TrendContinuationChartStrategy(BaseChartStrategy):
         
         Args:
             stock_data: 股票数据字典
-            **kwargs: 额外参数
+            **kwargs: 额外参数（包括theme主题参数）
             
         Returns:
             完整的HTML字符串
         """
         try:
+            # 获取主题配色
+            theme = kwargs.get('theme', 'dark')
+            colors = cls.get_theme_colors(theme)
+            logger.info(f"生成图表使用主题: {theme}")
+            
             stock = stock_data['stock']
             df = stock_data['data']
             signals = stock_data['signals']
             
             # 准备基础数据
             chart_data = cls._prepare_chart_data(df)
-            markers = cls._prepare_markers(df, signals)
+            markers = cls._prepare_markers(df, signals, colors)  # 传递主题配色
             volume_data = cls._prepare_volume_data(chart_data)
             
             # 准备价格线数据
@@ -55,7 +60,8 @@ class TrendContinuationChartStrategy(BaseChartStrategy):
                 markers=markers,
                 volume_data=volume_data,
                 additional_series=additional_series,
-                additional_scripts=additional_scripts
+                additional_scripts=additional_scripts,
+                colors=colors  # 传递主题配色
             )
             
         except Exception as e:

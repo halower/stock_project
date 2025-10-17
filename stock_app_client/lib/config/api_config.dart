@@ -58,7 +58,12 @@ class ApiConfig {
   static String getStockChartUrl(String stockCode) => '$getStockChartEndpoint$stockCode/chart';
   static String getStockAnalysisUrl(String stockCode) => '$getStockAnalysisEndpoint$stockCode/analysis/stream';
   static String getStockNewsUrl(String symbol) => '$stockNewsEndpoint?symbol=$symbol';
-  static String getStockChartWithStrategyUrl(String stockCode, String strategy) => '$stockChartEndpoint$stockCode?strategy=$strategy';
+  
+  // 获取带策略和主题的图表URL
+  static String getStockChartWithStrategyUrl(String stockCode, String strategy, {bool isDarkMode = false}) {
+    final theme = isDarkMode ? 'dark' : 'light';
+    return '$stockChartEndpoint$stockCode?strategy=$strategy&theme=$theme';
+  }
   
   // AI分析POST接口 - 后端统一处理
   static String getStockAIAnalysisPostUrl() => '$apiBaseUrl/stocks/ai-analysis/simple';

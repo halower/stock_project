@@ -304,7 +304,9 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
       strategyToUse = 'volume_wave';
     }
     
-    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(_currentStockCode, strategyToUse);
+    // 获取当前主题
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(_currentStockCode, strategyToUse, isDarkMode: isDarkMode);
     
     // 设置横屏和隐藏系统UI
     SystemChrome.setPreferredOrientations([
@@ -535,9 +537,11 @@ class _KLineChartTabState extends State<KLineChartTab> with AutomaticKeepAliveCl
       debugPrint('策略参数为空，使用默认策略: $strategyToUse');
     }
     
-    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(_currentStockCode ?? widget.stockCode, strategyToUse);
+    // 获取当前主题
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(_currentStockCode ?? widget.stockCode, strategyToUse, isDarkMode: isDarkMode);
     
-    debugPrint('加载K线图: $chartUrl, 使用策略: $strategyToUse');
+    debugPrint('加载K线图: $chartUrl, 使用策略: $strategyToUse, 主题: ${isDarkMode ? "暗色" : "亮色"}');
     
     return AbsorbPointer(
       absorbing: false, // 不吸收点击事件，允许WebView接收触摸

@@ -26,7 +26,8 @@ os.makedirs(CHART_DIR, exist_ok=True)
 @router.get("/api/stocks/{stock_code}/chart", summary="生成股票K线图表", dependencies=[Depends(verify_token)])
 async def generate_stock_chart(
     stock_code: str,
-    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 trend_continuation(趋势延续)")
+    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 trend_continuation(趋势延续)"),
+    theme: str = Query("dark", description="图表主题: light(亮色) 或 dark(暗色)")
 ) -> Dict[str, Any]:
     """
     生成指定股票的K线图表
@@ -34,6 +35,7 @@ async def generate_stock_chart(
     Args:
         stock_code: 股票代码
         strategy: 策略类型，可选 'volume_wave'(动量守恒) 或 'trend_continuation'(趋势延续)
+        theme: 图表主题，可选 'light'(亮色背景) 或 'dark'(暗色背景)，默认暗色
         
     Returns:
         图表URL和其他信息
@@ -41,6 +43,10 @@ async def generate_stock_chart(
     # 检查策略类型
     if strategy not in ["volume_wave", "trend_continuation"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略类型: {strategy}")
+    
+    # 检查主题类型
+    if theme not in ["light", "dark"]:
+        theme = "dark"  # 默认暗色主题
     
     try:
         # 直接使用同步Redis客户端，完全避免事件循环问题
@@ -269,7 +275,8 @@ async def generate_stock_chart(
             },
             'data': processed_df,
             'signals': signals,
-            'strategy': strategy
+            'strategy': strategy,
+            'theme': theme  # 添加主题参数
         }
         
         # 清理旧图表文件
@@ -304,7 +311,8 @@ async def generate_stock_chart(
 @router.get("/api/chart/{stock_code}", summary="查看股票图表页面")
 async def view_stock_chart(
     stock_code: str,
-    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(量能波动) 或 trend_continuation(趋势延续)")
+    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(量能波动) 或 trend_continuation(趋势延续)"),
+    theme: str = Query("dark", description="图表主题: light(亮色) 或 dark(暗色)")
 ):
     """
     查看指定股票的K线图表页面
@@ -312,6 +320,7 @@ async def view_stock_chart(
     Args:
         stock_code: 股票代码
         strategy: 策略类型，可选 'volume_wave'(量能波动) 或 'trend_continuation'(趋势延续)
+        theme: 图表主题，可选 'light'(亮色背景) 或 'dark'(暗色背景)，默认暗色
         
     Returns:
         重定向到图表HTML页面
@@ -322,9 +331,13 @@ async def view_stock_chart(
     if strategy not in ["volume_wave", "trend_continuation"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略类型: {strategy}")
     
+    # 检查主题类型
+    if theme not in ["light", "dark"]:
+        theme = "dark"  # 默认暗色主题
+    
     try:
-        # 生成图表
-        chart_result = await generate_stock_chart(stock_code, strategy)
+        # 生成图表，传递主题参数
+        chart_result = await generate_stock_chart(stock_code, strategy, theme)
         chart_url = chart_result.get('chart_url')
         
         if not chart_url:
@@ -343,7 +356,7 @@ async def generate_chart_from_redis_data(stock_data: Dict[str, Any]) -> str:
     从Redis数据生成图表的辅助函数
     
     Args:
-        stock_data: 包含股票信息、数据和信号的字典
+        stock_data: 包含股票信息、数据、信号和主题的字典
         
     Returns:
         图表URL
@@ -351,13 +364,14 @@ async def generate_chart_from_redis_data(stock_data: Dict[str, Any]) -> str:
     try:
         stock = stock_data['stock']
         strategy = stock_data['strategy']
+        theme = stock_data.get('theme', 'dark')  # 获取主题，默认暗色
         
         # 生成唯一文件名
-        chart_file = f"{stock['code']}_{strategy}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.html"
+        chart_file = f"{stock['code']}_{strategy}_{theme}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.html"
         chart_path = os.path.join(CHART_DIR, chart_file)
         
-        # 生成HTML内容
-        html_content = generate_chart_html(strategy, stock_data)
+        # 生成HTML内容，传递主题参数
+        html_content = generate_chart_html(strategy, stock_data, theme=theme)
         
         if not html_content:
             return None

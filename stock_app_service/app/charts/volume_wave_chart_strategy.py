@@ -23,19 +23,24 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
         
         Args:
             stock_data: 股票数据字典
-            **kwargs: 额外参数
+            **kwargs: 额外参数（包括theme主题参数）
             
         Returns:
             完整的HTML字符串
         """
         try:
+            # 获取主题配色
+            theme = kwargs.get('theme', 'dark')
+            colors = cls.get_theme_colors(theme)
+            logger.info(f"生成图表使用主题: {theme}")
+            
             stock = stock_data['stock']
             df = stock_data['data']
             signals = stock_data['signals']
             
             # 准备基础数据
             chart_data = cls._prepare_chart_data(df)
-            markers = cls._prepare_markers(df, signals)
+            markers = cls._prepare_markers(df, signals, colors)  # 传递主题配色
             volume_data = cls._prepare_volume_data(chart_data)
             
             # 准备EMA数据（包括Vegas隧道）
@@ -47,7 +52,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             
             # 生成EMA系列和Vegas隧道的JavaScript代码
             additional_series = cls._generate_enhanced_ema_series_code(
-                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data
+                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, colors
             )
             
             # 生成增强的图例代码
@@ -61,7 +66,8 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                 markers=markers,
                 volume_data=volume_data,
                 additional_series=additional_series,
-                additional_scripts=additional_scripts
+                additional_scripts=additional_scripts,
+                colors=colors  # 传递主题配色
             )
             
         except Exception as e:
@@ -115,7 +121,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
     @classmethod
     def _generate_enhanced_ema_series_code(cls, ema6_data: list, ema12_data: list, 
                                           ema18_data: list, ema144_data: list, 
-                                          ema169_data: list) -> str:
+                                          ema169_data: list, colors: dict) -> str:
         """
         生成增强的EMA系列和Vegas隧道的JavaScript代码
         
@@ -125,6 +131,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             ema18_data: EMA18数据
             ema144_data: EMA144数据（Vegas隧道下轨）
             ema169_data: EMA169数据（Vegas隧道上轨）
+            colors: 主题配色字典
             
         Returns:
             JavaScript代码字符串
@@ -201,11 +208,11 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     }}
                 }}
                 
-                // 添加EMA144均线（Vegas隧道下轨）
+                // 添加EMA144均线（Vegas隧道下轨）- 专业线条粗细
                 if (ema144Data.length > 0) {{
                     const ema144Series = chart.addLineSeries({{
-                        color: 'rgba(156, 39, 176, 0.8)',  // 紫色
-                        lineWidth: 1.5,
+                        color: '{colors['ema144']}',  // 隧道下轨
+                        lineWidth: 1,              // 细线（专业标准）
                         priceLineVisible: false,
                         lastValueVisible: false,
                         title: ''
@@ -213,11 +220,11 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     ema144Series.setData(ema144Data);
                 }}
                 
-                // 添加EMA169均线（Vegas隧道上轨）
+                // 添加EMA169均线（Vegas隧道上轨）- 专业线条粗细
                 if (ema169Data.length > 0) {{
                     const ema169Series = chart.addLineSeries({{
-                        color: 'rgba(103, 58, 183, 0.8)',  // 深紫色
-                        lineWidth: 1.5,
+                        color: '{colors['ema169']}',  // 隧道上轨
+                        lineWidth: 1,              // 细线（专业标准）
                         priceLineVisible: false,
                         lastValueVisible: false,
                         title: ''
@@ -225,12 +232,12 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     ema169Series.setData(ema169Data);
                 }}
                 
-                // 添加EMA6均线
+                // 添加EMA6均线 - 专业线条粗细
                 const ema6Data = {ema6_json};
                 if (ema6Data.length > 0) {{
                     const ema6Series = chart.addLineSeries({{
-                        color: 'rgba(33, 150, 243, 1)',  // 蓝色
-                        lineWidth: 2,
+                        color: '{colors['ema6']}',   // 最短期EMA（独立颜色）
+                        lineWidth: 1,              // 细线（专业标准）
                         priceLineVisible: false,
                         lastValueVisible: false,
                         title: ''
@@ -238,12 +245,12 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     ema6Series.setData(ema6Data);
                 }}
                 
-                // 添加EMA12均线
+                // 添加EMA12均线 - 专业线条粗细
                 const ema12Data = {ema12_json};
                 if (ema12Data.length > 0) {{
                     const ema12Series = chart.addLineSeries({{
-                        color: 'rgba(0, 188, 212, 1)',  // 青色
-                        lineWidth: 2,
+                        color: '{colors['ema12']}',  // 中期EMA
+                        lineWidth: 1,              // 细线（专业标准）
                         priceLineVisible: false,
                         lastValueVisible: false,
                         title: ''
@@ -251,12 +258,12 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     ema12Series.setData(ema12Data);
                 }}
                 
-                // 添加EMA18均线
+                // 添加EMA18均线 - 专业线条粗细
                 const ema18Data = {ema18_json};
                 if (ema18Data.length > 0) {{
                     const ema18Series = chart.addLineSeries({{
-                        color: 'rgba(255, 152, 0, 1)',  // 橙色
-                        lineWidth: 2,
+                        color: '{colors['ema18']}',  // 长期EMA
+                        lineWidth: 1,              // 细线（专业标准）
                         priceLineVisible: false,
                         lastValueVisible: false,
                         title: ''

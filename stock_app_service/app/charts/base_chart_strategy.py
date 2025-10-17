@@ -14,6 +14,85 @@ class BaseChartStrategy(ABC):
     所有图表策略都应继承此基类并实现其方法
     """
     
+    # 定义主题配色方案 - 参考专业金融终端（TradingView/Bloomberg）标准
+    THEME_COLORS = {
+        'light': {
+            # 基础背景色 - 纯白简洁
+            'background': '#FFFFFF',
+            'grid': '#E0E3EB',                 # 更柔和的网格线
+            'text': '#131722',                 # 接近黑色的深灰文字
+            'border': '#D1D4DC',
+            
+            # K线配色 - A股标准（红涨绿跌），高对比度
+            'upColor': '#F92626',              # 标准A股红（涨）
+            'downColor': '#00B67A',            # 标准A股绿（跌）
+            'volumeUpColor': 'rgba(249, 38, 38, 0.5)',    # 半透明红色成交量
+            'volumeDownColor': 'rgba(0, 182, 122, 0.5)',  # 半透明绿色成交量
+            
+            # 均线配色 - 专业配色（3条短期EMA需要区分）
+            'ma5': '#FF6D00',                  # 橙色 MA5（短期）
+            'ma10': '#9C27B0',                 # 紫色 MA10（中期）
+            'ema6': '#00BCD4',                 # 青色 EMA6（最短期）
+            'ema12': '#2962FF',                # 蓝色 EMA12（短期趋势）
+            'ema18': '#FF6D00',                # 橙色 EMA18（中期趋势）
+            'ema144': '#00897B',               # 青绿色（隧道下轨）
+            'ema169': '#D32F2F',               # 深红色（隧道上轨）
+            
+            # 信号标记
+            'buySignal': '#F92626',            # 买入信号（红色）
+            'sellSignal': '#00B67A',           # 卖出信号（绿色）
+            
+            # UI元素
+            'tooltipBg': 'rgba(255, 255, 255, 0.96)',
+            'tooltipBorder': '#D1D4DC',
+            'watermark': 'rgba(149, 152, 161, 0.06)',  # 非常淡的水印
+        },
+        'dark': {
+            # 基础背景色 - 专业深色（参考TradingView暗色主题）
+            'background': '#131722',           # 专业深色背景
+            'grid': '#2A2E39',                 # 更深的网格线（低对比）
+            'text': '#D1D4DC',                 # 柔和的灰白色文字
+            'border': '#2A2E39',
+            
+            # K线配色 - A股标准（红涨绿跌），专业对比度
+            'upColor': '#F92626',              # 标准A股红（涨）
+            'downColor': '#00B67A',            # 标准A股绿（跌）
+            'volumeUpColor': 'rgba(249, 38, 38, 0.5)',    # 半透明红色成交量
+            'volumeDownColor': 'rgba(0, 182, 122, 0.5)',  # 半透明绿色成交量
+            
+            # 均线配色 - 专业暗色配色（参考TradingView，3条短期EMA需要区分）
+            'ma5': '#FF9800',                  # 亮橙色 MA5（短期）
+            'ma10': '#9C27B0',                 # 紫色 MA10（中期）
+            'ema6': '#26A69A',                 # 青绿色 EMA6（最短期）
+            'ema12': '#2196F3',                # 亮蓝色 EMA12（短期趋势）
+            'ema18': '#FF9800',                # 亮橙色 EMA18（中期趋势）
+            'ema144': '#00BCD4',               # 青色（隧道下轨）
+            'ema169': '#E91E63',               # 粉红色（隧道上轨）
+            
+            # 信号标记
+            'buySignal': '#F92626',            # 买入信号（红色）
+            'sellSignal': '#00B67A',           # 卖出信号（绿色）
+            
+            # UI元素
+            'tooltipBg': 'rgba(19, 23, 34, 0.96)',
+            'tooltipBorder': '#2A2E39',
+            'watermark': 'rgba(120, 123, 134, 0.06)',  # 非常淡的水印
+        }
+    }
+    
+    @classmethod
+    def get_theme_colors(cls, theme: str = 'dark') -> Dict[str, str]:
+        """
+        获取主题配色方案
+        
+        Args:
+            theme: 主题类型，'light'（亮色）或'dark'（暗色），默认暗色
+            
+        Returns:
+            主题配色字典
+        """
+        return cls.THEME_COLORS.get(theme, cls.THEME_COLORS['dark'])
+    
     @classmethod
     @abstractmethod
     def generate_chart_html(cls, stock_data: Dict[str, Any], **kwargs) -> str:
@@ -115,17 +194,22 @@ class BaseChartStrategy(ABC):
         return chart_data
     
     @classmethod
-    def _prepare_markers(cls, df, signals) -> list:
+    def _prepare_markers(cls, df, signals, colors=None) -> list:
         """
         准备买卖信号标记
         
         Args:
             df: 包含数据的DataFrame
             signals: 信号列表
+            colors: 主题配色字典，如果为None则使用默认颜色
             
         Returns:
             格式化的标记列表
         """
+        # 如果没有传入colors，使用默认颜色
+        if colors is None:
+            colors = cls.get_theme_colors('dark')
+        
         markers = []
         for signal in signals:
             try:
@@ -157,7 +241,7 @@ class BaseChartStrategy(ABC):
                     markers.append({
                         "time": date_str,
                         "position": "belowBar",
-                        "color": "#4CAF50",
+                        "color": colors['buySignal'],  # 使用主题配色
                         "shape": "arrowUp",
                         "text": "买"
                     })
@@ -165,7 +249,7 @@ class BaseChartStrategy(ABC):
                     markers.append({
                         "time": date_str,
                         "position": "aboveBar",
-                        "color": "#FF5252",
+                        "color": colors['sellSignal'],  # 使用主题配色
                         "shape": "arrowDown",
                         "text": "卖"
                     })
@@ -202,7 +286,7 @@ class BaseChartStrategy(ABC):
     @classmethod
     def _generate_base_html_template(cls, stock, strategy_name, strategy_desc, 
                                    chart_data, markers, volume_data, 
-                                   additional_series="", additional_scripts="") -> str:
+                                   additional_series="", additional_scripts="", colors=None) -> str:
         """
         生成基础HTML模板
         
@@ -215,10 +299,14 @@ class BaseChartStrategy(ABC):
             volume_data: 成交量数据
             additional_series: 额外的图表系列代码
             additional_scripts: 额外的JavaScript代码
+            colors: 主题配色字典，如果为None则使用暗色主题
             
         Returns:
             完整的HTML字符串
         """
+        # 如果没有传入colors，使用默认暗色主题
+        if colors is None:
+            colors = cls.get_theme_colors('dark')
         return f"""
         <!DOCTYPE html>
         <html lang="zh-CN">
@@ -232,8 +320,8 @@ class BaseChartStrategy(ABC):
                     margin: 0;
                     padding: 0;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
-                    background-color: #151924;
-                    color: #d1d4dc;
+                    background-color: {colors['background']};
+                    color: {colors['text']};
                 }}
                 #chart-container {{
                     position: absolute;
@@ -247,9 +335,9 @@ class BaseChartStrategy(ABC):
                     transform: translateX(-50%);
                     font-size: 16px;
                     font-weight: bold;
-                    color: #d1d4dc;
+                    color: {colors['text']};
                     z-index: 100;
-                    background-color: rgba(21, 25, 36, 0.7);
+                    background-color: {colors['tooltipBg']};
                     padding: 5px 10px;
                     border-radius: 4px;
                 }}
@@ -257,9 +345,9 @@ class BaseChartStrategy(ABC):
                     position: absolute;
                     bottom: 10px;
                     right: 10px;
-                    color: #d1d4dc;
+                    color: {colors['text']};
                     z-index: 100;
-                    background-color: rgba(21, 25, 36, 0.7);
+                    background-color: {colors['tooltipBg']};
                     padding: 5px 10px;
                     border-radius: 4px;
                     font-size: 12px;
@@ -325,20 +413,20 @@ class BaseChartStrategy(ABC):
                     height: chartContainer.clientHeight,
                     layout: {{
                         background: {{
-                            color: '#151924'
+                            color: '{colors['background']}'
                         }},
-                        textColor: '#d1d4dc',
+                        textColor: '{colors['text']}',
                         fontSize: 12,
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Helvetica Neue", Arial, sans-serif'
                     }},
                     grid: {{
                         vertLines: {{
-                            color: 'rgba(42, 46, 57, 0.5)',
+                            color: '{colors['grid']}',
                             style: 4,
                             visible: true,
                         }},
                         horzLines: {{
-                            color: 'rgba(42, 46, 57, 0.5)',
+                            color: '{colors['grid']}',
                             style: 4,
                             visible: true,
                         }},
@@ -347,40 +435,39 @@ class BaseChartStrategy(ABC):
                         mode: 0,
                         vertLine: {{
                             width: 1,
-                            color: 'rgba(224, 227, 235, 0.1)',
+                            color: '{colors['border']}',
                             style: 0,
                         }},
                         horzLine: {{
                             width: 1,
-                            color: 'rgba(224, 227, 235, 0.1)',
+                            color: '{colors['border']}',
                             style: 0,
                         }},
                     }},
                     timeScale: {{
-                        borderColor: 'rgba(197, 203, 206, 0.8)',
+                        borderColor: '{colors['border']}',
                         timeVisible: true,
                         secondsVisible: false,
                     }},
                     watermark: {{
-                        color: 'rgba(11, 94, 29, 0.4)',
+                        color: '{colors['watermark']}',
                         visible: true,
                         text: '{stock['name']}({stock['code']})',
                         fontSize: 24,
                         horzAlign: 'center',
                         vertAlign: 'center',
-                        color: 'rgba(255, 255, 255, 0.1)',
                     }},
                     autoSize: true,
                 }});
                 
                 // 创建K线图
                 const candleSeries = chart.addCandlestickSeries({{
-                    upColor: '#f44336',    // 红色，涨
-                    downColor: '#4caf50',  // 绿色，跌
-                    borderUpColor: '#f44336',
-                    borderDownColor: '#4caf50',
-                    wickUpColor: '#f44336',
-                    wickDownColor: '#4caf50',
+                    upColor: '{colors['upColor']}',    // A股红色，涨
+                    downColor: '{colors['downColor']}',  // A股绿色，跌
+                    borderUpColor: '{colors['upColor']}',
+                    borderDownColor: '{colors['downColor']}',
+                    wickUpColor: '{colors['upColor']}',
+                    wickDownColor: '{colors['downColor']}',
                     priceFormat: {{
                         type: 'price',
                         precision: 2,
@@ -393,7 +480,7 @@ class BaseChartStrategy(ABC):
                 
                 // 创建成交量图，放在主图的30%区域
                 const volumeSeries = chart.addHistogramSeries({{
-                    color: '#26a69a',
+                    color: '{colors['volumeUpColor']}',
                     priceFormat: {{
                         type: 'volume',
                     }},
