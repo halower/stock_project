@@ -1,0 +1,38 @@
+# 启动屏配置
+flutter_native_splash:
+  # 背景色 - 使用深蓝色渐变作为金融应用基调 (深色版本)
+  color: "#061029"
+  
+  # 暗黑模式颜色设置
+  color_dark: "#020A1A"
+  
+  # 前景图 - 使用应用logo
+  image: "assets/icons/app_logo.png"
+  
+  # Android 12 启动屏特性
+  android_12:
+    # 背景色
+    color: "#061029"
+    # 深色模式背景色
+    color_dark: "#020A1A"
+    # 图标
+    image: "assets/icons/app_logo.png"
+    # 图标背景色
+    icon_background_color: "#2F80ED"
+    # 深色模式图标背景色
+    icon_background_color_dark: "#1C5BBD"
+    
+  # 启动屏显示模式
+  fullscreen: true
+  
+  # 保持原生启动屏直到Flutter渲染第一帧
+  # 这可以避免白屏闪烁
+  android_gravity: center
+  ios_content_mode: center
+  
+  # 添加渐变效果
+  android_screen_orientation: portrait
+  
+  # 支持各平台
+  android: true
+  ios: true 

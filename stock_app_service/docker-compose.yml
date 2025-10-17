@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    container_name: stock_app_api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - TZ=Asia/Shanghai
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - API_TOKEN=eXvM4zU8nP9qWt3dRfKgH7jBcA2yE5sZ
+      - API_TOKEN_ENABLED=true
+      # 可选值: none, only_tasks, clear_all
+      - STOCK_INIT_MODE=etf_only
+      # 多线程配置
+      - USE_MULTITHREADING=true
+      - MAX_THREADS=5
+      - GLOBAL_THREAD_POOL_SIZE=5
+      # 后台任务配置 - 设置为低优先级避免影响API服务
+      - BACKGROUND_TASK_PRIORITY=low
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    restart: unless-stopped
+  redis:
+    image: redis:latest
+    container_name: stock_app_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:

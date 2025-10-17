@@ -1,0 +1,27 @@
+# Flutter性能优化配置
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+# 编译优化选项
+flutter:
+  # 启用增量编译
+  incremental: true
+  
+  # 优化资源处理
+  assets:
+    # 启用资源压缩
+    compression: true
+    
+  # 字体优化
+  fonts:
+    # 启用字体子集化
+    subset: true
+
+# 调试选项
+debugging:
+  # 启用热重载优化
+  hot_reload: true
+  
+  # 减少调试信息
+  minimal_debug_info: true 
