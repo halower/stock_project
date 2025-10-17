@@ -103,66 +103,204 @@ class ProfessionalWatchlistHeader extends StatelessWidget {
     VoidCallback? onTap,
     bool isDestructive = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isDestructive 
-            ? Colors.red.withOpacity(0.1)
-            : Theme.of(context).primaryColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isDestructive 
-              ? Colors.red.withOpacity(0.3)
-              : Theme.of(context).primaryColor.withOpacity(0.3),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isDestructive 
-                ? Colors.red
-                : Theme.of(context).primaryColor,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).primaryColor;
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDestructive
+                  ? [
+                      Colors.red.withOpacity(0.15),
+                      Colors.red.withOpacity(0.08),
+                    ]
+                  : [
+                      primaryColor.withOpacity(0.15),
+                      primaryColor.withOpacity(0.08),
+                    ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDestructive 
-                  ? Colors.red
-                  : Theme.of(context).primaryColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDestructive
+                  ? Colors.red.withOpacity(0.3)
+                  : primaryColor.withOpacity(0.3),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (isDestructive ? Colors.red : primaryColor).withOpacity(0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: isDestructive ? Colors.red : primaryColor,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDestructive ? Colors.red : primaryColor,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _showFilterDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('选择市场'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            '全部', '主板', '创业板', '科创板', '北交所'
-          ].map((market) => ListTile(
-            title: Text(market),
-            onTap: () {
-              onMarketSelected(market == '全部' ? null : market);
-              Navigator.pop(context);
-            },
-            selected: selectedMarket == market || 
-                     (market == '全部' && selectedMarket == null),
-          )).toList(),
+      builder: (context) => Dialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Icon(
+                    Icons.filter_list,
+                    color: Theme.of(context).primaryColor,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '选择市场',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              
+              // 市场选项
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  '全部', '主板', '创业板', '科创板', '北交所', 'ETF'
+                ].map((market) => _buildMarketChip(
+                  market: market,
+                  isSelected: selectedMarket == market || 
+                            (market == '全部' && selectedMarket == null),
+                  onTap: () {
+                    onMarketSelected(market == '全部' ? null : market);
+                    Navigator.pop(context);
+                  },
+                  isDark: isDark,
+                )).toList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildMarketChip({
+    required String market,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    final marketColor = _getMarketColor(market);
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    marketColor,
+                    Color.lerp(marketColor, Colors.black, 0.1)!,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                )
+              : LinearGradient(
+                  colors: [
+                    isDark ? const Color(0xFF2D2D2D) : Colors.grey.withOpacity(0.1),
+                    isDark ? const Color(0xFF252525) : Colors.grey.withOpacity(0.05),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected 
+                ? Colors.white.withOpacity(0.4)
+                : isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.2),
+            width: 1.5,
+          ),
+          boxShadow: [
+            if (isSelected)
+              BoxShadow(
+                color: marketColor.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+          ],
+        ),
+        child: Text(
+          market,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getMarketColor(String market) {
+    switch (market) {
+      case '主板':
+        return const Color(0xFF3B82F6);
+      case '创业板':
+        return const Color(0xFFFF9800);
+      case '科创板':
+        return const Color(0xFFE91E63);
+      case '北交所':
+        return const Color(0xFF9C27B0);
+      case 'ETF':
+        return const Color(0xFF8E24AA);
+      default: // 全部
+        return const Color(0xFF2196F3);
+    }
   }
 } 

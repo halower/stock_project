@@ -358,6 +358,18 @@ class ApiProvider with ChangeNotifier {
           debugPrint('  ${_allStocksCache[i].name}(${_allStocksCache[i].code}): ${_allStocksCache[i].market}');
         }
       }
+    } else if (market == 'ETF') {
+      // ETF筛选逻辑：包含ETF、etf，以及通过股票代码推断的ETF
+      _scanResults = _allStocksCache
+          .where((stock) => 
+              stock.market == 'ETF' || 
+              stock.market == 'etf' ||
+              stock.market.contains('ETF') ||
+              stock.market.contains('etf') ||
+              // 通过股票代码推断ETF（以51、15开头的代码）
+              (stock.code.startsWith('51') || stock.code.startsWith('15')))
+          .toList();
+      debugPrint('ETF筛选: 从${_allStocksCache.length}只股票中筛选出${_scanResults.length}只');
     } else {
       // 在前端筛选特定市场
       _scanResults = _allStocksCache
