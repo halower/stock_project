@@ -398,10 +398,9 @@ class AIStockFilterService {
         if (effectiveUrl != null) {
           final uri = Uri.parse(effectiveUrl);
           if (uri.host == 'dashscope.aliyuncs.com' && uri.path.startsWith('/compatible-mode/')) {
-            // 阿里百炼平台使用特殊的认证方式
+            // 阿里百炼平台compatible-mode使用标准Bearer Token（同步调用）
             headers['Authorization'] = 'Bearer $effectiveApiKey';
-            // 阿里百炼可能需要额外的头部
-            headers['X-DashScope-Async'] = 'enable';
+            // 注意：X-DashScope-Async只用于异步调用，compatible-mode同步调用不需要
           } else {
             // 标准OpenAI兼容模式使用Bearer Token
             headers['Authorization'] = 'Bearer $effectiveApiKey';
@@ -677,10 +676,9 @@ class AIStockFilterService {
       if (effectiveUrl != null) {
         final uri = Uri.parse(effectiveUrl);
         if (uri.host == 'dashscope.aliyuncs.com' && uri.path.startsWith('/compatible-mode/')) {
-          // 阿里百炼平台使用特殊的认证方式
+          // 阿里百炼平台compatible-mode使用标准Bearer Token（同步调用）
           headers['Authorization'] = 'Bearer $effectiveApiKey';
-          // 阿里百炼可能需要额外的头部
-          headers['X-DashScope-Async'] = 'enable';
+          // 注意：X-DashScope-Async只用于异步调用，compatible-mode同步调用不需要
         } else {
           // 标准OpenAI兼容模式使用Bearer Token
           headers['Authorization'] = 'Bearer $effectiveApiKey';
