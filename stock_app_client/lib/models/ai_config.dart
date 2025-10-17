@@ -97,7 +97,7 @@ class AIConfig {
       'https://api.openai.com/v1/chat/completions',
       'https://api.deepseek.com/v1/chat/completions', 
       'https://api.siliconflow.cn/v1/chat/completions',
-      'https://dashscope.aliyuncs.com/compatible-mode/v1', // 阿里百炼兼容模式
+      'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', // 阿里百炼兼容模式（完整URL）
       'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
     ];
   }

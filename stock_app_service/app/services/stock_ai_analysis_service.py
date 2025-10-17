@@ -192,16 +192,24 @@ class StockAIAnalysisService:
             }
             
             # 调用AI分析
-            analysis_text = await self._generate_ai_analysis_report(
-                stock_code, stock_data,
-                ai_endpoint, ai_api_key, ai_model_name
-            )
+            try:
+                analysis_text = await self._generate_ai_analysis_report(
+                    stock_code, stock_data,
+                    ai_endpoint, ai_api_key, ai_model_name
+                )
+            except Exception as ai_error:
+                logger.error(f"AI分析调用失败: {ai_error}")
+                yield {
+                    'status': 'error',
+                    'message': f'AI分析服务调用失败: {str(ai_error)}',
+                }
+                return
             
             # 检查AI分析是否成功
             if not analysis_text:
                 yield {
                     'status': 'error',
-                    'message': 'AI分析服务暂时不可用，请检查AI配置或稍后重试',
+                    'message': 'AI分析服务返回空结果，请检查AI配置',
                 }
                 return
             
@@ -353,16 +361,18 @@ class StockAIAnalysisService:
     ) -> str:
         """使用AI生成股票分析报告"""
         try:
-            logger.debug(f"开始通过AI分析股票: {stock_code}")
+            logger.info(f"开始通过AI分析股票: {stock_code}")
+            logger.info(f"AI配置 - 端点: {ai_endpoint}, 模型: {ai_model}")
             
             # 构建含有历史数据的提示词
             prompt = self._build_analysis_prompt_with_data(stock_code, stock_data)
+            logger.info(f"构建的提示词长度: {len(prompt)}")
             
             # 调用AI服务
             response = await self._call_ai_service(prompt, ai_endpoint, ai_api_key, ai_model)
             
             if response:
-                logger.debug(f"AI分析完成，生成报告长度: {len(response)}")
+                logger.info(f"AI分析完成，生成报告长度: {len(response)}")
                 return response
             else:
                 logger.warning("AI服务返回空结果")
@@ -370,7 +380,9 @@ class StockAIAnalysisService:
                 
         except Exception as e:
             logger.error(f"AI分析生成失败: {e}")
-            return ""
+            import traceback
+            logger.error(f"详细错误信息: {traceback.format_exc()}")
+            raise  # 重新抛出异常，而不是返回空字符串
     
     async def _call_ai_service(
         self,
@@ -381,7 +393,8 @@ class StockAIAnalysisService:
     ) -> str:
         """直接调用AI服务"""
         try:
-            logger.debug(f"调用AI服务: {ai_endpoint}")
+            logger.info(f"调用AI服务: {ai_endpoint}")
+            logger.info(f"使用模型: {ai_model}")
             
             request_body = {
                 'model': ai_model,
@@ -398,31 +411,93 @@ class StockAIAnalysisService:
             
             headers = {
                 'Content-Type': 'application/json',
-                'Authorization': f'Bearer {ai_api_key}',
+                'Authorization': f'Bearer {ai_api_key[:10]}...{ai_api_key[-4:]}',  # 日志中隐藏API密钥
             }
+            
+            logger.info(f"请求头: {headers}")
+            logger.info(f"请求体: model={ai_model}, messages长度={len(request_body['messages'])}, prompt长度={len(prompt)}")
+            
+            # 打印完整的请求URL用于调试
+            logger.info(f"=" * 80)
+            logger.info(f"完整的API端点URL: {ai_endpoint}")
+            logger.info(f"模型名称: {ai_model}")
+            logger.info(f"API密钥前缀: {ai_api_key[:20]}...")
+            logger.info(f"=" * 80)
             
             timeout = aiohttp.ClientTimeout(total=60)  # 60秒超时
             
             async with aiohttp.ClientSession(timeout=timeout) as session:
+                # 实际请求时使用完整的API密钥
+                actual_headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {ai_api_key}',
+                }
+                
+                logger.info(f"发送POST请求到: {ai_endpoint}")
                 async with session.post(
                     ai_endpoint,
-                    headers=headers,
+                    headers=actual_headers,
                     json=request_body
                 ) as response:
                     
+                    logger.info(f"收到响应，状态码: {response.status}")
+                    
                     if response.status == 200:
                         json_response = await response.json()
-                        content = json_response.get('choices', [{}])[0].get('message', {}).get('content', '')
-                        logger.debug(f"成功获取AI响应，内容长度: {len(content)}")
-                        return content
+                        logger.info(f"响应JSON结构: {json_response.keys() if isinstance(json_response, dict) else type(json_response)}")
+                        
+                        # 尝试从不同的响应结构中提取内容
+                        content = None
+                        if isinstance(json_response, dict):
+                            # OpenAI标准格式
+                            if 'choices' in json_response:
+                                content = json_response.get('choices', [{}])[0].get('message', {}).get('content', '')
+                            # 阿里百炼可能的格式
+                            elif 'output' in json_response:
+                                output = json_response.get('output', {})
+                                if isinstance(output, dict):
+                                    content = output.get('text', '') or output.get('content', '')
+                                else:
+                                    content = str(output)
+                            # 直接包含text字段
+                            elif 'text' in json_response:
+                                content = json_response.get('text', '')
+                            # 其他可能的格式
+                            elif 'result' in json_response:
+                                content = json_response.get('result', '')
+                        
+                        if content:
+                            logger.info(f"成功获取AI响应，内容长度: {len(content)}")
+                            return content
+                        else:
+                            logger.error(f"无法从响应中提取内容，响应结构: {json_response}")
+                            raise Exception(f'AI响应格式不正确，无法提取内容')
                     else:
                         error_text = await response.text()
-                        logger.error(f"AI API调用失败: {response.status}")
+                        logger.error(f"=" * 80)
+                        logger.error(f"AI API调用失败!")
+                        logger.error(f"请求URL: {ai_endpoint}")
+                        logger.error(f"模型: {ai_model}")
+                        logger.error(f"响应状态码: HTTP {response.status}")
                         logger.error(f"错误响应: {error_text}")
-                        raise Exception(f'AI API调用失败: HTTP {response.status}')
+                        logger.error(f"=" * 80)
                         
+                        # 针对404错误给出特别提示
+                        if response.status == 404:
+                            logger.error(f"提示: HTTP 404表示API端点URL不存在，请检查配置的URL是否正确")
+                            logger.error(f"阿里百炼正确的端点格式应该是: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
+                        
+                        raise Exception(f'AI API调用失败: HTTP {response.status} - {error_text[:200]}')
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"调用AI服务网络错误: {e}")
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
+            raise Exception(f'AI服务网络错误: {str(e)}')
         except Exception as e:
             logger.error(f"调用AI服务出错: {e}")
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
             raise e
     
     def _build_analysis_prompt_with_data(

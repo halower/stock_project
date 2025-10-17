@@ -520,13 +520,26 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[850]  // 暗色模式：深灰色背景
+                    : Colors.grey[50],   // 亮色模式：浅灰色背景
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[700]!  // 暗色模式：灰色边框
+                      : Colors.grey[300]!,  // 亮色模式：浅灰色边框
+                ),
               ),
               child: MarkdownBody(
                 data: _report,
                 selectable: true,
+                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                  // 确保文本颜色适配主题
+                  p: Theme.of(context).textTheme.bodyMedium,
+                  h1: Theme.of(context).textTheme.headlineMedium,
+                  h2: Theme.of(context).textTheme.headlineSmall,
+                  h3: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
             ),
             

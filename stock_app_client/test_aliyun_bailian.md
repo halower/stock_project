@@ -23,10 +23,12 @@
 
 ### 阿里百炼平台配置
 ```
-API地址: https://dashscope.aliyuncs.com/compatible-mode/v1
+API地址: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
 API密钥: 您的阿里百炼API密钥
-模型: qwen-plus 或其他阿里百炼支持的模型
+模型: qwen-plus 或 qwen2.5-32b-instruct 或其他阿里百炼支持的模型
 ```
+
+**重要提示：** URL必须包含完整路径 `/chat/completions`，否则会返回404错误！
 
 ### 标准OpenAI兼容配置（保持不变）
 ```
