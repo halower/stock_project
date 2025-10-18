@@ -4,24 +4,70 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../models/trade_record.dart';
 import '../services/providers/trade_provider.dart';
+import '../utils/financial_colors.dart';
+import '../widgets/analysis/modern_section_card.dart';
+import '../widgets/analysis/profit_distribution_pie_chart.dart';
+import '../widgets/analysis/risk_metrics_grid.dart';
+import '../widgets/analysis/trading_frequency_chart.dart';
+import '../widgets/analysis/strategy_stats_list.dart';
 
 class AnalysisScreen extends StatelessWidget {
   const AnalysisScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: isDarkMode ? const Color(0xFF0F1419) : const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: FinancialColors.goldGradient,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: FinancialColors.primary.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.analytics_outlined,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
           '个人交易概览',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 22,
+                fontSize: 20,
           ),
+            ),
+          ],
         ),
         elevation: 0,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDarkMode
+                  ? [const Color(0xFF1A1F3A), const Color(0xFF0F1419)]
+                  : [Colors.white, const Color(0xFFF8FAFC)],
+            ),
+          ),
+        ),
         centerTitle: true,
       ),
       body: Consumer<TradeProvider>(
@@ -31,14 +77,33 @@ class AnalysisScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: FinancialColors.goldGradient,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: FinancialColors.primary.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 3,
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   Text(
-                    '加载交易数据...',
+                    '加载交易数据中...',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.white70 : Colors.grey[700],
                     ),
                   ),
                 ],
@@ -51,26 +116,38 @@ class AnalysisScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  Container(
+                    padding: const EdgeInsets.all(30),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          FinancialColors.primary.withOpacity(0.1),
+                          FinancialColors.secondary.withOpacity(0.1),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Icon(
                     Icons.analytics_outlined,
                     size: 80,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      color: FinancialColors.primary,
                   ),
-                  const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 24),
                   Text(
                     '暂无交易记录',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.grey[800],
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '添加交易记录后，将在此处显示分析数据',
+                    '添加交易记录后，将在此处显示专业分析数据',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                      color: isDarkMode ? Colors.white60 : Colors.grey[600],
                     ),
                   ),
                 ],
@@ -126,19 +203,31 @@ class AnalysisScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            isDarkMode ? const Color(0xFF1E293B) : Colors.white,
-            isDarkMode ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
-                ],
+          colors: isDarkMode
+              ? [const Color(0xFF1A1F3A), const Color(0xFF2D3748)]
+              : [Colors.white, const Color(0xFFF8FAFC)],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: isDarkMode
+              ? FinancialColors.primary.withOpacity(0.2)
+              : FinancialColors.primary.withOpacity(0.1),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: isDarkMode 
-                ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.black.withOpacity(0.4)
+                : FinancialColors.primary.withOpacity(0.08),
+            blurRadius: 30,
+            spreadRadius: 0,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: FinancialColors.secondary.withOpacity(0.1),
             blurRadius: 20,
-            offset: const Offset(0, 8),
+            spreadRadius: -5,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
@@ -147,41 +236,62 @@ class AnalysisScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 标题区域
+            // 标题区域 - 更震撼的设计
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.blue.shade400,
-                        Colors.blue.shade600,
-                      ],
+                    gradient: const LinearGradient(
+                      colors: FinancialColors.goldGradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        color: FinancialColors.primary.withOpacity(0.5),
+                        blurRadius: 15,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 6),
+                      ),
+                      BoxShadow(
+                        color: FinancialColors.primary.withOpacity(0.2),
+                        blurRadius: 25,
+                        spreadRadius: -2,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
                   child: const Icon(
-                    Icons.trending_up,
+                    Icons.account_balance_wallet_outlined,
                     color: Colors.white,
-                    size: 24,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 18),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 Text(
                   '交易概览',
                   style: TextStyle(
-                    fontSize: 22,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                     color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                        letterSpacing: 0.5,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Trading Overview',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDarkMode ? Colors.white60 : Colors.grey[600],
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -246,22 +356,31 @@ class AnalysisScreen extends StatelessWidget {
     String prefix,
     {bool isFullWidth = false}
   ) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: gradientColors,
+          colors: [
+            gradientColors.first,
+            gradientColors.last,
+          ],
+          stops: const [0.0, 1.0],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
-            color: gradientColors.first.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: gradientColors.first.withOpacity(0.4),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: gradientColors.last.withOpacity(0.2),
+            blurRadius: 30,
+            spreadRadius: -5,
+            offset: const Offset(0, 15),
               ),
             ],
           ),
@@ -276,45 +395,74 @@ class AnalysisScreen extends StatelessWidget {
                 : MainAxisAlignment.spaceBetween,
             children: [
               if (!isFullWidth) ...[
-                Icon(
-            icon,
-                  color: Colors.white.withOpacity(0.9),
-            size: 24,
-          ),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    Icons.arrow_upward,
+                    Icons.trending_up,
                     color: Colors.white,
-                    size: 16,
+                    size: 18,
                   ),
                 ),
               ] else ...[
-                Icon(
-                  icon,
-                  color: Colors.white.withOpacity(0.9),
-                  size: 28,
-              ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
               ],
             ],
-        ),
+          ),
           
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           
-        Text(
+          Text(
             title,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: isFullWidth ? 16 : 14,
-              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.95),
+              fontSize: isFullWidth ? 15 : 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
           
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           
           RichText(
             text: TextSpan(
@@ -324,19 +472,35 @@ class AnalysisScreen extends StatelessWidget {
                     text: prefix,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: isFullWidth ? 24 : 20,
-                fontWeight: FontWeight.bold,
+                      fontSize: isFullWidth ? 28 : 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                   ),
                 TextSpan(
                   text: value,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: isFullWidth ? 24 : 20,
+                    fontSize: isFullWidth ? 28 : 24,
                     fontWeight: FontWeight.bold,
-              ),
-        ),
-      ],
+                    letterSpacing: 0.5,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -377,19 +541,31 @@ class AnalysisScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            isDarkMode ? const Color(0xFF1E293B) : Colors.white,
-            isDarkMode ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
-          ],
+          colors: isDarkMode
+              ? [const Color(0xFF1A1F3A), const Color(0xFF2D3748)]
+              : [Colors.white, const Color(0xFFF8FAFC)],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: isDarkMode
+              ? FinancialColors.secondary.withOpacity(0.2)
+              : FinancialColors.secondary.withOpacity(0.1),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: isDarkMode 
-                ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.black.withOpacity(0.4)
+                : FinancialColors.secondary.withOpacity(0.08),
+            blurRadius: 30,
+            spreadRadius: 0,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: FinancialColors.secondary.withOpacity(0.1),
             blurRadius: 20,
-            offset: const Offset(0, 8),
+            spreadRadius: -5,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
@@ -401,37 +577,58 @@ class AnalysisScreen extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.indigo.shade400,
-                        Colors.indigo.shade600,
-                      ],
+                    gradient: const LinearGradient(
+                      colors: FinancialColors.blueGradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.indigo.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        color: FinancialColors.secondary.withOpacity(0.5),
+                        blurRadius: 15,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 6),
+                      ),
+                      BoxShadow(
+                        color: FinancialColors.secondary.withOpacity(0.2),
+                        blurRadius: 25,
+                        spreadRadius: -2,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
                   child: const Icon(
-                    Icons.calendar_month,
+                    Icons.bar_chart_rounded,
                     color: Colors.white,
-                    size: 24,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Text(
-                  '月度分析',
-                  style: TextStyle(
-                    fontSize: 22,
+                const SizedBox(width: 18),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '月度分析',
+                      style: TextStyle(
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                        color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                        letterSpacing: 0.5,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Monthly Analysis',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDarkMode ? Colors.white60 : Colors.grey[600],
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -670,7 +867,6 @@ class AnalysisScreen extends StatelessWidget {
   }
   
   Widget _buildMonthSummaryItem(BuildContext context, String label, String value, bool? isPositive) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color? valueColor;
     
     if (isPositive != null) {
@@ -720,180 +916,17 @@ class AnalysisScreen extends StatelessWidget {
   }
 
   Widget _buildWinRateChart(BuildContext context, TradeProvider tradeProvider) {
-    final records = tradeProvider.tradeRecords.where((record) => record.status == TradeStatus.completed).toList();
+    final records = tradeProvider.tradeRecords;
     if (records.isEmpty) {
       return const SizedBox.shrink();
     }
-    
-    // 计算盈利、亏损、持平的交易数量
-    int winCount = 0;
-    int loseCount = 0;
-    int drawCount = 0;
-    
-    for (var record in records) {
-      if (record.netProfit == null) {
-        continue;
-      }
-      
-      if (record.netProfit! > 0) {
-        winCount++;
-      } else if (record.netProfit! < 0) {
-        loseCount++;
-      } else {
-        drawCount++;
-      }
-    }
-    
-    return Card(
-      color: Theme.of(context).cardColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.tertiary.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.pie_chart,
-                    color: Theme.of(context).colorScheme.tertiary,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '交易结果分布',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 240,
-              child: PieChart(
-                PieChartData(
-                  sections: [
-                    PieChartSectionData(
-                      value: winCount.toDouble(),
-                      title: '盈利\n$winCount笔',
-                      titleStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 2,
-                          ),
-                        ],
-                      ),
-                      color: const Color(0xFFF44336),
-                      radius: 90,
-                      titlePositionPercentageOffset: 0.6,
-                    ),
-                    PieChartSectionData(
-                      value: loseCount.toDouble(),
-                      title: '亏损\n$loseCount笔',
-                      titleStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 2,
-                          ),
-                        ],
-                      ),
-                      color: const Color(0xFF4CAF50),
-                      radius: 90,
-                      titlePositionPercentageOffset: 0.6,
-                    ),
-                    if (drawCount > 0)
-                      PieChartSectionData(
-                        value: drawCount.toDouble(),
-                        title: '持平\n$drawCount笔',
-                        titleStyle: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 2,
-                            ),
-                          ],
-                        ),
-                        color: const Color(0xFF9E9E9E),
-                        radius: 90,
-                        titlePositionPercentageOffset: 0.6,
-                      ),
-                  ],
-                  sectionsSpace: 4,
-                  centerSpaceRadius: 45,
-                  centerSpaceColor: Theme.of(context).cardColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            // 图例区域
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey[800]?.withOpacity(0.3)
-                    : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildLegendItem('盈利', const Color(0xFFF44336), winCount),
-                  _buildLegendItem('亏损', const Color(0xFF4CAF50), loseCount),
-                  _buildLegendItem('持平', const Color(0xFF9E9E9E), drawCount),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
 
-  
-  Widget _buildLegendItem(String label, Color color, int count) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          '$label: $count',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+    return ModernSectionCard(
+      title: '交易结果分布',
+      subtitle: 'Profit Distribution',
+      icon: Icons.pie_chart_rounded,
+      iconGradient: FinancialColors.purpleGradient,
+      child: ProfitDistributionPieChart(records: records),
     );
   }
 
@@ -953,43 +986,12 @@ class AnalysisScreen extends StatelessWidget {
     // 计算零基准线的位置
     final zeroLine = minY < 0 ? 0.0 : null;
 
-    return Card(
-      color: Theme.of(context).cardColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: lineColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.trending_up,
-                    color: lineColor,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '盈亏走势（累计）',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: lineColor,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            cumulativeSpots.isEmpty 
+    return ModernSectionCard(
+      title: '盈亏走势',
+      subtitle: 'Cumulative P&L',
+      icon: Icons.show_chart_rounded,
+      iconGradient: FinancialColors.profitGradient,
+      child: cumulativeSpots.isEmpty 
                 ? const Center(
                     child: Padding(
                       padding: EdgeInsets.all(40.0),
@@ -1195,9 +1197,6 @@ class AnalysisScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1240,333 +1239,42 @@ class AnalysisScreen extends StatelessWidget {
 
     profitFactor = totalLossSum > 0 ? totalProfitSum / totalLossSum : 0;
 
-    return Card(
-      color: Theme.of(context).cardColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.shield,
-                    color: Colors.deepPurple,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '风险指标',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                _buildRiskMetricItem(
-                  context,
-                  '最大回撤',
-                  NumberFormat.currency(symbol: '¥').format(maxDrawdown),
-                  const Color(0xFF4CAF50),
-                  Icons.trending_down,
-                ),
-                _buildRiskMetricItem(
-                  context,
-                  '盈亏比',
-                  profitFactor.toStringAsFixed(2),
-                  const Color(0xFFF44336),
-                  Icons.balance,
-                ),
-                _buildRiskMetricItem(
-                  context,
-                  '最大单笔盈利',
-                  NumberFormat.currency(symbol: '¥').format(maxProfit),
-                  const Color(0xFFF44336),
-                  Icons.emoji_events,
-                ),
-                _buildRiskMetricItem(
-                  context,
-                  '最大单笔亏损',
-                  NumberFormat.currency(symbol: '¥').format(maxLoss.abs()),
-                  const Color(0xFF4CAF50),
-                  Icons.warning_amber,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRiskMetricItem(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      width: 150,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.05),
-            blurRadius: 5,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-              Icon(
-                icon,
-                size: 18,
-                color: color,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
+    return ModernSectionCard(
+      title: '风险指标',
+      subtitle: 'Risk Metrics',
+      icon: Icons.shield_outlined,
+      iconGradient: FinancialColors.indigoGradient,
+      child: RiskMetricsGrid(
+        maxDrawdown: maxDrawdown,
+        profitFactor: profitFactor,
+        maxProfit: maxProfit,
+        maxLoss: maxLoss,
       ),
     );
   }
 
   Widget _buildTradingFrequency(BuildContext context, TradeProvider tradeProvider) {
-    final records = tradeProvider.validTradeRecords; // 使用有效交易记录
+    final records = tradeProvider.validTradeRecords;
     if (records.isEmpty) return const SizedBox.shrink();
 
-    // 按星期统计交易频率，只包含工作日（周一到周五）
-    final weekdayCounts = List<int>.filled(5, 0); // 只统计周一到周五
-    for (var record in records) {
-      final weekday = record.tradeDate.weekday - 1; // 0-4 代表周一到周五
-      if (weekday < 5) { // 确保只统计工作日
-        weekdayCounts[weekday]++;
-      }
-    }
-
-    final weekdays = ['周一', '周二', '周三', '周四', '周五'];
-    final maxCount = weekdayCounts.reduce((a, b) => a > b ? a : b);
-
-    return Card(
-      color: Theme.of(context).cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '交易频率分析',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxCount * 1.2,
-                  barGroups: weekdayCounts.asMap().entries.map((entry) {
-                    return BarChartGroupData(
-                      x: entry.key,
-                      barRods: [
-                        BarChartRodData(
-                          toY: entry.value.toDouble(),
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 20,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  barTouchData: BarTouchData(
-                    enabled: true,
-                    touchTooltipData: BarTouchTooltipData(
-                      tooltipBgColor: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.grey.shade800.withOpacity(0.8) 
-                          : Colors.white.withOpacity(0.8),
-                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      tooltipMargin: 8,
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        final weekday = weekdays[group.x.toInt()];
-                        final count = weekdayCounts[group.x.toInt()];
-                        
-                        return BarTooltipItem(
-                          '$weekday\n交易次数: $count',
-                          TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              weekdays[value.toInt()],
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                fontSize: 10,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              fontSize: 10,
-                            ),
-                          );
-                        },
-                        interval: 1,
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 1,
-                    getDrawingHorizontalLine: (value) {
-                      return FlLine(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
-                        strokeWidth: 1,
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '交易时间分布',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: weekdayCounts.asMap().entries.map((entry) {
-                return Chip(
-                  label: Text(
-                    '${weekdays[entry.key]}: ${entry.value}笔',
-                  ),
-                  backgroundColor: Theme.of(context).colorScheme.surface,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
+    return ModernSectionCard(
+      title: '交易频率分析',
+      subtitle: 'Trading Frequency',
+      icon: Icons.calendar_today_rounded,
+      iconGradient: FinancialColors.blueGradient,
+      child: TradingFrequencyChart(records: records),
     );
   }
 
   Widget _buildStrategyStats(BuildContext context, TradeProvider tradeProvider) {
     final stats = tradeProvider.strategyStats;
 
-    return Card(
-      color: Theme.of(context).cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '策略统计',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: stats.length,
-              itemBuilder: (context, index) {
-                final strategy = stats.keys.elementAt(index);
-                final data = stats[strategy]!;
-                return ListTile(
-                  title: Text(strategy),
-                  subtitle: Text(
-                    '交易次数: ${data['count']} | 胜率: ${data['winRate'].toStringAsFixed(1)}%',
-                  ),
-                  trailing: Text(
-                    NumberFormat.currency(symbol: '¥').format(data['totalProfit']),
-                    style: TextStyle(
-                      color: (data['totalProfit'] as double) >= 0
-                          ? const Color(0xFFDC2626) // A股红色：盈利
-                          : const Color(0xFF059669), // A股绿色：亏损
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+    return ModernSectionCard(
+      title: '策略统计',
+      subtitle: 'Strategy Statistics',
+      icon: Icons.psychology_rounded,
+      iconGradient: FinancialColors.purpleGradient,
+      child: StrategyStatsList(stats: stats),
     );
   }
 
