@@ -534,7 +534,7 @@ class _StockListItemState extends State<StockListItem> {
               ),
             const SizedBox(width: 6),
             Text(
-              _isInWatchlist ? '已关注' : '添加关注',
+              _isInWatchlist ? '已在备选' : '加入备选',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
