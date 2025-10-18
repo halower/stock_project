@@ -5268,26 +5268,46 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                      colors: [Color(0xFF1E40AF), Color(0xFF1E3A8A)],
                     ),
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E40AF).withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
                   ),
                   child: const Icon(
-                    Icons.trending_up,
+                    Icons.insights,
                     color: Colors.white,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  '盘趋阶段与交易特征',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '市场阶段分析',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Market Phase Analysis',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -5361,12 +5381,18 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             const SizedBox(height: 20),
 
             // 趋势强度
-            const Text(
-              '趋势强度',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                const Icon(Icons.show_chart, size: 18, color: Color(0xFF1E40AF)),
+                const SizedBox(width: 8),
+                const Text(
+                  '趋势强度',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Row(
@@ -5374,7 +5400,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 Expanded(
                   child: _buildTrendStrengthOption(
                     TrendStrength.strong,
-                    '强',
+                    '强势',
                     const Color(0xFFDC2626), // A股红色
                     Icons.keyboard_double_arrow_up,
                   ),
@@ -5383,8 +5409,8 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 Expanded(
                   child: _buildTrendStrengthOption(
                     TrendStrength.medium,
-                    '中',
-                    Colors.orange,
+                    '中性',
+                    const Color(0xFF1E40AF), // 深蓝色
                     Icons.trending_up,
                   ),
                 ),
@@ -5392,7 +5418,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 Expanded(
                   child: _buildTrendStrengthOption(
                     TrendStrength.weak,
-                    '弱',
+                    '弱势',
                     const Color(0xFF10B981), // A股绿色
                     Icons.trending_flat,
                   ),
@@ -5402,21 +5428,37 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
 
             const SizedBox(height: 20),
 
-            // 下单质量
-            const Text(
-              '下单质量',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+            // 入场难度
+            Row(
+              children: [
+                const Icon(Icons.stars, size: 18, color: Color(0xFF1E40AF)),
+                const SizedBox(width: 8),
+                const Text(
+                  '入场难度评级',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.1),
+                    _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.05),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                border: Border.all(
+                  color: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.3),
+                  width: 1.5,
+                ),
               ),
               child: Column(
                 children: [
@@ -5519,9 +5561,9 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
       case EntryDifficulty.easy:
         return const Color(0xFF34D399); // 浅绿色 - 容易
       case EntryDifficulty.medium:
-        return const Color(0xFFFBBF24); // 黄色 - 中等
+        return const Color(0xFF1E40AF); // 深蓝色 - 中等
       case EntryDifficulty.hard:
-        return const Color(0xFFF59E0B); // 橙色 - 困难
+        return const Color(0xFFD97706); // 深橙色 - 困难
       case EntryDifficulty.veryHard:
         return const Color(0xFFEF4444); // 红色 - 非常困难
     }
