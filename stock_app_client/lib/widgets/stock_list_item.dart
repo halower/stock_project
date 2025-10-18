@@ -21,9 +21,12 @@ class StockListItem extends StatefulWidget {
   State<StockListItem> createState() => _StockListItemState();
 }
 
-class _StockListItemState extends State<StockListItem> {
+class _StockListItemState extends State<StockListItem> with SingleTickerProviderStateMixin {
   bool _isInWatchlist = false;
   bool _isLoading = false;
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -32,12 +35,29 @@ class _StockListItemState extends State<StockListItem> {
     
     // 监听全局备选池状态变化
     WatchlistService.watchlistChangeNotifier.addListener(_onWatchlistChanged);
+    
+    // 初始化光晕动画 - 更快更明显
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000), // 2秒更快
+    )..repeat();
+    
+    _shimmerAnimation = Tween<double>(
+      begin: -1.5,
+      end: 1.5,
+    ).animate(CurvedAnimation(
+      parent: _shimmerController,
+      curve: Curves.linear, // 线性更流畅
+    ));
+    
+    _isInitialized = true;
   }
   
   @override
   void dispose() {
     // 移除监听器
     WatchlistService.watchlistChangeNotifier.removeListener(_onWatchlistChanged);
+    _shimmerController.dispose();
     super.dispose();
   }
   
@@ -117,6 +137,21 @@ class _StockListItemState extends State<StockListItem> {
 
   @override
   Widget build(BuildContext context) {
+    // 如果动画未初始化，返回简单版本
+    if (!_isInitialized) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        child: const Card(
+          child: Padding(
+            padding: EdgeInsets.all(14),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ),
+      );
+    }
+    
     final themeProvider = Provider.of<ThemeProvider>(context);
     
     // 确定价格文本颜色
@@ -141,52 +176,86 @@ class _StockListItemState extends State<StockListItem> {
         widget.stock.details.containsKey('ai_analysis') && 
         widget.stock.details['ai_analysis'] != null;
     
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        elevation: 0,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => StockDetailScreen(
-                  stockCode: widget.stock.code,
-                  stockName: widget.stock.name,
-                strategy: widget.stock.strategy, // 传递策略参数
-              ),
-            ),
-          );
-        },
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(
-            children: [
-              Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Theme.of(context).dividerColor.withOpacity(0.1),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(18),
-          child: Column(
-            children: [
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, child) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            elevation: 0,
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StockDetailScreen(
+                      stockCode: widget.stock.code,
+                      stockName: widget.stock.name,
+                      strategy: widget.stock.strategy,
+                    ),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Stack(
+                children: [
+                  // 背景光晕效果
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: CustomPaint(
+                        painter: _ShimmerPainter(
+                          animation: _shimmerAnimation.value,
+                          color: _getPriceColor().withOpacity(0.1),
+                          isDarkMode: isDarkMode,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // 主内容容器
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDarkMode
+                            ? [
+                                const Color(0xFF1A1F2E).withOpacity(0.95),
+                                const Color(0xFF0F1419).withOpacity(0.98),
+                              ]
+                            : [
+                                Colors.white.withOpacity(0.95),
+                                const Color(0xFFFAFBFC).withOpacity(0.98),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        width: 1.5,
+                        color: _getPriceColor().withOpacity(0.4), // 增加边框不透明度
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _getPriceColor().withOpacity(0.25), // 增加阴影不透明度
+                          blurRadius: 16, // 增加模糊
+                          spreadRadius: 1,
+                          offset: const Offset(0, 4),
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDarkMode ? 0.4 : 0.08), // 增加深度
+                          blurRadius: 24,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      children: [
                 // 主要信息行
               Row(
                 children: [
@@ -206,7 +275,7 @@ class _StockListItemState extends State<StockListItem> {
                               child: Text(
                                         widget.stock.name,
                                 style: const TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 15, // 减小字体 16→15
                                           fontWeight: FontWeight.w600,
                                           height: 1.2,
                                 ),
@@ -214,10 +283,10 @@ class _StockListItemState extends State<StockListItem> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                                    const SizedBox(width: 6),
+                                    const SizedBox(width: 5), // 减少间距 6→5
                                     // 优化股票代码样式 - 紧贴名称显示
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), // 减少内边距 6→5
                               decoration: BoxDecoration(
                                         color: Theme.of(context).primaryColor.withOpacity(0.08),
                                         borderRadius: BorderRadius.circular(3),
@@ -229,7 +298,7 @@ class _StockListItemState extends State<StockListItem> {
                               child: Text(
                                         widget.stock.code,
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10, // 减小字体 11→10
                                           fontWeight: FontWeight.w600,
                                           color: Theme.of(context).primaryColor.withOpacity(0.8),
                                           letterSpacing: 0.3,
@@ -245,9 +314,9 @@ class _StockListItemState extends State<StockListItem> {
                                 ),
                               // 行业信息（如果有）
                               if (widget.stock.industry != null) ...[
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3), // 减少间距 4→3
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), // 减少内边距 6→5
                                   decoration: BoxDecoration(
                                     color: _getIndustryColor(widget.stock.industry!).withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(4),
@@ -261,14 +330,14 @@ class _StockListItemState extends State<StockListItem> {
                                     children: [
                                       Icon(
                                         Icons.business_outlined,
-                                        size: 11,
+                                        size: 10, // 减小图标 11→10
                                         color: _getIndustryColor(widget.stock.industry!),
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
                                         widget.stock.industry!,
                                         style: TextStyle(
-                                          fontSize: 10,
+                                          fontSize: 9, // 减小字体 10→9
                                           fontWeight: FontWeight.w500,
                                           color: _getIndustryColor(widget.stock.industry!),
                                         ),
@@ -277,11 +346,11 @@ class _StockListItemState extends State<StockListItem> {
                                   ),
                                 ),
                               ],
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6), // 减少间距 8→6
                           // 市场和策略标签
                           Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
+                            spacing: 6, // 减少间距 8→6
+                            runSpacing: 3, // 减少间距 4→3
                             children: [
                               // 市场标签
                               _buildCompactTag(
@@ -310,43 +379,113 @@ class _StockListItemState extends State<StockListItem> {
                   
                     const SizedBox(width: 16),
                     
-                    // 右侧：价格信息
+                    // 右侧：价格信息（科技感增强）
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // 价格
-                        Text(
-                          widget.stock.price != null ? '¥${widget.stock.price!.toStringAsFixed(2)}' : '-',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: priceColor,
+                        // 价格（带发光效果）
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                priceColor.withOpacity(0.1),
+                                priceColor.withOpacity(0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: priceColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: priceColor.withOpacity(0.2),
+                                blurRadius: 8,
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            widget.stock.price != null ? '¥${widget.stock.price!.toStringAsFixed(2)}' : '-',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: priceColor,
+                              letterSpacing: 0.5,
+                              shadows: [
+                                Shadow(
+                                  color: priceColor.withOpacity(0.3),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 4),
-                        // 涨跌幅
+                        // 涨跌幅（霓虹灯效果）
                         if (changeText.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                              color: priceColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            changeText,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            gradient: LinearGradient(
+                              colors: [
+                                priceColor,
+                                priceColor.withOpacity(0.8),
+                              ],
                             ),
-                          )
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(
+                                color: priceColor.withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 0,
+                              ),
+                              BoxShadow(
+                                color: priceColor.withOpacity(0.3),
+                                blurRadius: 16,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                widget.stock.changePercent! > 0 
+                                    ? Icons.arrow_drop_up 
+                                    : Icons.arrow_drop_down,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              Text(
+                                changeText,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
                         else
-                          Text(
-                            '待分析',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '待分析',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                       ],
@@ -355,15 +494,15 @@ class _StockListItemState extends State<StockListItem> {
               ),
               
                 // 底部备选池操作区域
-                const SizedBox(height: 12),
+                const SizedBox(height: 10), // 减少间距 12→10
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(7), // 减少内边距 8→7
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark 
                         ? Colors.grey.shade800.withOpacity(0.3)
                         : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(7), // 减少圆角 8→7
                   ),
                   child: Row(
                     children: [
@@ -378,62 +517,179 @@ class _StockListItemState extends State<StockListItem> {
                   ),
                 ),
                 
-                // AI分析结果（如果有）
+                // AI分析结果（科技感增强）
                 if (hasAIAnalysis) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.blue.shade100,
-                        width: 0.5,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF667EEA).withOpacity(0.15),
+                          const Color(0xFF764BA2).withOpacity(0.1),
+                        ],
                       ),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        width: 1.5,
+                        color: const Color(0xFF667EEA).withOpacity(0.3),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF667EEA).withOpacity(0.2),
+                          blurRadius: 12,
+                          spreadRadius: 0,
+                        ),
+                      ],
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.psychology_outlined,
-                          size: 16,
-                          color: Colors.blue.shade600,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${widget.stock.details['ai_analysis']}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue.shade800,
-                              height: 1.3,
+                        // AI图标（带脉冲效果）
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF667EEA),
+                                Color(0xFF764BA2),
+                              ],
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF667EEA).withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.psychology,
+                            size: 16,
+                            color: Colors.white,
                           ),
                         ),
-            ],
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF667EEA),
+                                          Color(0xFF764BA2),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'AI分析',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${widget.stock.details['ai_analysis']}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDarkMode ? Colors.white.withOpacity(0.9) : const Color(0xFF1A202C),
+                                  height: 1.4,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ],
-            ),
+                      ],
+                    ),
+                  ),
+                  
+                  // 行业标识条 - 左边缘彩色条带（带脉冲效果）
+                  if (widget.stock.industry != null)
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: _buildIndustryStripe(),
+                    ),
+                  
+                  // 顶部科技光效 - 增强
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(14),
+                        topRight: Radius.circular(14),
+                      ),
+                      child: Container(
+                        height: 3, // 增加高度
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              _getPriceColor().withOpacity(0.8), // 增加不透明度
+                              _getPriceColor(), // 中心完全不透明
+                              _getPriceColor().withOpacity(0.8),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.3, 0.5, 0.7, 1.0],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _getPriceColor().withOpacity(0.5),
+                              blurRadius: 8,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              
-              // 行业标识条 - 左边缘彩色条带
-              if (widget.stock.industry != null)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: _buildIndustryStripe(),
-                ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
+  }
+  
+  // 获取价格颜色
+  Color _getPriceColor() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    if (widget.stock.changePercent == null || widget.stock.changePercent == 0) {
+      return Colors.grey.shade600;
+    } else if (widget.stock.changePercent! > 0) {
+      return themeProvider.upColor;
+    } else {
+      return themeProvider.downColor;
+    }
   }
 
   // 构建行业标识条
@@ -441,7 +697,7 @@ class _StockListItemState extends State<StockListItem> {
     final industryColor = _getIndustryColor(widget.stock.industry!);
     
     return Container(
-      width: 4,
+      width: 3, // 减少宽度 4→3
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -452,8 +708,8 @@ class _StockListItemState extends State<StockListItem> {
           end: Alignment.bottomCenter,
         ),
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          bottomLeft: Radius.circular(16),
+          topLeft: Radius.circular(14), // 减少圆角 16→14
+          bottomLeft: Radius.circular(14), // 减少圆角 16→14
         ),
         boxShadow: [
           BoxShadow(
@@ -486,31 +742,44 @@ class _StockListItemState extends State<StockListItem> {
     return colors[hash.abs() % colors.length];
   }
 
-  // 构建备选池按钮
+  // 构建备选池按钮（金融风格）
   Widget _buildWatchlistButton() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final buttonColor = _isInWatchlist ? const Color(0xFFFF9800) : themeProvider.upColor;
+    
     return GestureDetector(
       onTap: _toggleWatchlist,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          gradient: _isInWatchlist 
-              ? LinearGradient(
-                  colors: [Colors.orange.shade400, Colors.orange.shade600],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : LinearGradient(
-                  colors: [Colors.blue.shade400, Colors.blue.shade600],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+          gradient: LinearGradient(
+            colors: _isInWatchlist 
+                ? [
+                    const Color(0xFFFF9800), // 橙色
+                    const Color(0xFFFF6D00),
+                  ]
+                : [
+                    themeProvider.upColor, // A股红色
+                    themeProvider.upColor.withOpacity(0.8),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: (_isInWatchlist ? Colors.orange : Colors.blue).withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: buttonColor.withOpacity(0.4),
+              blurRadius: 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: buttonColor.withOpacity(0.2),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -519,8 +788,8 @@ class _StockListItemState extends State<StockListItem> {
           children: [
             if (_isLoading)
               const SizedBox(
-                width: 16,
-                height: 16,
+                width: 14,
+                height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -529,17 +798,29 @@ class _StockListItemState extends State<StockListItem> {
             else
               Icon(
                 _isInWatchlist ? Icons.star : Icons.star_border,
-                size: 16,
+                size: 15,
                 color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                  ),
+                ],
               ),
             const SizedBox(width: 6),
             Text(
               _isInWatchlist ? '已在备选' : '加入备选',
               style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
                 color: Colors.white,
-                letterSpacing: 0.3,
+                letterSpacing: 0.5,
+                shadows: [
+                  Shadow(
+                    color: Colors.black26,
+                    blurRadius: 2,
+                  ),
+                ],
               ),
             ),
           ],
@@ -548,24 +829,31 @@ class _StockListItemState extends State<StockListItem> {
     );
   }
 
-  // 构建紧凑的标签组件
+  // 构建紧凑的标签组件（科技感增强）
   Widget _buildCompactTag(String text, Color color, {IconData? icon}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            color.withOpacity(0.15),
-            color.withOpacity(0.08),
+            color.withOpacity(0.2),
+            color.withOpacity(0.1),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
+          color: color.withOpacity(0.4),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.15),
+            blurRadius: 6,
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -573,19 +861,31 @@ class _StockListItemState extends State<StockListItem> {
           if (icon != null) ...[
             Icon(
               icon,
-              size: 13,
-              color: color.withOpacity(0.8),
+              size: 11,
+              color: color,
+              shadows: [
+                Shadow(
+                  color: color.withOpacity(0.5),
+                  blurRadius: 2,
+                ),
+              ],
             ),
-            const SizedBox(width: 5),
+            const SizedBox(width: 4),
           ],
           Flexible(
             child: Text(
               text,
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: color.withOpacity(0.9),
-                letterSpacing: 0.2,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: color,
+                letterSpacing: 0.3,
+                shadows: [
+                  Shadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 2,
+                  ),
+                ],
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -664,8 +964,8 @@ class _StockListItemState extends State<StockListItem> {
     if (widget.stock.details.containsKey('calculated_time') && 
         widget.stock.details['calculated_time'] != null) {
       return Container(
-        margin: const EdgeInsets.only(left: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        margin: const EdgeInsets.only(left: 5), // 减少边距 6→5
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), // 减少内边距 6→5
         decoration: BoxDecoration(
           color: Colors.orange.shade100,
           borderRadius: BorderRadius.circular(3),
@@ -677,7 +977,7 @@ class _StockListItemState extends State<StockListItem> {
         child: Text(
           '触发: ${_formatCalculatedTime(widget.stock.details['calculated_time'])}',
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 9, // 减小字体 10→9
             fontWeight: FontWeight.w500,
             color: Colors.orange.shade700,
             letterSpacing: 0.2,
@@ -698,14 +998,14 @@ class _StockListItemState extends State<StockListItem> {
         children: [
           Icon(
             Icons.candlestick_chart_outlined,
-            size: 14,
+            size: 12, // 减小图标 14→12
             color: Colors.grey.shade600,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3), // 减少间距 4→3
           Text(
             'K线: ${widget.stock.details['kline_date']}',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11, // 减小字体 12→11
               color: Colors.grey.shade600,
               fontWeight: FontWeight.w500,
             ),
@@ -721,14 +1021,14 @@ class _StockListItemState extends State<StockListItem> {
         children: [
           Icon(
             Icons.schedule_outlined,
-            size: 14,
+            size: 12, // 减小图标 14→12
             color: Colors.grey.shade600,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3), // 减少间距 4→3
           Text(
             '${widget.stock.details['signal_date']}',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11, // 减小字体 12→11
               color: Colors.grey.shade600,
               fontWeight: FontWeight.w500,
             ),
@@ -741,7 +1041,7 @@ class _StockListItemState extends State<StockListItem> {
     return Text(
       '最新信号',
       style: TextStyle(
-        fontSize: 12,
+        fontSize: 11, // 减小字体 12→11
         color: Colors.grey.shade600,
         fontWeight: FontWeight.w500,
       ),
@@ -759,4 +1059,71 @@ class _StockListItemState extends State<StockListItem> {
       return calculatedTime;
     }
   }
+}
+
+// 光晕特效绘制器
+class _ShimmerPainter extends CustomPainter {
+  final double animation;
+  final Color color;
+  final bool isDarkMode;
+
+  _ShimmerPainter({
+    required this.animation,
+    required this.color,
+    required this.isDarkMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 增强光晕效果 - 更明显
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          color.withOpacity(0),
+          color.withOpacity(isDarkMode ? 0.3 : 0.15), // 增加不透明度
+          color.withOpacity(isDarkMode ? 0.3 : 0.15),
+          color.withOpacity(0),
+        ],
+        stops: [
+          (animation - 0.2).clamp(0.0, 1.0),
+          (animation).clamp(0.0, 1.0),
+          (animation + 0.1).clamp(0.0, 1.0),
+          (animation + 0.3).clamp(0.0, 1.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    // 绘制光晕效果
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      paint,
+    );
+    
+    // 添加更明显的脉冲光点
+    final pulseX = size.width * ((animation + 1.5) / 3);
+    final pulsePaint = Paint()
+      ..color = color.withOpacity(isDarkMode ? 0.4 : 0.2) // 增加不透明度
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30); // 增加模糊半径
+    
+    canvas.drawCircle(
+      Offset(pulseX, size.height / 2),
+      40, // 增加光点大小
+      pulsePaint,
+    );
+    
+    // 添加第二个光点增强效果
+    final pulsePaint2 = Paint()
+      ..color = color.withOpacity(isDarkMode ? 0.25 : 0.12)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);
+    
+    canvas.drawCircle(
+      Offset(pulseX, size.height / 2),
+      60,
+      pulsePaint2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ShimmerPainter oldDelegate) => true;
 } 
