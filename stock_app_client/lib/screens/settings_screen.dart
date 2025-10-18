@@ -868,14 +868,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed: _saveSettings,
                     icon: const Icon(Icons.save, color: Colors.white),
                     label: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
                         : const Text('保存设置', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
@@ -965,9 +965,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               child: Icon(
-                statusIcon,
+              statusIcon,
                 color: Colors.white,
-                size: 32,
+              size: 32,
               ),
             ),
             const SizedBox(width: 16),
@@ -1074,12 +1074,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  title,
+                title,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
               ],
             ),
             const SizedBox(height: 16),

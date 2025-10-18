@@ -2197,17 +2197,19 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                       ),
                     ),
                     
-                  // 标题栏
+                  // 标题栏 - 深蓝色科技风格
                   Container(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
+                      gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          primaryColor.withOpacity(0.15),
-                          primaryColor.withOpacity(0.08),
+                          Color(0xFF1E40AF),
+                          Color(0xFF1E3A8A),
+                          Color(0xFF1E293B),
                         ],
+                        stops: [0.0, 0.5, 1.0],
                       ),
                       borderRadius: showDisclaimerBanner 
                           ? BorderRadius.zero 
@@ -2215,12 +2217,14 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                               topLeft: Radius.circular(24),
                               topRight: Radius.circular(24),
                             ),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: primaryColor.withOpacity(0.1),
-                          width: 1,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1E40AF).withOpacity(0.3),
+                          blurRadius: 12,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2229,21 +2233,22 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
+                                gradient: const LinearGradient(
                                   colors: [
-                                    primaryColor,
-                                    primaryColor.withOpacity(0.8),
+                                    Color(0xFF3B82F6),
+                                    Color(0xFF2563EB),
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: primaryColor.withOpacity(0.3),
-                                    blurRadius: 6,
+                                    color: const Color(0xFF3B82F6).withOpacity(0.5),
+                                    blurRadius: 12,
+                                    spreadRadius: 2,
                                     offset: const Offset(0, 2),
                                   ),
                                 ],
@@ -2251,35 +2256,65 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                               child: const Icon(
                                 Icons.psychology_rounded,
                                 color: Colors.white,
-                                size: 20,
+                                size: 24,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
+                                  Row(
+                                    children: [
+                                      const Text(
                                     'AI开单分析',
                                     style: TextStyle(
-                                      fontSize: 18,
+                                          fontSize: 20,
                                       fontWeight: FontWeight.bold,
-                                      color: primaryColor,
-                                      letterSpacing: 0.2,
-                                    ),
+                                          color: Colors.white,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF10B981),
+                                          borderRadius: BorderRadius.circular(8),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF10B981).withOpacity(0.3),
+                                              blurRadius: 8,
+                                              spreadRadius: 0,
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Text(
+                                          'PRO',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            letterSpacing: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    '智能开单决策助手',
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    '智能开单决策助手 · AI Powered',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: primaryColor.withOpacity(0.7),
+                                      color: Colors.white70,
                                       fontWeight: FontWeight.w500,
+                                      letterSpacing: 0.3,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            // 思考过程按钮移到标题右侧
+                            // 思考过程按钮 - 优化样式
                             GestureDetector(
                               onTap: () {
                                 setDialogState(() {
@@ -2289,13 +2324,13 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 6),
+                                    horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   gradient: _showThinkingProcess
-                                      ? LinearGradient(
+                                      ? const LinearGradient(
                                           colors: [
-                                            primaryColor,
-                                            primaryColor.withOpacity(0.8),
+                                            Color(0xFF3B82F6),
+                                            Color(0xFF2563EB),
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
@@ -2303,19 +2338,20 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                                       : null,
                                   color: _showThinkingProcess
                                       ? null
-                                      : Colors.grey.withOpacity(0.1),
+                                      : Colors.white.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: _showThinkingProcess
                                         ? Colors.transparent
-                                        : Colors.grey.withOpacity(0.3),
-                                    width: 1,
+                                        : Colors.white.withOpacity(0.3),
+                                    width: 1.5,
                                   ),
                                   boxShadow: _showThinkingProcess
                                       ? [
                                           BoxShadow(
-                                            color: primaryColor.withOpacity(0.3),
-                                            blurRadius: 6,
+                                            color: const Color(0xFF3B82F6).withOpacity(0.4),
+                                            blurRadius: 8,
+                                            spreadRadius: 0,
                                             offset: const Offset(0, 2),
                                           ),
                                         ]
@@ -2328,19 +2364,19 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                                       Icons.psychology_rounded,
                                       color: _showThinkingProcess
                                           ? Colors.white
-                                          : Colors.grey[600],
+                                          : Colors.white70,
                                       size: 16,
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 6),
                                     Text(
                                       "思考过程",
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: _showThinkingProcess
                                             ? Colors.white
-                                            : Colors.grey[600],
+                                            : Colors.white70,
                                         fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.2,
+                                        letterSpacing: 0.3,
                                       ),
                                     ),
                                   ],
@@ -2481,13 +2517,14 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                                           const SizedBox(height: 4),
                                           Text(
                                             tradingAdvice,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: textColor,
-                                              height: 1.3,
-                                    ),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: textColor,
+                                              height: 1.4,
+                                            ),
+                                            softWrap: true,
+                                            maxLines: 4,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                   ),
@@ -2652,13 +2689,13 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // 关闭按钮美化
+                        // 关闭按钮 - 深蓝色主题
                         Container(
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
+                            gradient: const LinearGradient(
                               colors: [
-                                primaryColor,
-                                primaryColor.withOpacity(0.8),
+                                Color(0xFF1E40AF),
+                                Color(0xFF1E3A8A),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -2666,8 +2703,9 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                             borderRadius: BorderRadius.circular(28),
                             boxShadow: [
                               BoxShadow(
-                                color: primaryColor.withOpacity(0.3),
-                                blurRadius: 12,
+                                color: const Color(0xFF1E40AF).withOpacity(0.4),
+                                blurRadius: 16,
+                                spreadRadius: 2,
                                 offset: const Offset(0, 4),
                               ),
                             ],
@@ -3610,15 +3648,16 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   gradient: LinearGradient(
                     colors: _hasAnalyzed 
                         ? [const Color(0xFF4CAF50), const Color(0xFF45A049)]
-                        : [const Color(0xFF667EEA), const Color(0xFF764BA2)],
+                        : [const Color(0xFF1E40AF), const Color(0xFF1E3A8A)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: (_hasAnalyzed ? Colors.green : const Color(0xFF667EEA)).withOpacity(0.3),
-                      blurRadius: 12,
+                      color: (_hasAnalyzed ? Colors.green : const Color(0xFF1E40AF)).withOpacity(0.4),
+                      blurRadius: 16,
+                      spreadRadius: 2,
                       offset: const Offset(0, 6),
                     ),
                   ],
@@ -3947,19 +3986,19 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   width: 40,
                   height: 40,
                   child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: const Icon(
-                      Icons.schedule,
-                      color: Colors.white,
-                      size: 20,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.schedule,
+                    color: Colors.white,
+                    size: 20,
                     ),
                   ),
                 ),
@@ -4081,32 +4120,32 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     children: [
                       Expanded(
                         child: _buildToggleButton('仓位比例', _positionCalculationMethod == PositionCalculationMethod.percentage, () {
-                          setState(() {
-                            _positionCalculationMethod = PositionCalculationMethod.percentage;
-                          });
-                        }),
+                        setState(() {
+                          _positionCalculationMethod = PositionCalculationMethod.percentage;
+                        });
+                      }),
                       ),
                       Expanded(
                         child: _buildToggleButton('股票数量', _positionCalculationMethod == PositionCalculationMethod.quantity, () {
-                          setState(() {
-                            _positionCalculationMethod = PositionCalculationMethod.quantity;
-                            // 切换到股票数量模式时，清空数量输入框，避免自动填入计算值
-                            if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
-                              _planQuantityController.clear();
-                            }
-                          });
-                        }),
+                        setState(() {
+                          _positionCalculationMethod = PositionCalculationMethod.quantity;
+                          // 切换到股票数量模式时，清空数量输入框，避免自动填入计算值
+                          if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
+                            _planQuantityController.clear();
+                          }
+                        });
+                      }),
                       ),
                       Expanded(
                         child: _buildToggleButton('以损定仓', _positionCalculationMethod == PositionCalculationMethod.riskBased, () {
-                          setState(() {
-                            _positionCalculationMethod = PositionCalculationMethod.riskBased;
-                            // 切换到以损定仓模式时，清空数量输入框，避免自动填入计算值
-                            if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
-                              _planQuantityController.clear();
-                            }
-                          });
-                        }),
+                        setState(() {
+                          _positionCalculationMethod = PositionCalculationMethod.riskBased;
+                          // 切换到以损定仓模式时，清空数量输入框，避免自动填入计算值
+                          if (_planQuantityController.text == '0' || _planQuantityController.text.isEmpty) {
+                            _planQuantityController.clear();
+                          }
+                        });
+                      }),
                       ),
                     ],
                   ),

@@ -409,11 +409,11 @@ class AnalysisScreen extends StatelessWidget {
                     ],
                   ),
                   child: Icon(
-                    icon,
+            icon,
                     color: Colors.white,
                     size: 26,
                   ),
-                ),
+          ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
@@ -441,18 +441,18 @@ class AnalysisScreen extends StatelessWidget {
                     ],
                   ),
                   child: Icon(
-                    icon,
+                  icon,
                     color: Colors.white,
                     size: 32,
                   ),
-                ),
+              ),
               ],
             ],
-          ),
+        ),
           
           const SizedBox(height: 16),
           
-          Text(
+        Text(
             title,
             style: TextStyle(
               color: Colors.white.withOpacity(0.95),
@@ -473,7 +473,7 @@ class AnalysisScreen extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: isFullWidth ? 28 : 24,
-                      fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                       shadows: [
                         Shadow(
@@ -498,9 +498,9 @@ class AnalysisScreen extends StatelessWidget {
                         offset: const Offset(0, 2),
                       ),
                     ],
-                  ),
-                ),
-              ],
+              ),
+        ),
+      ],
             ),
           ),
         ],
@@ -610,12 +610,12 @@ class AnalysisScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '月度分析',
-                      style: TextStyle(
+                Text(
+                  '月度分析',
+                  style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                    color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -920,7 +920,7 @@ class AnalysisScreen extends StatelessWidget {
     if (records.isEmpty) {
       return const SizedBox.shrink();
     }
-
+    
     return ModernSectionCard(
       title: '交易结果分布',
       subtitle: 'Profit Distribution',
@@ -1195,8 +1195,8 @@ class AnalysisScreen extends StatelessWidget {
                           ],
                         ) : null,
                       ),
-                    ),
-                  ),
+        ),
+      ),
     );
   }
 
