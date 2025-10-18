@@ -254,7 +254,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
                     label: '模型名称',
                     hint: '例如: gpt-3.5-turbo, deepseek-chat',
                     controller: _modelController,
-                    icon: Icons.psychology,
+                    icon: Icons.analytics,
                     isPassword: false,
                     helpText: '根据您使用的API服务选择对应的模型',
                   ),

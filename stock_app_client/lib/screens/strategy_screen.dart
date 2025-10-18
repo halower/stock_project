@@ -143,7 +143,7 @@ class _StrategyScreenState extends State<StrategyScreen> with SingleTickerProvid
               borderRadius: BorderRadius.circular(8),
             ),
             child: IconButton(
-              icon: const Icon(Icons.psychology),
+              icon: const Icon(Icons.analytics),
               tooltip: 'AI策略助手',
               onPressed: _openStrategyAssistant,
             ),
@@ -519,7 +519,7 @@ class StrategyCard extends StatelessWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        Icons.psychology,
+                                        Icons.analytics,
                                         size: 14,
                                         color: theme.colorScheme.primary,
                                       ),
