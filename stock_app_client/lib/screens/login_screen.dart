@@ -945,20 +945,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Color(0xFFFFB800), // 金色
-                          Color(0xFFFF8C00), // 深金色
-                          Color(0xFF4A90E2), // 科技蓝
+                          Color(0xFF10B981), // 绿色
+                          Color(0xFF059669), // 深绿色
+                          Color(0xFF047857), // 更深的绿色
                         ],
                         stops: [0.0, 0.5, 1.0],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFFB800).withOpacity(0.5),
+                          color: const Color(0xFF10B981).withOpacity(0.5),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),
                         BoxShadow(
-                          color: const Color(0xFF4A90E2).withOpacity(0.3),
+                          color: const Color(0xFF059669).withOpacity(0.3),
                           blurRadius: 30,
                           spreadRadius: 0,
                         ),
@@ -1242,17 +1242,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               gradient: _isLoading 
                                   ? LinearGradient(
                                       colors: [
-                                        const Color(0xFFFFB800).withOpacity(0.5),
-                                        const Color(0xFF4A90E2).withOpacity(0.5),
+                                        const Color(0xFF10B981).withOpacity(0.5),
+                                        const Color(0xFF059669).withOpacity(0.5),
                                       ],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                     )
                                   : const LinearGradient(
                                       colors: [
-                                        Color(0xFFFFB800),
-                                        Color(0xFFFF8C00),
-                                        Color(0xFF4A90E2),
+                                        Color(0xFF10B981),
+                                        Color(0xFF059669),
+                                        Color(0xFF047857),
                                       ],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
@@ -1261,7 +1261,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFFFB800).withOpacity(0.4),
+                                  color: const Color(0xFF10B981).withOpacity(0.4),
                                   blurRadius: 15,
                                   offset: const Offset(0, 4),
                                 ),

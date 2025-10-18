@@ -16,6 +16,7 @@ import 'feedback_screen.dart';
 import '../services/password_lock_service.dart';
 import '../widgets/password_lock_dialog.dart';
 import '../widgets/password_verify_dialog.dart';
+import '../utils/financial_colors.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -468,9 +469,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
+      backgroundColor: isDarkMode ? const Color(0xFF0F1419) : const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('设置'),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    FinancialColors.blueGradient[0],
+                    FinancialColors.blueGradient[1],
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: FinancialColors.blueGradient[0].withOpacity(0.3),
+                    blurRadius: 8,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.settings, size: 24, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '系统设置',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'System Settings',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -479,10 +520,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 applicationName: '交易大陆',
                 applicationVersion: 'v1.0.9+2',
-                applicationIcon: Icon(
-                  Icons.bar_chart_rounded,
-                  color: Theme.of(context).primaryColor,
-                  size: 40,
+                applicationIcon: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        FinancialColors.blueGradient[0],
+                        FinancialColors.blueGradient[1],
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 32),
                 ),
                 applicationLegalese: '© 2023 交易大陆',
                 children: const [
@@ -495,7 +544,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      FinancialColors.blueGradient[0],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '加载中...',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -779,23 +846,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 32),
                 
                 // 保存按钮
-                ElevatedButton(
-                  onPressed: _saveSettings,
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Theme.of(context).primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [
+                        FinancialColors.blueGradient[0],
+                        FinancialColors.blueGradient[1],
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FinancialColors.blueGradient[0].withOpacity(0.4),
+                        blurRadius: 12,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('保存设置', style: TextStyle(fontSize: 16)),
+                  child: ElevatedButton.icon(
+                    onPressed: _saveSettings,
+                    icon: const Icon(Icons.save, color: Colors.white),
+                    label: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('保存设置', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -804,50 +894,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // 授权信息卡片
   Widget _buildAuthInfoCard() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     String statusText;
     IconData statusIcon;
     Color statusColor;
+    List<Color> gradientColors;
     
     if (_isAdmin) {
       statusText = '管理员账号 (永久授权)';
       statusIcon = Icons.verified_user;
       statusColor = Colors.green;
+      gradientColors = [Colors.green.shade400, Colors.green.shade600];
     } else if (_remainingDays > 0) {
       statusText = '授权有效，剩余 $_remainingDays 天';
       statusIcon = Icons.check_circle;
       statusColor = Colors.blue;
+      gradientColors = [Colors.blue.shade400, Colors.blue.shade600];
     } else {
       statusText = '授权已过期，请联系管理员';
       statusIcon = Icons.error;
       statusColor = Colors.red;
+      gradientColors = [Colors.red.shade400, Colors.red.shade600];
     }
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  statusColor.withOpacity(0.2),
+                  statusColor.withOpacity(0.1),
+                ]
+              : [
+                  statusColor.withOpacity(0.1),
+                  statusColor.withOpacity(0.05),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: statusColor.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.2),
+            blurRadius: 12,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            Icon(
-              statusIcon,
-              color: statusColor,
-              size: 32,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: gradientColors),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: statusColor.withOpacity(0.4),
+                    blurRadius: 8,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: Icon(
+                statusIcon,
+                color: Colors.white,
+                size: 32,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     '授权状态',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).primaryColor,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -856,6 +988,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       color: statusColor,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -868,33 +1001,109 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSettingsGroup({required String title, required List<Widget> children}) {
-    return Card(
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  const Color(0xFF1A1F2E).withOpacity(0.8),
+                  const Color(0xFF0F1419).withOpacity(0.9),
+                ]
+              : [
+                  Colors.white,
+                  const Color(0xFFFAFBFC),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode 
+              ? Colors.white.withOpacity(0.1)
+              : FinancialColors.blueGradient[0].withOpacity(0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: FinancialColors.blueGradient[0].withOpacity(0.1),
+            blurRadius: 12,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.05),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        FinancialColors.blueGradient[0],
+                        FinancialColors.blueGradient[1],
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FinancialColors.blueGradient[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _getSectionIcon(title),
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
             ...children,
           ],
         ),
       ),
     );
+  }
+  
+  // 根据标题获取对应图标
+  IconData _getSectionIcon(String title) {
+    switch (title) {
+      case '外观':
+        return Icons.palette;
+      case 'AI服务':
+        return Icons.psychology;
+      case '安全':
+        return Icons.security;
+      case '关于':
+        return Icons.info;
+      default:
+        return Icons.settings;
+    }
   }
 
   Widget _buildSettingItem({
