@@ -3360,37 +3360,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.search,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      '股票选择',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+   
               Row(
                 children: [
                   Expanded(
