@@ -768,20 +768,6 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: buttonColor.withOpacity(0.4),
-              blurRadius: 12,
-              spreadRadius: 0,
-              offset: const Offset(0, 4),
-            ),
-            BoxShadow(
-              color: buttonColor.withOpacity(0.2),
-              blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(0, 8),
-            ),
-          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
