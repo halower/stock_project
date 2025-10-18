@@ -7,6 +7,7 @@ import '../services/stock_service.dart';
 import '../services/database_service.dart';
 import '../widgets/settlement/stock_info_card.dart';
 import '../widgets/settlement/transaction_summary.dart';
+import '../widgets/settlement/trade_analysis_card.dart';
 
 /// 重构后的交易结算页面
 /// 
@@ -137,6 +138,10 @@ class _SettlementScreenState extends State<SettlementScreen> {
           children: [
             // ✅ 使用组件：股票信息卡片
             StockInfoCard(tradePlan: widget.tradePlan),
+            const SizedBox(height: 24),
+            
+            // ✅ 交易复盘分析卡片
+            TradeAnalysisCard(tradePlan: widget.tradePlan),
             const SizedBox(height: 24),
             
             // K线图表（保留原有代码）
@@ -384,12 +389,12 @@ class _SettlementScreenState extends State<SettlementScreen> {
                   ],
                 ),
               
-              // 实际成交价格
+              // 出场价格（卖出价格）
               TextFormField(
                 controller: _priceController,
                 decoration: InputDecoration(
-                  labelText: '实际成交价格',
-                  hintText: '请输入实际成交价格',
+                  labelText: '出场价格',
+                  hintText: '请输入卖出价格',
                   prefixIcon: const Icon(Icons.price_change_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -398,7 +403,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '请输入实际成交价格';
+                    return '请输入出场价格';
                   }
                   if (double.tryParse(value) == null) {
                     return '请输入有效的价格';
@@ -408,12 +413,12 @@ class _SettlementScreenState extends State<SettlementScreen> {
               ),
               const SizedBox(height: 16),
               
-              // 实际成交数量
+              // 出场数量（卖出数量）
               TextFormField(
                 controller: _quantityController,
                 decoration: InputDecoration(
-                  labelText: '实际成交数量',
-                  hintText: '请输入实际成交数量',
+                  labelText: '出场数量',
+                  hintText: '请输入卖出数量',
                   prefixIcon: const Icon(Icons.format_list_numbered_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -422,7 +427,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '请输入实际成交数量';
+                    return '请输入出场数量';
                   }
                   if (int.tryParse(value) == null) {
                     return '请输入有效的数量';
@@ -593,11 +598,11 @@ class _SettlementScreenState extends State<SettlementScreen> {
         ),
         borderData: FlBorderData(
           show: true,
-          border: Border.all(
+        border: Border.all(
             color: isDarkMode ? Colors.grey[700]! : Colors.grey[300]!,
-            width: 1,
-          ),
+          width: 1,
         ),
+      ),
         lineBarsData: [
           // 收盘价折线
           LineChartBarData(
@@ -635,9 +640,9 @@ class _SettlementScreenState extends State<SettlementScreen> {
                   show: true,
                   alignment: Alignment.topRight,
                   padding: const EdgeInsets.only(right: 8, bottom: 4),
-                  style: TextStyle(
+              style: TextStyle(
                     color: isDarkMode ? Colors.grey[300] : Colors.grey[800],
-                    fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.bold,
                     fontSize: 11,
                     backgroundColor: isDarkMode 
                       ? Colors.grey[800]!.withOpacity(0.8)
@@ -681,9 +686,9 @@ class _SettlementScreenState extends State<SettlementScreen> {
                   show: true,
                   alignment: Alignment.topRight,
                   padding: const EdgeInsets.only(right: 8, bottom: 4),
-                  style: TextStyle(
+                      style: TextStyle(
                     color: redColor,
-                    fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                     fontSize: 11,
                     backgroundColor: isDarkMode 
                       ? Colors.black.withOpacity(0.6)
@@ -713,10 +718,10 @@ class _SettlementScreenState extends State<SettlementScreen> {
                       : Colors.white.withOpacity(0.8),
                   ),
                   labelResolver: (line) => ' 实际 ${actualPrice.toStringAsFixed(2)} ',
-                ),
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             tooltipBgColor: isDarkMode 
@@ -757,7 +762,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
       spacing: 16,
       runSpacing: 8,
       alignment: WrapAlignment.center,
-      children: [
+                children: [
         _buildLegendItem(
           '收盘价',
           isDarkMode ? Colors.blue[400]! : Colors.blue[600]!,
@@ -817,13 +822,13 @@ class _SettlementScreenState extends State<SettlementScreen> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(
+                        style: TextStyle(
             fontSize: 11,
             color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
             fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+                      ),
+                    ),
+                  ],
     );
   }
 
@@ -840,16 +845,17 @@ class _SettlementScreenState extends State<SettlementScreen> {
       final notes = _notesController.text;
 
       // 计算净盈亏
-      final actualAmount = actualPrice * actualQuantity;
-      final planAmount = (widget.tradePlan.planPrice ?? 0.0) * (widget.tradePlan.planQuantity ?? actualQuantity);
+      // A股交易逻辑：买入后卖出
+      // 进场金额 = 计划价格（买入价）× 数量
+      // 出场金额 = 实际价格（卖出价）× 数量
+      // 净盈亏 = 出场金额 - 进场金额 - 手续费
+      final planAmount = (widget.tradePlan.planPrice ?? 0.0) * (widget.tradePlan.planQuantity ?? actualQuantity);  // 进场金额（买入成本）
+      final actualAmount = actualPrice * actualQuantity;  // 出场金额（卖出收入）
       final totalFees = commission + tax;
       
-      double netProfit;
-        if (widget.tradePlan.tradeType == TradeType.buy) {
-        netProfit = planAmount - actualAmount - totalFees;
-        } else {
-        netProfit = actualAmount - planAmount - totalFees;
-      }
+      // A股只能做多：买入→持有→卖出
+      // 盈亏 = 卖出收入 - 买入成本 - 手续费
+      final netProfit = actualAmount - planAmount - totalFees;
 
       // 更新交易记录
       final updatedRecord = TradeRecord(
@@ -857,8 +863,8 @@ class _SettlementScreenState extends State<SettlementScreen> {
         stockCode: widget.tradePlan.stockCode,
         stockName: widget.tradePlan.stockName,
         tradeType: widget.tradePlan.tradeType,
-        category: widget.tradePlan.category,
-          status: TradeStatus.completed,
+        category: TradeCategory.settlement, // 结算后改为交割单分类
+        status: TradeStatus.completed,
         tradeDate: widget.tradePlan.tradeDate,
         planPrice: widget.tradePlan.planPrice,
         planQuantity: widget.tradePlan.planQuantity,
@@ -868,7 +874,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
         takeProfitPrice: widget.tradePlan.takeProfitPrice,
         commission: commission,
         tax: tax,
-          netProfit: netProfit,
+        netProfit: netProfit,
         marketPhase: widget.tradePlan.marketPhase,
         strategy: widget.tradePlan.strategy,
         reason: widget.tradePlan.reason,
@@ -877,7 +883,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
         positionBuildingMethod: widget.tradePlan.positionBuildingMethod,
         priceTriggerType: widget.tradePlan.priceTriggerType,
         createTime: widget.tradePlan.createTime,
-          updateTime: DateTime.now(),
+        updateTime: DateTime.now(),
       );
 
       final tradeProvider = Provider.of<TradeProvider>(context, listen: false);
@@ -885,13 +891,40 @@ class _SettlementScreenState extends State<SettlementScreen> {
 
       if (mounted) {
         Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('结算成功'),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+        children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '结算成功',
+            style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+            ),
+          ),
+          Text(
+                        netProfit >= 0 
+                          ? '盈利 ¥${netProfit.toStringAsFixed(2)}，已移至交割单'
+                          : '亏损 ¥${netProfit.abs().toStringAsFixed(2)}，已移至交割单',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ],
+            ),
+          ),
+        ],
+            ),
             backgroundColor: Colors.green,
-              ),
-            );
-          }
+            duration: const Duration(seconds: 3),
+      ),
+    );
+  }
       } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -934,4 +967,4 @@ class DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
+} 

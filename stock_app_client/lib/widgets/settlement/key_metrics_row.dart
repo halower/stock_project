@@ -4,7 +4,7 @@ import 'metric_card.dart';
 
 /// 关键指标行组件
 /// 
-/// 显示进场价格、计划数量、盈亏比等关键指标
+/// 显示进场价格、交易数量、盈亏比等关键指标
 class KeyMetricsRow extends StatelessWidget {
   final TradeRecord tradePlan;
 
@@ -30,10 +30,10 @@ class KeyMetricsRow extends StatelessWidget {
         ),
         const SizedBox(width: 12),
 
-        // 计划数量
+        // 交易数量
         Expanded(
           child: MetricCard(
-            label: '计划数量',
+            label: '交易数量',
             value: '${tradePlan.planQuantity ?? 0}股',
             icon: Icons.format_list_numbered_outlined,
             color: FinancialColors.quantity,

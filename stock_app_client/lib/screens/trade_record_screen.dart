@@ -664,7 +664,7 @@ class ModernTradeRecordCard extends StatelessWidget {
                         children: [
                                                       Expanded(
                               child: _buildInfoItem(
-                                '计划价格',
+                                '进场价格',
                                 '¥${record.planPrice?.toStringAsFixed(2) ?? '0.00'}',
                                 Icons.gps_fixed,
                               ),
@@ -686,7 +686,7 @@ class ModernTradeRecordCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: _buildInfoItem(
-                                '实际价格',
+                                '出场价格',
                                 '¥${record.actualPrice!.toStringAsFixed(2)}',
                                 Icons.check_circle,
                                 valueColor: profitColor,
