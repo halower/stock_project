@@ -761,8 +761,8 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                     const Color(0xFFFF6D00),
                   ]
                 : [
-                    themeProvider.upColor, // A股红色
-                    themeProvider.upColor.withOpacity(0.8),
+                    const Color(0xFF1E40AF), // 深蓝色
+                    const Color(0xFF3730A3).withOpacity(0.8),
                   ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
