@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../services/api_service.dart';
-
 import '../services/ai_config_service.dart';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -213,115 +212,22 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
       body: TabBarView(
         controller: _tabController,
         children: [
-          // 最新财经资讯
+          // 最新财经资讯 - 专业金融风格
           _isLoadingNews
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildFinancialLoadingIndicator()
               : _latestNews.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('暂无最新财经资讯'),
-                          const SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: _loadLatestNews,
-                            child: const Text('刷新'),
-                          ),
-                        ],
-                      ),
-                    )
+                  ? _buildEmptyNewsState()
                   : ListView.builder(
                       itemCount: _latestNews.length,
                       itemBuilder: (context, index) {
                         final news = _latestNews[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          child: ListTile(
-                            title: Text(
-                              news['title'] ?? '无标题',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (news['source'] != null || news['datetime'] != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      '${news['source'] ?? ''} · ${news['datetime'] ?? ''}',
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontSize: 12),
-                                    ),
-                                  ),
-                                if (news['summary'] != null && news['summary'].toString().isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Text(
-                                      news['summary'] ?? '',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            onTap: () {
-                              if (news['url'] != null) {
-                                _openNewsUrl(news['url']);
-                              }
-                            },
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          ),
-                        );
+                        return _buildProfessionalNewsCard(news, index);
                       },
                     ),
           
-          // 消息面分析内容
+          // 消息面AI解读 - 专业金融分析界面
           _isLoading
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 200,
-                        height: 200,
-                        child: CustomPaint(
-                          painter: SpiderWebPainter(
-                            animation: _animationController,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.auto_awesome,
-                            color: Colors.blue.shade600,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'AI正在智能分析市场消息...',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '正在整合多源数据，生成专业分析报告',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
+              ? _buildFinancialAnalysisLoading()
               : _errorMessage.isNotEmpty
                   ? Center(
                       child: Column(
@@ -381,6 +287,405 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
         ],
       ),
     );
+  }
+
+  // 构建专业金融风格的加载指示器
+  Widget _buildFinancialLoadingIndicator() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [const Color(0xFF1565C0), const Color(0xFF1976D2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.shade300.withOpacity(0.4),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.trending_up,
+              color: Colors.white,
+              size: 50,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            '正在获取财经资讯...',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1565C0),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '整合多源金融数据',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建空新闻状态
+  Widget _buildEmptyNewsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.newspaper,
+              size: 40,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            '暂无最新财经资讯',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '请稍后刷新获取最新市场动态',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _loadLatestNews,
+            icon: const Icon(Icons.refresh),
+            label: const Text('刷新资讯'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建专业金融风格的新闻卡片
+  Widget _buildProfessionalNewsCard(Map<String, dynamic> news, int index) {
+    final title = news['title'] ?? '无标题';
+    final source = news['source'] ?? '未知来源';
+    final datetime = news['datetime'] ?? '';
+    final summary = news['summary'] ?? '';
+    final url = news['url'] ?? '';
+
+    // 根据新闻重要性确定颜色（模拟）
+    final importance = _calculateNewsImportance(title, summary);
+    final importanceColor = _getImportanceColor(importance);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: Colors.grey.shade200,
+            width: 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: url.isNotEmpty ? () => _openNewsUrl(url) : null,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 新闻标题和重要性标签
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 重要性标识
+                    Container(
+                      width: 4,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: importanceColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          // 新闻元信息
+                          Row(
+                            children: [
+                              _buildNewsMetaItem(Icons.source, source),
+                              if (datetime.isNotEmpty) ...[
+                                const SizedBox(width: 16),
+                                _buildNewsMetaItem(Icons.access_time, datetime),
+                              ],
+                              const Spacer(),
+                              _buildImportanceTag(importance),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                // 新闻摘要
+                if (summary.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      summary,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                // 操作按钮
+                if (url.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.blue.shade200,
+                              width: 1,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.open_in_new, size: 14, color: Colors.blue),
+                              SizedBox(width: 4),
+                              Text(
+                                '查看详情',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 构建金融分析加载界面
+  Widget _buildFinancialAnalysisLoading() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 140,
+            height: 140,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [const Color(0xFF1B5E20), const Color(0xFF2E7D32)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.shade300.withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Icon(
+                    Icons.analytics,
+                    color: Colors.white,
+                    size: 60,
+                  ),
+                ),
+                Positioned(
+                  bottom: 15,
+                  right: 15,
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: Colors.green.shade700,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 25),
+          const Text(
+            'AI正在深度分析市场消息',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1B5E20),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '整合多维度数据，生成专业投资分析报告',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 15),
+          SizedBox(
+            width: 200,
+            child: LinearProgressIndicator(
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建新闻元信息项
+  Widget _buildNewsMetaItem(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: Colors.grey.shade500),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 构建重要性标签
+  Widget _buildImportanceTag(String importance) {
+    final color = _getImportanceColor(importance);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        importance,
+        style: TextStyle(
+          fontSize: 11,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  // 计算新闻重要性（模拟）
+  String _calculateNewsImportance(String title, String summary) {
+    final text = (title + summary).toLowerCase();
+    if (text.contains('重大') || text.contains('紧急') || text.contains('突发')) {
+      return '重大';
+    } else if (text.contains('重要') || text.contains('关键') || text.contains('影响')) {
+      return '重要';
+    } else {
+      return '一般';
+    }
+  }
+
+  // 获取重要性颜色
+  Color _getImportanceColor(String importance) {
+    switch (importance) {
+      case '重大':
+        return Colors.red.shade600;
+      case '重要':
+        return Colors.orange.shade600;
+      case '一般':
+        return Colors.green.shade600;
+      default:
+        return Colors.grey.shade600;
+    }
   }
 }
 
