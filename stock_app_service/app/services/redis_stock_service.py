@@ -160,6 +160,9 @@ def get_stock_history_tushare(stock_code: str, days: int = 120) -> List[Dict[str
         # 转换股票代码格式
         if stock_code.startswith('6'):
             ts_code = f"{stock_code}.SH"
+        elif stock_code.startswith('5'):
+            # 5开头是上海ETF（如510030、512660）
+            ts_code = f"{stock_code}.SH"
         elif stock_code.startswith(('43', '83', '87', '88')):
             ts_code = f"{stock_code}.BJ"
         else:
@@ -169,8 +172,15 @@ def get_stock_history_tushare(stock_code: str, days: int = 120) -> List[Dict[str
         end_date = datetime.now().strftime('%Y%m%d')
         start_date = (datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d')
         
-        # 获取历史数据
-        df = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+        # 判断是否为ETF（5开头的上海ETF，1开头的深圳ETF）
+        is_etf = stock_code.startswith(('5', '1')) and len(stock_code) == 6
+        
+        # 获取历史数据 - ETF使用fund_daily接口，股票使用daily接口
+        if is_etf:
+            logger.info(f"检测到ETF {stock_code}，使用fund_daily接口")
+            df = pro.fund_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+        else:
+            df = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
         
         if df.empty:
             return []
@@ -178,21 +188,25 @@ def get_stock_history_tushare(stock_code: str, days: int = 120) -> List[Dict[str
         # 按日期排序并取最近的指定天数
         df = df.sort_values('trade_date').tail(days)
         
-        # 转换数据格式
+        # 转换数据格式 - 使用安全访问，避免字段不存在导致的错误
         history_data = []
         for _, row in df.iterrows():
-            data = {
-                "date": datetime.strptime(row["trade_date"], '%Y%m%d').strftime('%Y-%m-%d'),
-                "open": float(row["open"]),
-                "close": float(row["close"]),
-                "high": float(row["high"]),
-                "low": float(row["low"]),
-                "volume": float(row["vol"]) * 100 if pd.notna(row["vol"]) else 0,
-                "amount": float(row["amount"]) * 1000 if pd.notna(row["amount"]) else 0,
-                "pct_chg": float(row["pct_chg"]) if pd.notna(row["pct_chg"]) else 0,
-                "change": float(row["change"]) if pd.notna(row["change"]) else 0,
-            }
-            history_data.append(data)
+            try:
+                data = {
+                    "date": datetime.strptime(str(row["trade_date"]), '%Y%m%d').strftime('%Y-%m-%d'),
+                    "open": float(row.get("open", 0)) if pd.notna(row.get("open")) else 0,
+                    "close": float(row.get("close", 0)) if pd.notna(row.get("close")) else 0,
+                    "high": float(row.get("high", 0)) if pd.notna(row.get("high")) else 0,
+                    "low": float(row.get("low", 0)) if pd.notna(row.get("low")) else 0,
+                    "volume": float(row.get("vol", 0)) * 100 if pd.notna(row.get("vol")) else 0,
+                    "amount": float(row.get("amount", 0)) * 1000 if pd.notna(row.get("amount")) else 0,
+                    "pct_chg": float(row.get("pct_chg", 0)) if pd.notna(row.get("pct_chg")) else 0,
+                    "change": float(row.get("change", 0)) if pd.notna(row.get("change")) else 0,
+                }
+                history_data.append(data)
+            except Exception as e:
+                logger.error(f"转换第 {len(history_data)+1} 行数据失败: {str(e)}, 原始数据: {row.to_dict()}")
+                raise
         
         return history_data
         
