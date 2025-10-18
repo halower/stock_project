@@ -3234,17 +3234,17 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: _hasAnalyzed 
-                    ? [const Color(0xFF4CAF50), const Color(0xFF45A049)]
-                    : [const Color(0xFF667EEA), const Color(0xFF764BA2)],
+                    ? [const Color(0xFF2E7D32), const Color(0xFF1B5E20)]
+                    : [const Color(0xFF2C5282), const Color(0xFF1A365D)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: (_hasAnalyzed ? Colors.green : const Color(0xFF667EEA)).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+                  color: (_hasAnalyzed ? Colors.green.shade800 : const Color(0xFF1A365D)).withOpacity(0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
