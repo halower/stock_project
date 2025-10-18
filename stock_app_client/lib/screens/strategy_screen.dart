@@ -82,7 +82,7 @@ class _StrategyScreenState extends State<StrategyScreen> with SingleTickerProvid
               ),
               child: const Icon(
                 Icons.auto_graph, 
-                size: 18,
+                size: 24,
                 color: Colors.white,
               ),
             ),
@@ -136,14 +136,21 @@ class _StrategyScreenState extends State<StrategyScreen> with SingleTickerProvid
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.colorScheme.primary.withOpacity(0.1),
-                  theme.colorScheme.primary.withOpacity(0.05),
+                  theme.colorScheme.primary.withOpacity(0.8),
+                  theme.colorScheme.primary.withOpacity(0.6),
                 ],
               ),
               borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.analytics),
+              icon: const Icon(Icons.psychology, size: 24, color: Colors.white),
               tooltip: 'AI策略助手',
               onPressed: _openStrategyAssistant,
             ),
@@ -167,7 +174,7 @@ class _StrategyScreenState extends State<StrategyScreen> with SingleTickerProvid
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.add, color: Colors.white),
+              icon: const Icon(Icons.add, size: 24, color: Colors.white),
               tooltip: '添加策略',
               onPressed: () {
                 Navigator.push(
