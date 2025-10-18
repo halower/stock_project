@@ -49,8 +49,8 @@ class _TradeRecordScreenState extends State<TradeRecordScreen> with SingleTicker
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
-                  Color(0xFF667EEA),
-                  Color(0xFF764BA2),
+                  Color(0xFF1976D2),
+                  Color(0xFF0D47A1),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -58,7 +58,7 @@ class _TradeRecordScreenState extends State<TradeRecordScreen> with SingleTicker
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF667EEA).withOpacity(0.3),
+                  color: const Color(0xFF1976D2).withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
