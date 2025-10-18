@@ -34,11 +34,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   
   // 为金融特效添加的动画控制器
   late Animation<double> _pulseAnimation;
+  late Animation<double> _glowAnimation;
   final List<CandleStick> _candleSticks = [];
   final List<StockLine> _stockLines = [];
   
   // 添加一个随机数生成器，用于K线动态变化
   final random = math.Random();
+  
+  // K线动态更新计数器
+  int _updateCounter = 0;
   
   @override
   void initState() {
@@ -59,6 +63,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     
     // 添加脉冲动画效果
     _pulseAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    
+    // 添加光晕动画效果
+    _glowAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Curves.easeInOut,
@@ -84,17 +96,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _checkExistingAuth();
   }
   
-  // 更新K线数据
+  // 更新K线数据 - 增强动态效果
   void _updateCandleSticks() {
-    // 只在动画值变化较大时更新，减少性能消耗
-    if (_animationController.value % 0.1 < 0.01) {
+    _updateCounter++;
+    // 每10帧更新一次，让变化更明显
+    if (_updateCounter % 10 == 0) {
       for (var stick in _candleSticks) {
-        // 随机小幅度调整K线数据
-        final variation = (random.nextDouble() - 0.5) * 3;
+        // 增大变化幅度，让K线动态更明显
+        final variation = (random.nextDouble() - 0.5) * 8;
         stick.update(variation);
       }
-      // 强制重绘
-      setState(() {});
     }
   }
   
@@ -138,11 +149,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       _stockLines.add(StockLine(
         points: points,
         color: [
-          const Color(0xFF00C087), // 绿色
-          const Color(0xFF2F80ED), // 蓝色
-          const Color(0xFFFFA113), // 橙色
+          const Color(0xFFFFB800), // 金色
+          const Color(0xFF4A90E2), // 科技蓝
+          const Color(0xFF7B68EE), // 紫色
         ][lineIndex],
-        strokeWidth: 1.5 - (lineIndex * 0.3),
+        strokeWidth: 1.8 - (lineIndex * 0.3),
       ));
     }
   }
@@ -427,7 +438,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.security, color: Color(0xFF00C087)),
+            Icon(Icons.security, color: Color(0xFFFFB800)),
             SizedBox(width: 10),
             Text('设备生物识别指纹'),
           ],
@@ -440,7 +451,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               FingerprintVisualizer(
                 fingerprint: _deviceFingerprint!,
                 size: 120,
-                color: const Color(0xFF00C087),
+                color: const Color(0xFFFFB800),
               ),
               const SizedBox(height: 20),
               
@@ -573,7 +584,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('关闭', style: TextStyle(color: Color(0xFF00C087))),
+            child: const Text('关闭', style: TextStyle(color: Color(0xFFFFB800))),
           ),
         ],
       ),
@@ -698,45 +709,57 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF111722), // 深蓝黑色起始色
-            Color(0xFF1D2737), // 深蓝黑色终止色
+            Color(0xFF0A0E27), // 深邃深蓝
+            Color(0xFF1A1F3A), // 深蓝紫
+            Color(0xFF0F1419), // 深黑蓝
           ],
+          stops: [0.0, 0.5, 1.0],
         ),
       ),
       child: Stack(
         children: [
-          // 添加K线图装饰
+          // 添加K线图装饰 - 增强动态效果
           Positioned(
             top: 50,
             left: 0,
             right: 0,
             height: 300,
-            child: Opacity(
-              opacity: 0.1,
-              child: CustomPaint(
-                painter: CandleStickPainter(candleSticks: _candleSticks),
-              ),
+            child: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: 0.15 + (_glowAnimation.value * 0.1),
+                  child: CustomPaint(
+                    painter: CandleStickPainter(candleSticks: _candleSticks),
+                  ),
+                );
+              },
             ),
           ),
           
-          // 添加曲线图装饰
+          // 添加曲线图装饰 - 增强动态效果
           Positioned(
             bottom: 50,
             left: 0,
             right: 0,
             height: 200,
-            child: Opacity(
-              opacity: 0.15,
-              child: CustomPaint(
-                painter: StockLinePainter(stockLines: _stockLines),
-              ),
+            child: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: 0.2 + (_glowAnimation.value * 0.15),
+                  child: CustomPaint(
+                    painter: StockLinePainter(stockLines: _stockLines),
+                  ),
+                );
+              },
             ),
           ),
           
           // 添加波动粒子效果
           Positioned.fill(
             child: Opacity(
-              opacity: 0.07,
+              opacity: 0.08,
               child: CustomPaint(
                 painter: ParticlePainter(pulseValue: _pulseAnimation.value),
               ),
@@ -750,42 +773,132 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             ),
           ),
           
-          // 添加光晕效果
+          // 红色光晕效果（右上）- 动态呼吸
           Positioned(
-            top: -80,
-            right: -80,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF00C087).withOpacity(0.3),
-                    const Color(0xFF00C087).withOpacity(0.0),
-                  ],
-                  stops: const [0.0, 1.0],
-                ),
-              ),
+            top: -100,
+            right: -100,
+            child: AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: 350 + (_glowAnimation.value * 50),
+                  height: 350 + (_glowAnimation.value * 50),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Color(0xFFFF3B30).withOpacity(0.25 * _glowAnimation.value), // 鲜红色
+                        Color(0xFFFF3B30).withOpacity(0.0),
+                      ],
+                      stops: const [0.0, 1.0],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF3B30).withOpacity(0.3 * _glowAnimation.value),
+                        blurRadius: 80 * _glowAnimation.value,
+                        spreadRadius: 20,
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
           
+          // 金色光晕效果（右中）- 动态呼吸
           Positioned(
-            bottom: -100,
-            left: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF2F80ED).withOpacity(0.2),
-                    const Color(0xFF2F80ED).withOpacity(0.0),
-                  ],
-                  stops: const [0.0, 1.0],
-                ),
-              ),
+            top: 100,
+            right: -80,
+            child: AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: 300 + (_glowAnimation.value * 40),
+                  height: 300 + (_glowAnimation.value * 40),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Color(0xFFFFB800).withOpacity(0.2 * _glowAnimation.value), // 金色
+                        Color(0xFFFFB800).withOpacity(0.0),
+                      ],
+                      stops: const [0.0, 1.0],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFFB800).withOpacity(0.25 * _glowAnimation.value),
+                        blurRadius: 60 * _glowAnimation.value,
+                        spreadRadius: 15,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          // 蓝色光晕效果（左下）- 动态呼吸
+          Positioned(
+            bottom: -120,
+            left: -120,
+            child: AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, child) {
+                final reverseGlow = 1.0 - (_glowAnimation.value - 0.3) / 0.7;
+                return Container(
+                  width: 400 + (reverseGlow * 60),
+                  height: 400 + (reverseGlow * 60),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Color(0xFF4A90E2).withOpacity(0.3 * reverseGlow), // 科技蓝
+                        Color(0xFF4A90E2).withOpacity(0.0),
+                      ],
+                      stops: const [0.0, 1.0],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF4A90E2).withOpacity(0.35 * reverseGlow),
+                        blurRadius: 70 * reverseGlow,
+                        spreadRadius: 18,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          // 紫色光晕效果（中间偏左）- 动态呼吸
+          Positioned(
+            top: 250,
+            left: -50,
+            child: AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: 280 + (_glowAnimation.value * 35),
+                  height: 280 + (_glowAnimation.value * 35),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Color(0xFF7B68EE).withOpacity(0.18 * _glowAnimation.value), // 紫色
+                        Color(0xFF7B68EE).withOpacity(0.0),
+                      ],
+                      stops: const [0.0, 1.0],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7B68EE).withOpacity(0.2 * _glowAnimation.value),
+                        blurRadius: 50 * _glowAnimation.value,
+                        spreadRadius: 12,
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -820,26 +933,33 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 新的现代化Logo设计
+                // 新的现代化Logo设计 - 金融科技风格
                 GestureDetector(
                   onTap: _handleLogoTap,
                   child: Container(
-                    width: 80,
-                    height: 80,
+                    width: 90,
+                    height: 90,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Color(0xFF00C087), // 绿色
-                          Color(0xFF2F80ED), // 蓝色
+                          Color(0xFFFFB800), // 金色
+                          Color(0xFFFF8C00), // 深金色
+                          Color(0xFF4A90E2), // 科技蓝
                         ],
+                        stops: [0.0, 0.5, 1.0],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF00C087).withOpacity(0.4),
-                          blurRadius: 15,
+                          color: const Color(0xFFFFB800).withOpacity(0.5),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                        BoxShadow(
+                          color: const Color(0xFF4A90E2).withOpacity(0.3),
+                          blurRadius: 30,
                           spreadRadius: 0,
                         ),
                       ],
@@ -852,20 +972,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           children: [
                             // 图表图标
                             const Icon(
-                              Icons.show_chart,
+                              Icons.trending_up,
                               color: Colors.white,
-                              size: 36,
+                              size: 40,
                             ),
                             // 脉冲光环
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 600),
-                              width: 60 * _pulseAnimation.value,
-                              height: 60 * _pulseAnimation.value,
+                              width: 65 * _pulseAnimation.value,
+                              height: 65 * _pulseAnimation.value,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.2),
-                                  width: 2,
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 2.5,
                                 ),
                               ),
                             ),
@@ -1011,8 +1131,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
-                              color: Color(0xFF00C087), // 欧易绿色
-                              width: 1.5,
+                              color: Color(0xFFFFB800), // 金色
+                              width: 2.0,
                             ),
                           ),
                           filled: true,
@@ -1033,7 +1153,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           }
                           return null;
                         },
-                        cursorColor: const Color(0xFF00C087), // 欧易绿色
+                        cursorColor: const Color(0xFFFFB800), // 金色
                       ),
                       const SizedBox(height: 20),
                       
@@ -1045,9 +1165,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: _agreedToTerms 
-                                ? const Color(0xFF00C087).withOpacity(0.3)
+                                ? const Color(0xFFFFB800).withOpacity(0.4)
                                 : Colors.white.withOpacity(0.1),
-                            width: 1,
+                            width: 1.5,
                           ),
                         ),
                         child: Row(
@@ -1065,7 +1185,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     });
                                   }
                                 },
-                                activeColor: const Color(0xFF00C087),
+                                activeColor: const Color(0xFFFFB800),
                                 checkColor: Colors.white,
                                 side: BorderSide(
                                   color: Colors.white.withOpacity(0.7),
@@ -1088,7 +1208,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       TextSpan(
                                         text: '《免责协议》',
                                         style: TextStyle(
-                                          color: Color(0xFF00C087),
+                                          color: Color(0xFFFFB800),
                                           decoration: TextDecoration.underline,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -1122,21 +1242,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               gradient: _isLoading 
                                   ? LinearGradient(
                                       colors: [
-                                        const Color(0xFF00C087).withOpacity(0.5),
-                                        const Color(0xFF2F80ED).withOpacity(0.5),
+                                        const Color(0xFFFFB800).withOpacity(0.5),
+                                        const Color(0xFF4A90E2).withOpacity(0.5),
                                       ],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                     )
                                   : const LinearGradient(
                                       colors: [
-                                        Color(0xFF00C087),
-                                        Color(0xFF2F80ED),
+                                        Color(0xFFFFB800),
+                                        Color(0xFFFF8C00),
+                                        Color(0xFF4A90E2),
                                       ],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
+                                      stops: [0.0, 0.5, 1.0],
                                     ),
                               borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFFB800).withOpacity(0.4),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Container(
                               alignment: Alignment.center,
@@ -1235,11 +1364,11 @@ class CandleStickPainter extends CustomPainter {
     final double range = maxValue - minValue;
     
     final greenPaint = Paint()
-      ..color = const Color(0xFF00C087)
+      ..color = const Color(0xFFFFB800) // 金色
       ..strokeWidth = 2.0;
       
     final redPaint = Paint()
-      ..color = const Color(0xFFE55C5C)
+      ..color = const Color(0xFF4A90E2) // 科技蓝
       ..strokeWidth = 2.0;
     
     for (final stick in candleSticks) {
@@ -1276,8 +1405,8 @@ class CandleStickPainter extends CustomPainter {
   }
   
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
+  bool shouldRepaint(covariant CandleStickPainter oldDelegate) {
+    return true; // 始终重绘以显示动态效果
   }
 }
 
@@ -1335,8 +1464,8 @@ class StockLinePainter extends CustomPainter {
   }
   
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
+  bool shouldRepaint(covariant StockLinePainter oldDelegate) {
+    return true; // 始终重绘以显示动态效果
   }
 }
 
