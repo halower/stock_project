@@ -112,7 +112,7 @@ class ProfessionalWatchlistHeader extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isDestructive
@@ -142,14 +142,15 @@ class ProfessionalWatchlistHeader extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
-                size: 22,
+                size: 18,
                 color: isDestructive ? Colors.red : primaryColor,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(

@@ -505,16 +505,16 @@ class WatchlistItemWidget extends StatelessWidget {
     return const Color(0xFF607D8B);
   }
 
-  // 获取市场简称
+  // 获取市场显示名称（使用完整名称）
   String _getMarketShortName(String market) {
-    if (market.contains('创业板')) return '创';
-    if (market.contains('科创板')) return '科';
-    if (market.contains('北交所')) return '北';
-    if (market.contains('深证主板') || market.contains('主板') && market.contains('深')) return '深';
-    if (market.contains('上证主板') || market.contains('主板') && market.contains('上')) return '沪';
-    if (market.contains('ETF')) return '指';
-    if (market.contains('主板')) return '主'; // 通用的主板标识
-    return '其他';
+    if (market.contains('创业板')) return '创业板';
+    if (market.contains('科创板')) return '科创板';
+    if (market.contains('北交所')) return '北交所';
+    if (market.contains('深证主板') || market.contains('主板') && market.contains('深')) return '深主板';
+    if (market.contains('上证主板') || market.contains('主板') && market.contains('上')) return '沪主板';
+    if (market.contains('ETF')) return 'ETF';
+    if (market.contains('主板')) return '主板';
+    return market; // 返回原始名称
   }
 
   // 获取价格颜色
