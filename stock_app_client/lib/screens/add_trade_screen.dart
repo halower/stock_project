@@ -2517,14 +2517,14 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                                           const SizedBox(height: 4),
                                           Text(
                                             tradingAdvice,
-                                            style: TextStyle(
+                                    style: TextStyle(
                                               fontSize: 13,
-                                              color: textColor,
+                                      color: textColor,
                                               height: 1.4,
-                                            ),
+                                    ),
                                             softWrap: true,
                                             maxLines: 4,
-                                            overflow: TextOverflow.ellipsis,
+                                    overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                   ),
@@ -3272,17 +3272,18 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: _hasAnalyzed 
-                    ? [const Color(0xFF2E7D32), const Color(0xFF1B5E20)]
-                    : [const Color(0xFF2C5282), const Color(0xFF1A365D)],
+                    ? [const Color(0xFF10B981), const Color(0xFF059669)]  // 明亮的绿色
+                    : [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],  // 明亮的紫色
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: (_hasAnalyzed ? Colors.green.shade800 : const Color(0xFF1A365D)).withOpacity(0.3),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
+                  color: (_hasAnalyzed ? const Color(0xFF10B981) : const Color(0xFF8B5CF6)).withOpacity(0.4),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
@@ -3780,29 +3781,49 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF059669)],
+                      colors: [Color(0xFF10B981), Color(0xFF059669)],  // 绿色 - 交易参数
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.tune,
                     color: Colors.white,
-                    size: 24,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 const Expanded(
-                  child: Text(
-                    '交易细节',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '交易参数设置',
                     style: TextStyle(
-                      fontSize: 20,
+                          fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
+                      ),
+                      Text(
+                        'Trading Parameters',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -4863,10 +4884,54 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 移除Row和按钮，直接使用标题
-            const Text('交易策略',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            // 策略选择标题
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],  // 紫色 - 策略
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.psychology,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '交易策略',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Trading Strategy',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
             Consumer<StrategyProvider>(
               builder: (context, strategyProvider, child) {
                 if (strategyProvider.isLoading) {
@@ -5076,26 +5141,46 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                      colors: [Color(0xFFF59E0B), Color(0xFFD97706)],  // 琥珀色 - 开仓理由
                     ),
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFF59E0B).withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.lightbulb_outline,
                     color: Colors.white,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                   '开仓理由',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
+                    ),
+                    Text(
+                      'Entry Reason',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -5175,26 +5260,46 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF059669)],
+                      colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],  // 青色 - 备注
                     ),
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF06B6D4).withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.note_alt_outlined,
                     color: Colors.white,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                   '备注信息',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
+                    ),
+                    Text(
+                      'Additional Notes',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -5271,12 +5376,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF1E40AF), Color(0xFF1E3A8A)],
+                      colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],  // 靛蓝色 - 市场分析
                     ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1E40AF).withOpacity(0.3),
+                        color: const Color(0xFF6366F1).withOpacity(0.3),
                         blurRadius: 8,
                         spreadRadius: 0,
                       ),
@@ -5294,10 +5399,10 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   children: [
                     Text(
                       '市场阶段分析',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                     ),
                     Text(
                       'Market Phase Analysis',
@@ -5385,12 +5490,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
               children: [
                 const Icon(Icons.show_chart, size: 18, color: Color(0xFF1E40AF)),
                 const SizedBox(width: 8),
-                const Text(
-                  '趋势强度',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+            const Text(
+              '趋势强度',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
                 ),
               ],
             ),
@@ -5433,12 +5538,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
               children: [
                 const Icon(Icons.stars, size: 18, color: Color(0xFF1E40AF)),
                 const SizedBox(width: 8),
-                const Text(
+            const Text(
                   '入场难度评级',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
                 ),
               ],
             ),
@@ -5669,17 +5774,87 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
   }
 
   Widget _buildModernRiskControlSection() {
-    return Card(
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode 
+              ? [
+                  const Color(0xFF2C2C2E),
+                  const Color(0xFF1C1C1E),
+                ]
+              : [
+                  Colors.white,
+                  const Color(0xFFFAFAFA),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+                ? Colors.black.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('风险控制',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-
-
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFEF4444), Color(0xFFDC2626)],  // 红色 - 风险控制
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFEF4444).withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.shield_outlined,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '风险控制',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Risk Management',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
 
             // 风险熔断设置
             _buildRiskMeltdownSection(),

@@ -181,28 +181,28 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     return AnimatedBuilder(
       animation: _shimmerAnimation,
       builder: (context, child) {
-        return Container(
+    return Container(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          child: Material(
-            color: Colors.transparent,
+      child: Material(
+        color: Colors.transparent,
             borderRadius: BorderRadius.circular(14),
-            elevation: 0,
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StockDetailScreen(
-                      stockCode: widget.stock.code,
-                      stockName: widget.stock.name,
+        elevation: 0,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StockDetailScreen(
+                  stockCode: widget.stock.code,
+                  stockName: widget.stock.name,
                       strategy: widget.stock.strategy,
-                    ),
-                  ),
-                );
-              },
+              ),
+            ),
+          );
+        },
               borderRadius: BorderRadius.circular(14),
-              child: Stack(
-                children: [
+          child: Stack(
+            children: [
                   // 背景光晕效果
                   Positioned.fill(
                     child: ClipRRect(
@@ -218,8 +218,8 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                   ),
                   
                   // 主内容容器
-                  Container(
-                    decoration: BoxDecoration(
+              Container(
+            decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -234,28 +234,28 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                               ],
                       ),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
+              border: Border.all(
                         width: 1.5,
                         color: _getPriceColor().withOpacity(0.4), // 增加边框不透明度
-                      ),
-                      boxShadow: [
-                        BoxShadow(
+              ),
+              boxShadow: [
+                BoxShadow(
                           color: _getPriceColor().withOpacity(0.25), // 增加阴影不透明度
                           blurRadius: 16, // 增加模糊
                           spreadRadius: 1,
                           offset: const Offset(0, 4),
-                        ),
-                        BoxShadow(
+                ),
+                BoxShadow(
                           color: Colors.black.withOpacity(isDarkMode ? 0.4 : 0.08), // 增加深度
                           blurRadius: 24,
                           spreadRadius: 0,
                           offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
+                ),
+              ],
+            ),
                     padding: const EdgeInsets.all(14),
-                    child: Column(
-                      children: [
+          child: Column(
+            children: [
                 // 主要信息行
               Row(
                 children: [
@@ -409,11 +409,11 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                             ],
                           ),
                           child: Text(
-                            widget.stock.price != null ? '¥${widget.stock.price!.toStringAsFixed(2)}' : '-',
-                            style: TextStyle(
+                          widget.stock.price != null ? '¥${widget.stock.price!.toStringAsFixed(2)}' : '-',
+                          style: TextStyle(
                               fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: priceColor,
+                            fontWeight: FontWeight.bold,
+                            color: priceColor,
                               letterSpacing: 0.5,
                               shadows: [
                                 Shadow(
@@ -461,17 +461,17 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                                 size: 16,
                               ),
                               Text(
-                                changeText,
-                                style: const TextStyle(
+                            changeText,
+                              style: const TextStyle(
                                   fontSize: 11,
-                                  color: Colors.white,
+                                color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
-                                ),
+                              ),
                               ),
                             ],
-                          ),
-                        )
+                            ),
+                          )
                         else
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -480,8 +480,8 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '待分析',
-                              style: TextStyle(
+                            '待分析',
+                            style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey.shade600,
                                 fontWeight: FontWeight.w500,
@@ -569,9 +569,9 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                           ),
                           child: const Icon(
                             Icons.psychology,
-                            size: 16,
+                          size: 16,
                             color: Colors.white,
-                          ),
+                        ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -605,35 +605,35 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                '${widget.stock.details['ai_analysis']}',
-                                style: TextStyle(
+                            '${widget.stock.details['ai_analysis']}',
+                            style: TextStyle(
                                   fontSize: 11,
                                   color: isDarkMode ? Colors.white.withOpacity(0.9) : const Color(0xFF1A202C),
                                   height: 1.4,
                                   fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
-                      ],
+            ],
                     ),
                   ),
                 ],
-                      ],
-                    ),
-                  ),
-                  
+              ],
+            ),
+              ),
+              
                   // 行业标识条 - 左边缘彩色条带（带脉冲效果）
-                  if (widget.stock.industry != null)
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: _buildIndustryStripe(),
-                    ),
+              if (widget.stock.industry != null)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: _buildIndustryStripe(),
+                ),
                   
                   // 顶部科技光效 - 增强
                   Positioned(
@@ -764,9 +764,9 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                     const Color(0xFF1E40AF), // 深蓝色
                     const Color(0xFF3730A3).withOpacity(0.8),
                   ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(

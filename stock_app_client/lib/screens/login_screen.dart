@@ -729,9 +729,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               builder: (context, child) {
                 return Opacity(
                   opacity: 0.15 + (_glowAnimation.value * 0.1),
-                  child: CustomPaint(
-                    painter: CandleStickPainter(candleSticks: _candleSticks),
-                  ),
+              child: CustomPaint(
+                painter: CandleStickPainter(candleSticks: _candleSticks),
+              ),
                 );
               },
             ),
@@ -748,9 +748,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               builder: (context, child) {
                 return Opacity(
                   opacity: 0.2 + (_glowAnimation.value * 0.15),
-                  child: CustomPaint(
-                    painter: StockLinePainter(stockLines: _stockLines),
-                  ),
+              child: CustomPaint(
+                painter: StockLinePainter(stockLines: _stockLines),
+              ),
                 );
               },
             ),
@@ -815,21 +815,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 return Container(
                   width: 300 + (_glowAnimation.value * 40),
                   height: 300 + (_glowAnimation.value * 40),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
                         Color(0xFFFFB800).withOpacity(0.2 * _glowAnimation.value), // 金色
                         Color(0xFFFFB800).withOpacity(0.0),
-                      ],
-                      stops: const [0.0, 1.0],
-                    ),
+                  ],
+                  stops: const [0.0, 1.0],
+                ),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFFFFB800).withOpacity(0.25 * _glowAnimation.value),
                         blurRadius: 60 * _glowAnimation.value,
                         spreadRadius: 15,
-                      ),
+              ),
                     ],
                   ),
                 );
@@ -848,15 +848,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 return Container(
                   width: 400 + (reverseGlow * 60),
                   height: 400 + (reverseGlow * 60),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
                         Color(0xFF4A90E2).withOpacity(0.3 * reverseGlow), // 科技蓝
                         Color(0xFF4A90E2).withOpacity(0.0),
-                      ],
-                      stops: const [0.0, 1.0],
-                    ),
+                  ],
+                  stops: const [0.0, 1.0],
+                ),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF4A90E2).withOpacity(0.35 * reverseGlow),
