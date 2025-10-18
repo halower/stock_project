@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/trade_record.dart';
 import '../services/providers/trade_provider.dart';
-import '../services/providers/stock_provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../services/stock_service.dart';
@@ -304,82 +303,142 @@ class _SettlementScreenState extends State<SettlementScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 股票名称 - 可点击
-              InkWell(
-                onTap: () => _openStockChart(),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? const Color(0xFF2D2D2D) : const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDarkMode ? Colors.blue[400]! : Colors.blue[600]!,
-                      width: 1,
+              // 股票名称和代码
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDarkMode 
+                      ? [
+                          const Color(0xFF1E40AF).withOpacity(0.3),
+                          const Color(0xFF3B82F6).withOpacity(0.2),
+                        ]
+                      : [
+                          const Color(0xFFDBeafe),
+                          const Color(0xFFBFDBFE),
+                        ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDarkMode 
+                      ? const Color(0xFF3B82F6).withOpacity(0.5)
+                      : const Color(0xFF60A5FA).withOpacity(0.5),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isDarkMode ? Colors.blue : Colors.blue.shade300).withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.trending_up,
-                        color: isDarkMode ? Colors.blue[400] : Colors.blue[600],
-                        size: 20,
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // 股票图标
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isDarkMode 
+                          ? const Color(0xFF3B82F6).withOpacity(0.2)
+                          : const Color(0xFF60A5FA).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${widget.tradePlan.stockName}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.blue[400] : Colors.blue[600],
-                        ),
+                      child: Icon(
+                        Icons.candlestick_chart,
+                        color: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                        size: 24,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '(${widget.tradePlan.stockCode})',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    // 股票名称和代码
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${widget.tradePlan.stockName}',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : const Color(0xFF1E40AF),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.tradePlan.stockCode,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: isDarkMode ? Colors.grey[400] : const Color(0xFF64748B),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      Icon(
-                        Icons.open_in_new,
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        size: 16,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
               
-              // 交易类型标签
+              // 交易类型标签 - 专业金融风格
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  // A股风格：买入红色，卖出绿色
-                  color: tradeType == TradeType.buy ? redColor.withOpacity(0.1) : greenColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: tradeType == TradeType.buy 
+                      ? [
+                          redColor.withOpacity(0.15),
+                          redColor.withOpacity(0.08),
+                        ]
+                      : [
+                          greenColor.withOpacity(0.15),
+                          greenColor.withOpacity(0.08),
+                        ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: tradeType == TradeType.buy ? redColor : greenColor,
-                    width: 1,
+                    width: 1.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (tradeType == TradeType.buy ? redColor : greenColor).withOpacity(0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      tradeType == TradeType.buy ? Icons.trending_up : Icons.trending_down,
-                      color: tradeType == TradeType.buy ? redColor : greenColor,
-                      size: 16,
+                    // 图标背景
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: (tradeType == TradeType.buy ? redColor : greenColor).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        tradeType == TradeType.buy ? Icons.arrow_upward : Icons.arrow_downward,
+                        color: tradeType == TradeType.buy ? redColor : greenColor,
+                        size: 16,
+                      ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 8),
                     Text(
                       tradeType == TradeType.buy ? '买入' : '卖出',
                       style: TextStyle(
                         color: tradeType == TradeType.buy ? redColor : greenColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
@@ -392,111 +451,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
     );
   }
 
-  // 新增：打开股票HTML K线图
-  void _openStockChart() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(10),
-        child: Container(
-          width: double.infinity,
-          height: MediaQuery.of(context).size.height * 0.8,
-          decoration: BoxDecoration(
-            color: Theme.of(context).canvasColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              // 标题栏
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.candlestick_chart,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${widget.tradePlan.stockName} K线走势',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              // WebView区域
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.candlestick_chart,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '${widget.tradePlan.stockName} (${widget.tradePlan.stockCode})',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'K线走势图',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '这里将显示HTML版本的K线走势图',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[400],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildTradeStatusBadge() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -626,50 +580,70 @@ class _SettlementScreenState extends State<SettlementScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: isDarkMode 
-          ? Colors.white.withOpacity(0.05)
-          : Colors.white.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode 
+            ? [
+                color.withOpacity(0.15),
+                color.withOpacity(0.05),
+              ]
+            : [
+                color.withOpacity(0.08),
+                color.withOpacity(0.03),
+              ],
+        ),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDarkMode 
-            ? Colors.white.withOpacity(0.1)
-            : Colors.white.withOpacity(0.5),
-          width: 1,
+          color: color.withOpacity(isDarkMode ? 0.3 : 0.2),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode 
-              ? Colors.black.withOpacity(0.1)
-              : Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
+            color: color.withOpacity(0.1),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: 24,
+          // 图标
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(isDarkMode ? 0.2 : 0.15),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 8),
+            child: Icon(
+              icon,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // 标签
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
             ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
+          // 数值
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
             ),
@@ -1737,49 +1711,91 @@ class _SettlementScreenState extends State<SettlementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.blue.withOpacity(0.2),
-                        Colors.blue.withOpacity(0.1),
+            // 图表标题栏
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDarkMode 
+                    ? [
+                        const Color(0xFF1E40AF).withOpacity(0.2),
+                        const Color(0xFF3B82F6).withOpacity(0.1),
+                      ]
+                    : [
+                        const Color(0xFFEFF6FF),
+                        const Color(0xFFDBEAFE),
+                      ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDarkMode 
+                    ? const Color(0xFF3B82F6).withOpacity(0.3)
+                    : const Color(0xFF93C5FD).withOpacity(0.5),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  // 图标
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDarkMode
+                          ? [
+                              const Color(0xFF3B82F6).withOpacity(0.3),
+                              const Color(0xFF2563EB).withOpacity(0.2),
+                            ]
+                          : [
+                              const Color(0xFF93C5FD).withOpacity(0.4),
+                              const Color(0xFF60A5FA).withOpacity(0.3),
+                            ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    child: Icon(
+                      Icons.candlestick_chart,
+                      color: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                      size: 24,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.candlestick_chart,
-                    color: isDarkMode ? Colors.blue[300] : Colors.blue[600],
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'K线走势图',
-                        style: TextStyle(
-                          fontSize: 18,
-                fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
-              ),
-            ),
-            Text(
-              '基于真实历史数据，显示${validKLineData.length}天有效数据',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  const SizedBox(width: 14),
+                  // 标题和描述
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'K线走势图',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                            letterSpacing: 0.3,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          '${validKLineData.length}天历史数据',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-                ),
-              ],
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -2667,32 +2683,41 @@ class _SettlementScreenState extends State<SettlementScreen> {
   Widget _buildSettlementForm() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
-    // A股风格颜色
+    // A股风格颜色（保留redColor用于其他地方）
     final redColor = const Color(0xFFFF4444); // A股红色
-    final greenColor = const Color(0xFF00AA00); // A股绿色
-    final blueColor = const Color(0xFF3366FF); // 蓝色
     
     return Container(
       decoration: BoxDecoration(
-        // A股风格背景
+        // 专业金融风格背景
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isDarkMode 
             ? [
-                const Color(0xFF1A1A1A),
-                const Color(0xFF2D2D2D),
+                const Color(0xFF1F2937).withOpacity(0.8),
+                const Color(0xFF111827).withOpacity(0.9),
               ]
             : [
-                const Color(0xFFF8F9FA),
-                const Color(0xFFEDF2F7),
+                const Color(0xFFF8FAFC),
+                const Color(0xFFF1F5F9),
               ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDarkMode ? Colors.grey[700]! : Colors.grey[300]!,
-          width: 1,
+          color: isDarkMode 
+            ? const Color(0xFF374151).withOpacity(0.5)
+            : const Color(0xFFE2E8F0).withOpacity(0.8),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+              ? Colors.black.withOpacity(0.3)
+              : Colors.grey.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -2701,46 +2726,95 @@ class _SettlementScreenState extends State<SettlementScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 标题
+              // 标题 - 专业金融风格
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  // A股风格标题背景
                   gradient: LinearGradient(
-                    colors: [
-                      blueColor.withOpacity(0.1),
-                      blueColor.withOpacity(0.05),
-                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
+                    colors: isDarkMode
+                      ? [
+                          const Color(0xFF1E40AF).withOpacity(0.25),
+                          const Color(0xFF3B82F6).withOpacity(0.15),
+                        ]
+                      : [
+                          const Color(0xFFEFF6FF),
+                          const Color(0xFFDBEAFE),
+                        ],
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: blueColor.withOpacity(0.3),
-                    width: 1,
+                    color: isDarkMode 
+                      ? const Color(0xFF3B82F6).withOpacity(0.4)
+                      : const Color(0xFF93C5FD).withOpacity(0.6),
+                    width: 1.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
+                    // 图标容器
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: blueColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          colors: isDarkMode
+                            ? [
+                                const Color(0xFF3B82F6).withOpacity(0.3),
+                                const Color(0xFF2563EB).withOpacity(0.2),
+                              ]
+                            : [
+                                const Color(0xFF93C5FD).withOpacity(0.5),
+                                const Color(0xFF60A5FA).withOpacity(0.4),
+                              ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Icon(
-                        Icons.account_balance_wallet,
-                        color: blueColor,
-                        size: 24,
+                        Icons.account_balance_wallet_outlined,
+                        color: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                        size: 26,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '交易结算',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: blueColor,
+                    const SizedBox(width: 14),
+                    // 标题文字
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '交易结算',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '填写实际成交信息',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDarkMode ? Colors.grey[400] : const Color(0xFF64748B),
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
