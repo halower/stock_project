@@ -14,6 +14,7 @@ import time
 
 from app.core.logging import logger
 from app.db.session import RedisCache
+from app.services.realtime_service import get_realtime_service
 
 # Redis缓存客户端
 redis_cache = RedisCache()
@@ -254,29 +255,48 @@ def get_stock_history_akshare(stock_code: str, days: int = 120) -> List[Dict[str
         logger.error(f"AKShare获取股票 {stock_code} 历史数据失败: {str(e)}")
         raise
 
-def get_realtime_stock_data(stock_code: str) -> Dict[str, Any]:
+def get_realtime_stock_data(stock_code: str, provider: str = None) -> Dict[str, Any]:
     """
     获取股票实时数据
-    优先使用AKShare，失败时使用其他数据源
+    使用统一的实时行情服务，支持多数据源自动切换
+    
+    Args:
+        stock_code: 股票代码
+        provider: 指定数据提供商（eastmoney, sina, auto），None则使用默认配置
+    
+    Returns:
+        包含实时数据的字典
     """
     try:
         logger.info(f"开始获取股票 {stock_code} 的实时数据")
         
-        # 尝试使用AKShare获取实时数据
-        try:
-            realtime_data = get_realtime_data_akshare(stock_code)
-            if realtime_data:
-                return {
-                    'success': True,
-                    'data': realtime_data,
-                    'source': 'akshare'
-                }
-        except Exception as e:
-            logger.warning(f"AKShare获取实时数据失败: {str(e)}")
+        # 使用新的统一实时行情服务
+        service = get_realtime_service()
+        result = service.get_single_stock_realtime(stock_code, provider)
         
-        # 备用方案：使用简化的数据
-        try:
-            # 如果无法获取实时数据，返回基础信息
+        if result.get('success'):
+            # 转换为旧格式以保持兼容性
+            data = result.get('data', {})
+            return {
+                'success': True,
+                'data': {
+                    'stock_code': data.get('code'),
+                    'name': data.get('name', ''),
+                    'price': data.get('price', 0.0),
+                    'change': data.get('change', 0.0),
+                    'pct_chg': data.get('change_percent', 0.0),
+                    'open': data.get('open', 0.0),
+                    'high': data.get('high', 0.0),
+                    'low': data.get('low', 0.0),
+                    'volume': data.get('volume', 0.0),
+                    'amount': data.get('amount', 0.0),
+                    'turnover_rate': data.get('turnover_rate', 0.0),
+                    'update_time': data.get('update_time', '')
+                },
+                'source': result.get('source')
+            }
+        else:
+            # 失败时返回占位数据
             return {
                 'success': True,
                 'data': {
@@ -289,62 +309,37 @@ def get_realtime_stock_data(stock_code: str) -> Dict[str, Any]:
                     'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     'status': 'no_data'
                 },
-                'source': 'placeholder'
+                'source': 'placeholder',
+                'error': result.get('error', '未知错误')
             }
-        except Exception as e:
-            logger.error(f"获取股票实时数据完全失败: {str(e)}")
-        
-        return {
-            'error': f'无法获取股票 {stock_code} 的实时数据'
-        }
         
     except Exception as e:
         logger.error(f"获取股票实时数据异常: {str(e)}")
         return {
-            'error': str(e)
+            'success': False,
+            'error': str(e),
+            'data': {
+                'stock_code': stock_code,
+                'price': 0.0,
+                'change': 0.0,
+                'pct_chg': 0.0,
+                'volume': 0,
+                'amount': 0.0,
+                'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'status': 'error'
+            }
         }
 
 def get_realtime_data_akshare(stock_code: str) -> Dict[str, Any]:
     """
-    通过AKShare获取股票实时数据
+    通过AKShare获取股票实时数据（已废弃，保留用于向后兼容）
+    建议使用 get_realtime_stock_data() 或直接使用 realtime_service
     """
-    try:
-        # 获取实时行情数据
-        df = ak.stock_zh_a_spot_em()
-        
-        if df.empty:
-            return None
-        
-        # 查找指定股票
-        stock_row = df[df['代码'] == stock_code]
-        
-        if stock_row.empty:
-            logger.warning(f"未找到股票 {stock_code} 的实时数据")
-            return None
-        
-        row = stock_row.iloc[0]
-        
-        # 转换数据格式
-        realtime_data = {
-            'stock_code': stock_code,
-            'name': row.get('名称', ''),
-            'price': float(row.get('最新价', 0)),
-            'change': float(row.get('涨跌额', 0)),
-            'pct_chg': float(row.get('涨跌幅', 0)),
-            'open': float(row.get('今开', 0)),
-            'high': float(row.get('最高', 0)),
-            'low': float(row.get('最低', 0)),
-            'volume': float(row.get('成交量', 0)),
-            'amount': float(row.get('成交额', 0)),
-            'turnover_rate': float(row.get('换手率', 0)),
-            'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-        
-        return realtime_data
-        
-    except Exception as e:
-        logger.error(f"AKShare获取股票 {stock_code} 实时数据失败: {str(e)}")
-        raise
+    logger.warning("get_realtime_data_akshare() 已废弃，建议使用 get_realtime_stock_data()")
+    result = get_realtime_stock_data(stock_code, provider='eastmoney')
+    if result.get('success'):
+        return result.get('data')
+    return None
 
 def store_stock_data_to_redis(key: str, data: Any, ttl: int = None) -> bool:
     """

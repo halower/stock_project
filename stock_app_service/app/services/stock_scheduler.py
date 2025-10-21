@@ -24,6 +24,7 @@ from app.services.stock_data_manager import StockDataManager
 # 移除全局线程池导入，scheduler不应该影响API服务
 # from app.core.thread_pool import global_thread_pool
 from app.services.signal_manager import signal_manager
+from app.services.realtime_service import get_realtime_service
 import akshare as ak
 import pandas as pd
 import json
@@ -74,7 +75,14 @@ def add_stock_job_log(job_type: str, status: str, message: str, count: int = 0, 
     logger.info(f"[{job_type}] {message}")
 
 def is_trading_time() -> bool:
-    """判断是否为交易时间"""
+    """
+    判断是否为可以获取实时数据的时间
+    
+    扩展时间范围：
+    - 交易时间: 9:30-11:30, 13:00-15:00
+    - 收盘后: 15:00-15:30 (可以获取收盘数据)
+    - 这样确保在15:00-15:20期间也能更新数据
+    """
     now = datetime.now()
     
     # 周末不交易
@@ -83,11 +91,12 @@ def is_trading_time() -> bool:
     
     current_time = now.time()
     
-    # 交易时间: 9:30-11:30, 13:00-15:00
+    # 扩展的交易时间: 9:30-11:30, 13:00-15:30
+    # 15:00-15:30 是收盘后的数据获取窗口
     morning_start = time(9, 30)
     morning_end = time(11, 30)
     afternoon_start = time(13, 0)
-    afternoon_end = time(15, 0)
+    afternoon_end = time(15, 30)  # 扩展到15:30
     
     return ((morning_start <= current_time <= morning_end) or 
             (afternoon_start <= current_time <= afternoon_end))
@@ -600,15 +609,21 @@ async def _calculate_signals_async(etf_only: bool = False, stock_only: bool = Fa
 # 在K线全量更新和实时更新时会自动触发买入信号计算
 
 def update_realtime_stock_data(force_update=False, is_closing_update=False, auto_calculate_signals=False):
-    """更新实时股票数据（交易时间内每20分钟执行）
+    """更新实时股票数据
     
     Args:
         force_update: 是否强制更新，忽略交易时间检查
         is_closing_update: 是否为收盘后更新，使用不同的数据源
         auto_calculate_signals: 是否自动计算买入信号
+    
+    时间策略：
+    - 交易时间内（9:30-15:00）：每15-20分钟更新一次实时数据
+    - 收盘后（15:00-15:30）：可以获取收盘数据
+    - 手动触发（force_update=True）：任何时间都可以执行
     """
     if not force_update and not is_trading_time():
-        logger.info("非交易时间，跳过实时数据更新")
+        # 非交易时间，但允许手动触发
+        logger.info("非交易时间，跳过自动实时数据更新（可以通过force_update=True强制执行）")
         return
 
     start_time = datetime.now()
@@ -619,37 +634,25 @@ def update_realtime_stock_data(force_update=False, is_closing_update=False, auto
         else:
             logger.info(" 开始更新实时股票数据...")
         
-        # 获取A股实时行情数据
-        df = ak.stock_zh_a_spot_em()
+        # 使用新的统一实时行情服务获取数据
+        realtime_service = get_realtime_service()
+        result = realtime_service.get_all_stocks_realtime()
         
-        if df.empty:
-            raise Exception("获取实时数据失败")
+        if not result.get('success'):
+            raise Exception(f"获取实时数据失败: {result.get('error', '未知错误')}")
         
-        # 转换数据格式
-        realtime_data = []
-        for _, row in df.iterrows():
-            stock_data = {
-                'code': row['代码'],
-                'name': row['名称'],
-                'price': float(row['最新价']) if pd.notna(row['最新价']) else 0,
-                'change': float(row['涨跌额']) if pd.notna(row['涨跌额']) else 0,
-                'change_percent': float(row['涨跌幅']) if pd.notna(row['涨跌幅']) else 0,
-                'volume': float(row['成交量']) if pd.notna(row['成交量']) else 0,
-                'amount': float(row['成交额']) if pd.notna(row['成交额']) else 0,
-                'high': float(row['最高']) if pd.notna(row['最高']) else 0,
-                'low': float(row['最低']) if pd.notna(row['最低']) else 0,
-                'open': float(row['今开']) if pd.notna(row['今开']) else 0,
-                'pre_close': float(row['昨收']) if pd.notna(row['昨收']) else 0,
-                'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }
-            realtime_data.append(stock_data)
+        realtime_data = result.get('data', [])
+        data_source = result.get('source', 'unknown')
+        
+        if not realtime_data:
+            raise Exception("获取的实时数据为空")
         
         # 存储到Redis
         redis_cache.set_cache(STOCK_KEYS['realtime_data'], {
             'data': realtime_data,
             'count': len(realtime_data),
             'update_time': datetime.now().isoformat(),
-            'data_source': 'akshare',
+            'data_source': data_source,  # 记录实际使用的数据源
             'is_closing_data': is_closing_update
         }, ttl=1800)  # 30分钟过期
         
@@ -689,13 +692,26 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
         更新的股票数量
     """
     updated_count = 0
+    skipped_no_kline = 0  # 统计没有K线数据的股票数
     today_str = datetime.now().strftime('%Y-%m-%d')
     today_trade_date = datetime.now().strftime('%Y%m%d')
     
+    # 诊断日志：记录实时数据格式
+    if realtime_data:
+        logger.info(f"📊 开始合并实时数据，共 {len(realtime_data)} 只股票")
+        sample = realtime_data[0] if realtime_data else {}
+        logger.info(f"📝 实时数据示例字段: {list(sample.keys())[:10]}")
+        logger.info(f"📝 示例股票代码: {sample.get('code', 'N/A')}")
+    
     try:
-        for stock_data in realtime_data:
+        for index, stock_data in enumerate(realtime_data):
             try:
-                stock_code = stock_data['code']
+                stock_code = stock_data.get('code')
+                
+                if not stock_code:
+                    if index < 5:  # 只记录前5个
+                        logger.warning(f"⚠️  实时数据缺少code字段: {stock_data}")
+                    continue
                 
                 # 构造ts_code
                 if stock_code.startswith('6'):
@@ -710,6 +726,10 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                 kline_data = redis_cache.get_cache(kline_key)
                 
                 if not kline_data:
+                    skipped_no_kline += 1
+                    # 调试：记录前5个没有K线数据的股票
+                    if skipped_no_kline <= 5:
+                        logger.debug(f"❌ 股票 {ts_code} (代码:{stock_code}) 没有K线数据，Redis键: {kline_key}")
                     continue
                 
                 # 解析K线数据，处理不同的存储格式
@@ -954,13 +974,21 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                 updated_count += 1
                 
             except Exception as e:
-                logger.error(f"处理股票 {stock_data.get('code', 'unknown')} 的实时数据失败: {str(e)}")
+                if updated_count < 5:  # 只记录前5个错误详情
+                    logger.error(f"处理股票 {stock_data.get('code', 'unknown')} 的实时数据失败: {str(e)}")
                 continue
+        
+        # 汇总日志
+        logger.info(f"📊 合并结果: 成功更新 {updated_count} 只，跳过（无K线数据）{skipped_no_kline} 只")
+        if skipped_no_kline > 0:
+            logger.warning(f"⚠️  有 {skipped_no_kline} 只股票没有K线数据，请检查历史数据是否已初始化")
+            logger.info(f"💡 建议: 调用 /api/stocks/scheduler/trigger (task_type=clear_refetch) 初始化K线数据")
                 
         return updated_count
         
     except Exception as e:
         logger.error(f"合并实时数据到K线数据失败: {str(e)}")
+        logger.exception(e)  # 打印完整堆栈
         return 0
 
 def _trigger_signal_recalculation_async():

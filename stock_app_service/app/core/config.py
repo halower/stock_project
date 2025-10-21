@@ -90,6 +90,11 @@ API_TOKEN_ENABLED = os.getenv("API_TOKEN_ENABLED", "false").lower() in ("true", 
 # 日志配置
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+# 实时行情配置
+REALTIME_DATA_PROVIDER = os.getenv("REALTIME_DATA_PROVIDER", "eastmoney")  # eastmoney, sina, auto
+REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "20"))  # 实时更新周期，单位：分钟
+REALTIME_AUTO_SWITCH = os.getenv("REALTIME_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # 数据源自动切换
+
 
 class Settings(BaseModel):
     """应用配置类"""
@@ -128,6 +133,11 @@ class Settings(BaseModel):
     DEFAULT_AI_ENDPOINT: str = DEFAULT_AI_ENDPOINT
     DEFAULT_AI_API_KEY: str = DEFAULT_AI_API_KEY
     DEFAULT_AI_MODEL: str = DEFAULT_AI_MODEL
+    
+    # 实时行情配置
+    REALTIME_DATA_PROVIDER: str = REALTIME_DATA_PROVIDER
+    REALTIME_UPDATE_INTERVAL: int = REALTIME_UPDATE_INTERVAL
+    REALTIME_AUTO_SWITCH: bool = REALTIME_AUTO_SWITCH
     
     class Config:
         case_sensitive = True
