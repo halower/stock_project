@@ -1143,8 +1143,8 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                     const Color(0xFFFF6D00),
                   ]
                 : [
-                    const Color(0xFF1E40AF), // 深蓝色
-                    const Color(0xFF3730A3).withOpacity(0.8),
+                    const Color(0xFF1976D2), // 滚动提醒的蓝色
+                    const Color(0xFF42A5F5),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -1165,7 +1165,7 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
               )
             else
               Icon(
-                _isInWatchlist ? Icons.star : Icons.star_border,
+                _isInWatchlist ? Icons.bookmark : Icons.bookmark_border,
                 size: 15,
                 color: Colors.white,
                 shadows: [

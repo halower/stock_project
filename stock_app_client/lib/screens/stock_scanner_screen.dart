@@ -187,7 +187,7 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
                       return Stack(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.star_border),
+                            icon: const Icon(Icons.bookmark_border),
                             onPressed: () {
                               Navigator.push(
                                 context,

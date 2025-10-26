@@ -360,7 +360,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
                                 end: Alignment.bottomRight,
                               )
                             : LinearGradient(
-                                colors: [const Color(0xFF9C27B0), const Color(0xFF673AB7)],
+                                colors: [const Color(0xFF1E88E5), const Color(0xFF1565C0)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -371,7 +371,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: (_isInWatchlist ? Colors.orange : const Color(0xFF9C27B0)).withOpacity(0.4),
+                              color: (_isInWatchlist ? Colors.orange : const Color(0xFF1E88E5)).withOpacity(0.4),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -392,7 +392,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
                               ),
                             )
                           : Icon(
-                              _isInWatchlist ? Icons.star : Icons.star_border,
+                              _isInWatchlist ? Icons.bookmark : Icons.bookmark_border,
                               color: Colors.white,
                               size: 22,
                             ),

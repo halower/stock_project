@@ -401,10 +401,6 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
     final summary = news['summary'] ?? '';
     final url = news['url'] ?? '';
 
-    // 根据新闻重要性确定颜色（模拟）
-    final importance = _calculateNewsImportance(title, summary);
-    final importanceColor = _getImportanceColor(importance);
-
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
@@ -433,7 +429,7 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                       width: 4,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: importanceColor,
+                        color: Colors.blue.shade600,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -461,8 +457,6 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                                 const SizedBox(width: 16),
                                 _buildNewsMetaItem(Icons.access_time, datetime),
                               ],
-                              const Spacer(),
-                              _buildImportanceTag(importance),
                             ],
                           ),
                         ],
@@ -485,50 +479,6 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                // 操作按钮
-                if (url.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: Colors.blue.shade200,
-                              width: 1,
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.open_in_new, size: 14, color: Colors.blue),
-                              SizedBox(width: 4),
-                              Text(
-                                '查看详情',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),
@@ -548,14 +498,14 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
             height: 140,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [const Color(0xFF1B5E20), const Color(0xFF2E7D32)],
+                colors: [const Color(0xFF1565C0), const Color(0xFF1976D2)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.green.shade300.withOpacity(0.4),
+                  color: Colors.blue.shade300.withOpacity(0.4),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -582,7 +532,7 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                     ),
                     child: Icon(
                       Icons.auto_awesome,
-                      color: Colors.green.shade700,
+                      color: Colors.blue.shade700,
                       size: 18,
                     ),
                   ),
@@ -596,7 +546,7 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF1B5E20),
+              color: const Color(0xFF1565C0),
             ),
           ),
           const SizedBox(height: 8),
@@ -642,51 +592,6 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
   }
 
   // 构建重要性标签
-  Widget _buildImportanceTag(String importance) {
-    final color = _getImportanceColor(importance);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        importance,
-        style: TextStyle(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  // 计算新闻重要性（模拟）
-  String _calculateNewsImportance(String title, String summary) {
-    final text = (title + summary).toLowerCase();
-    if (text.contains('重大') || text.contains('紧急') || text.contains('突发')) {
-      return '重大';
-    } else if (text.contains('重要') || text.contains('关键') || text.contains('影响')) {
-      return '重要';
-    } else {
-      return '一般';
-    }
-  }
-
-  // 获取重要性颜色
-  Color _getImportanceColor(String importance) {
-    switch (importance) {
-      case '重大':
-        return Colors.red.shade600;
-      case '重要':
-        return Colors.orange.shade600;
-      case '一般':
-        return Colors.green.shade600;
-      default:
-        return Colors.grey.shade600;
-    }
-  }
 }
 
 // 蜘蛛网加载效果绘制器
