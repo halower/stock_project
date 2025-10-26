@@ -27,6 +27,7 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
   bool _isInitialized = false;
+  bool _isAIAnalysisExpanded = false; // AI分析展开状态
 
   @override
   void initState() {
@@ -517,108 +518,116 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                   ),
                 ),
                 
-                // AI分析结果（科技感增强）
+                // AI分析结果（可展开）
                 if (hasAIAnalysis) ...[
                   const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF667EEA).withOpacity(0.15),
-                          const Color(0xFF764BA2).withOpacity(0.1),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isAIAnalysisExpanded = !_isAIAnalysisExpanded;
+                      });
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFF667EEA).withOpacity(0.15),
+                            const Color(0xFF764BA2).withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          width: 1.5,
+                          color: const Color(0xFF667EEA).withOpacity(0.3),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF667EEA).withOpacity(0.2),
+                            blurRadius: 12,
+                            spreadRadius: 0,
+                          ),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        width: 1.5,
-                        color: const Color(0xFF667EEA).withOpacity(0.3),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF667EEA).withOpacity(0.2),
-                          blurRadius: 12,
-                          spreadRadius: 0,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // AI图标（带脉冲效果）
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF667EEA),
-                                Color(0xFF764BA2),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF667EEA).withOpacity(0.5),
-                                blurRadius: 8,
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.psychology,
-                          size: 16,
-                            color: Colors.white,
-                        ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF667EEA),
-                                          Color(0xFF764BA2),
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'AI分析',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
+                              // AI图标（带脉冲效果）
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2),
+                                    ],
                                   ),
-                                ],
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF667EEA).withOpacity(0.5),
+                                      blurRadius: 8,
+                                      spreadRadius: 0,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.psychology,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                            '${widget.stock.details['ai_analysis']}',
-                            style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDarkMode ? Colors.white.withOpacity(0.9) : const Color(0xFF1A202C),
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF667EEA),
+                                                Color(0xFF764BA2),
+                                              ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'AI分析',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Icon(
+                                          _isAIAnalysisExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                          size: 18,
+                                          color: const Color(0xFF667EEA),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    _buildAIAnalysisContent(isDarkMode),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
-                        ),
-            ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -720,6 +729,244 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
         ],
       ),
     );
+  }
+  
+  // 构建AI分析内容（支持展开/收起）
+  Widget _buildAIAnalysisContent(bool isDarkMode) {
+    final aiAnalysis = widget.stock.details['ai_analysis'];
+    
+    // 尝试解析为结构化数据
+    Map<String, dynamic>? analysisData;
+    String displayText = '';
+    
+    if (aiAnalysis is Map) {
+      analysisData = Map<String, dynamic>.from(aiAnalysis);
+      displayText = analysisData['reason'] ?? '';
+    } else if (aiAnalysis is String) {
+      displayText = aiAnalysis;
+    }
+    
+    final textColor = isDarkMode ? Colors.white.withOpacity(0.9) : const Color(0xFF1A202C);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 显示理由（始终显示，可展开查看全文）
+        Text(
+          displayText,
+          style: TextStyle(
+            fontSize: 11,
+            color: textColor,
+            height: 1.4,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: _isAIAnalysisExpanded ? null : 2,
+          overflow: _isAIAnalysisExpanded ? null : TextOverflow.ellipsis,
+        ),
+        
+        // 如果是结构化数据且已展开，显示详细信息
+        if (_isAIAnalysisExpanded && analysisData != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDarkMode ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 信号类型
+                if (analysisData['signal'] != null)
+                  _buildInfoRow(
+                    '信号',
+                    analysisData['signal'],
+                    _getSignalColor(analysisData['signal']),
+                    isDarkMode,
+                  ),
+                
+                // 置信度
+                if (analysisData['confidence'] != null) ...[
+                  const SizedBox(height: 4),
+                  _buildInfoRow(
+                    '置信度',
+                    analysisData['confidence'],
+                    _getConfidenceColor(analysisData['confidence']),
+                    isDarkMode,
+                  ),
+                ],
+                
+                // 止损价
+                if (analysisData['stop_loss'] != null) ...[
+                  const SizedBox(height: 4),
+                  _buildInfoRow(
+                    '止损价',
+                    '¥${analysisData['stop_loss']}',
+                    Colors.red,
+                    isDarkMode,
+                  ),
+                ],
+                
+                // 目标价
+                if (analysisData['take_profit'] != null) ...[
+                  const SizedBox(height: 4),
+                  _buildInfoRow(
+                    '目标价',
+                    '¥${analysisData['take_profit']}',
+                    Colors.green,
+                    isDarkMode,
+                  ),
+                ],
+                
+                // 技术分析详情
+                if (analysisData['technical_analysis'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '技术分析',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: textColor.withOpacity(0.7),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildTechnicalAnalysis(analysisData['technical_analysis'], textColor, isDarkMode),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  // 构建信息行
+  Widget _buildInfoRow(String label, String value, Color valueColor, bool isDarkMode) {
+    return Row(
+      children: [
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 10,
+            color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.black.withOpacity(0.6),
+            fontWeight: FontWeight.normal,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: valueColor.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: valueColor.withOpacity(0.5),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 10,
+              color: valueColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  // 构建技术分析详情
+  Widget _buildTechnicalAnalysis(dynamic technicalData, Color textColor, bool isDarkMode) {
+    if (technicalData is! Map) return const SizedBox.shrink();
+    
+    final Map<String, dynamic> data = Map<String, dynamic>.from(technicalData);
+    final List<Widget> items = [];
+    
+    // 按照结构顺序显示
+    final fields = [
+      {'key': 'overall_trend', 'label': '整体趋势'},
+      {'key': 'short_term_trend', 'label': '短期趋势'},
+      {'key': 'rsi_status', 'label': 'RSI状态'},
+      {'key': 'rsi_value', 'label': 'RSI值'},
+      {'key': 'macd_direction', 'label': 'MACD方向'},
+      {'key': 'support', 'label': '支撑位'},
+      {'key': 'resistance', 'label': '阻力位'},
+    ];
+    
+    for (final field in fields) {
+      final key = field['key'] as String;
+      final label = field['label'] as String;
+      
+      if (data[key] != null) {
+        String value = '';
+        if (data[key] is num) {
+          value = data[key].toString();
+          if (key == 'support' || key == 'resistance') {
+            value = '¥$value';
+          }
+        } else {
+          value = data[key].toString();
+        }
+        
+        items.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+              children: [
+                Text(
+                  '$label: ',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: textColor.withOpacity(0.6),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: textColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items,
+    );
+  }
+  
+  // 获取信号颜色
+  Color _getSignalColor(String signal) {
+    switch (signal) {
+      case '买入':
+        return Colors.red;
+      case '卖出':
+        return Colors.green;
+      case '观望':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  // 获取置信度颜色
+  Color _getConfidenceColor(String confidence) {
+    switch (confidence) {
+      case '高':
+        return Colors.green;
+      case '中':
+        return Colors.orange;
+      case '低':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
   }
   
   // 根据行业类型返回对应的颜色
