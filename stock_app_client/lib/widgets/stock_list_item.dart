@@ -531,23 +531,24 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                       width: double.infinity,
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
+                        // 金融风格的渐变色：深蓝到靛蓝
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            const Color(0xFF667EEA).withOpacity(0.15),
-                            const Color(0xFF764BA2).withOpacity(0.1),
+                            const Color(0xFF1E3A8A).withOpacity(0.08),  // 深蓝色
+                            const Color(0xFF4F46E5).withOpacity(0.06),  // 靛蓝色
                           ],
                         ),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           width: 1.5,
-                          color: const Color(0xFF667EEA).withOpacity(0.3),
+                          color: const Color(0xFF4F46E5).withOpacity(0.25),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF667EEA).withOpacity(0.2),
-                            blurRadius: 12,
+                            color: const Color(0xFF4F46E5).withOpacity(0.1),
+                            blurRadius: 8,
                             spreadRadius: 0,
                           ),
                         ],
@@ -558,21 +559,21 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // AI图标（带脉冲效果）
+                              // AI图标（金融风格）
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
                                     colors: [
-                                      Color(0xFF667EEA),
-                                      Color(0xFF764BA2),
+                                      Color(0xFF1E3A8A),  // 深蓝
+                                      Color(0xFF4F46E5),  // 靛蓝
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF667EEA).withOpacity(0.5),
-                                      blurRadius: 8,
+                                      color: const Color(0xFF4F46E5).withOpacity(0.3),
+                                      blurRadius: 6,
                                       spreadRadius: 0,
                                     ),
                                   ],
@@ -595,8 +596,8 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                                           decoration: BoxDecoration(
                                             gradient: const LinearGradient(
                                               colors: [
-                                                Color(0xFF667EEA),
-                                                Color(0xFF764BA2),
+                                                Color(0xFF1E3A8A),
+                                                Color(0xFF4F46E5),
                                               ],
                                             ),
                                             borderRadius: BorderRadius.circular(4),
@@ -615,7 +616,7 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                                         Icon(
                                           _isAIAnalysisExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                                           size: 18,
-                                          color: const Color(0xFF667EEA),
+                                          color: const Color(0xFF4F46E5),
                                         ),
                                       ],
                                     ),
@@ -751,6 +752,82 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 如果是结构化数据，先显示信号和置信度（始终显示）
+        if (analysisData != null) ...[
+          Row(
+            children: [
+              // 信号类型
+              if (analysisData['signal'] != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _getSignalColor(analysisData['signal']).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: _getSignalColor(analysisData['signal']).withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getSignalIcon(analysisData['signal']),
+                        size: 12,
+                        color: _getSignalColor(analysisData['signal']),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        analysisData['signal'],
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _getSignalColor(analysisData['signal']),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              
+              // 置信度
+              if (analysisData['confidence'] != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _getConfidenceColor(analysisData['confidence']).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: _getConfidenceColor(analysisData['confidence']).withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.star,
+                        size: 11,
+                        color: _getConfidenceColor(analysisData['confidence']),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${analysisData['confidence']}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: _getConfidenceColor(analysisData['confidence']),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+        ],
+        
         // 显示理由（始终显示，可展开查看全文）
         Text(
           displayText,
@@ -952,6 +1029,20 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
         return Colors.orange;
       default:
         return Colors.grey;
+    }
+  }
+  
+  // 获取信号图标
+  IconData _getSignalIcon(String signal) {
+    switch (signal) {
+      case '买入':
+        return Icons.trending_up;
+      case '卖出':
+        return Icons.trending_down;
+      case '观望':
+        return Icons.remove_red_eye;
+      default:
+        return Icons.help_outline;
     }
   }
   
