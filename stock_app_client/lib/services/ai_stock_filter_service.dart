@@ -295,11 +295,12 @@ class AIStockFilterService {
         };
       }).toList();
       
-      // 使用 EnhancedAIFilterService 进行完整的技术分析
+      // 使用 EnhancedAIFilterService 进行完整的技术分析（包含筛选条件）
       final analysisResult = await _enhancedAIService.analyzeStock(
         stockCode: stock.code,
         stockName: stock.name,
         klineData: klineData,
+        filterCriteria: filterCriteria,  // 传入用户的筛选条件
       );
       
       // 如果分析失败，跳过该股票

@@ -464,36 +464,41 @@ class AnalysisScreen extends StatelessWidget {
           
           const SizedBox(height: 10),
           
-          RichText(
-            text: TextSpan(
-              children: [
-                if (prefix.isNotEmpty)
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: isFullWidth ? Alignment.center : Alignment.centerLeft,
+            child: RichText(
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+              text: TextSpan(
+                children: [
+                  if (prefix.isNotEmpty)
+                    TextSpan(
+                      text: prefix,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isFullWidth ? 28 : 24,
+                  fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
                   TextSpan(
-                    text: prefix,
+                    text: value,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: isFullWidth ? 28 : 24,
-                fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                       shadows: [
                         Shadow(
                           color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                TextSpan(
-                  text: value,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isFullWidth ? 28 : 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.2),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -501,6 +506,7 @@ class AnalysisScreen extends StatelessWidget {
               ),
         ),
       ],
+            ),
             ),
           ),
         ],

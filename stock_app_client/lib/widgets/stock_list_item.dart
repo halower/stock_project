@@ -752,72 +752,80 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 如果是结构化数据，先显示信号和置信度（始终显示）
+        // 如果是结构化数据，先显示操作建议和置信度（始终显示）
         if (analysisData != null) ...[
           Row(
             children: [
-              // 信号类型
+              // 操作建议
               if (analysisData['signal'] != null) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getSignalColor(analysisData['signal']).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: _getSignalColor(analysisData['signal']).withOpacity(0.5),
-                      width: 1,
-                    ),
+                    gradient: _getSignalGradient(analysisData['signal']),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _getSignalColor(analysisData['signal']).withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         _getSignalIcon(analysisData['signal']),
-                        size: 12,
-                        color: _getSignalColor(analysisData['signal']),
+                        size: 13,
+                        color: Colors.white,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 5),
                       Text(
                         analysisData['signal'],
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: _getSignalColor(analysisData['signal']),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
               ],
               
               // 置信度
               if (analysisData['confidence'] != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getConfidenceColor(analysisData['confidence']).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: _getConfidenceColor(analysisData['confidence']).withOpacity(0.5),
-                      width: 1,
-                    ),
+                    color: _getConfidenceColor(analysisData['confidence']),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _getConfidenceColor(analysisData['confidence']).withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.star,
-                        size: 11,
-                        color: _getConfidenceColor(analysisData['confidence']),
+                        _getConfidenceIcon(analysisData['confidence']),
+                        size: 12,
+                        color: Colors.white,
                       ),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 4),
                       Text(
-                        '${analysisData['confidence']}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: _getConfidenceColor(analysisData['confidence']),
+                        '${analysisData['confidence']}置信',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
@@ -825,7 +833,7 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
         ],
         
         // 显示理由（始终显示，可展开查看全文）
@@ -853,36 +861,15 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 信号类型
-                if (analysisData['signal'] != null)
-                  _buildInfoRow(
-                    '信号',
-                    analysisData['signal'],
-                    _getSignalColor(analysisData['signal']),
-                    isDarkMode,
-                  ),
-                
-                // 置信度
-                if (analysisData['confidence'] != null) ...[
-                  const SizedBox(height: 4),
-                  _buildInfoRow(
-                    '置信度',
-                    analysisData['confidence'],
-                    _getConfidenceColor(analysisData['confidence']),
-                    isDarkMode,
-                  ),
-                ],
-                
                 // 止损价
-                if (analysisData['stop_loss'] != null) ...[
-                  const SizedBox(height: 4),
+                if (analysisData['stop_loss'] != null)
                   _buildInfoRow(
                     '止损价',
                     '¥${analysisData['stop_loss']}',
-                    Colors.red,
+                    const Color(0xFFEF4444),  // 鲜艳的红色
                     isDarkMode,
+                    Icons.trending_down,
                   ),
-                ],
                 
                 // 目标价
                 if (analysisData['take_profit'] != null) ...[
@@ -890,8 +877,9 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                   _buildInfoRow(
                     '目标价',
                     '¥${analysisData['take_profit']}',
-                    Colors.green,
+                    const Color(0xFF10B981),  // 鲜艳的绿色
                     isDarkMode,
+                    Icons.trending_up,
                   ),
                 ],
                 
@@ -917,34 +905,46 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     );
   }
   
-  // 构建信息行
-  Widget _buildInfoRow(String label, String value, Color valueColor, bool isDarkMode) {
+  // 构建信息行（带图标）
+  Widget _buildInfoRow(String label, String value, Color valueColor, bool isDarkMode, [IconData? icon]) {
     return Row(
       children: [
+        if (icon != null) ...[
+          Icon(
+            icon,
+            size: 14,
+            color: valueColor,
+          ),
+          const SizedBox(width: 4),
+        ],
         Text(
           '$label: ',
           style: TextStyle(
-            fontSize: 10,
-            color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.black.withOpacity(0.6),
-            fontWeight: FontWeight.normal,
+            fontSize: 11,
+            color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: valueColor.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: valueColor.withOpacity(0.5),
-              width: 1,
-            ),
+            color: valueColor,
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: [
+              BoxShadow(
+                color: valueColor.withOpacity(0.3),
+                blurRadius: 3,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
           child: Text(
             value,
-            style: TextStyle(
-              fontSize: 10,
-              color: valueColor,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.white,
               fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
             ),
           ),
         ),
@@ -1018,17 +1018,47 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     );
   }
   
-  // 获取信号颜色
+  // 获取信号颜色（金融风格）
   Color _getSignalColor(String signal) {
     switch (signal) {
       case '买入':
-        return Colors.red;
+        return const Color(0xFFEF4444);  // 鲜艳的红色
       case '卖出':
-        return Colors.green;
+        return const Color(0xFF10B981);  // 鲜艳的绿色
       case '观望':
-        return Colors.orange;
+        return const Color(0xFFF59E0B);  // 鲜艳的橙色
       default:
-        return Colors.grey;
+        return const Color(0xFF6B7280);  // 灰色
+    }
+  }
+  
+  // 获取信号渐变色
+  LinearGradient _getSignalGradient(String signal) {
+    switch (signal) {
+      case '买入':
+        return const LinearGradient(
+          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],  // 红色渐变
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      case '卖出':
+        return const LinearGradient(
+          colors: [Color(0xFF10B981), Color(0xFF059669)],  // 绿色渐变
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      case '观望':
+        return const LinearGradient(
+          colors: [Color(0xFFF59E0B), Color(0xFFD97706)],  // 橙色渐变
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      default:
+        return const LinearGradient(
+          colors: [Color(0xFF6B7280), Color(0xFF4B5563)],  // 灰色渐变
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
     }
   }
   
@@ -1036,27 +1066,41 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
   IconData _getSignalIcon(String signal) {
     switch (signal) {
       case '买入':
-        return Icons.trending_up;
+        return Icons.arrow_circle_up;  // 向上箭头
       case '卖出':
-        return Icons.trending_down;
+        return Icons.arrow_circle_down;  // 向下箭头
       case '观望':
-        return Icons.remove_red_eye;
+        return Icons.visibility;  // 眼睛图标
       default:
         return Icons.help_outline;
     }
   }
   
-  // 获取置信度颜色
+  // 获取置信度颜色（更鲜艳）
   Color _getConfidenceColor(String confidence) {
     switch (confidence) {
       case '高':
-        return Colors.green;
+        return const Color(0xFF10B981);  // 鲜艳的绿色
       case '中':
-        return Colors.orange;
+        return const Color(0xFF3B82F6);  // 鲜艳的蓝色
       case '低':
-        return Colors.grey;
+        return const Color(0xFF8B5CF6);  // 鲜艳的紫色
       default:
-        return Colors.grey;
+        return const Color(0xFF6B7280);  // 灰色
+    }
+  }
+  
+  // 获取置信度图标
+  IconData _getConfidenceIcon(String confidence) {
+    switch (confidence) {
+      case '高':
+        return Icons.verified;  // 认证图标
+      case '中':
+        return Icons.star_half;  // 半星
+      case '低':
+        return Icons.info_outline;  // 信息图标
+      default:
+        return Icons.help_outline;
     }
   }
   

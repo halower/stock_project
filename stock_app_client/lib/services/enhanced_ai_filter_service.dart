@@ -13,11 +13,13 @@ class EnhancedAIFilterService {
   /// [stockCode] 股票代码
   /// [stockName] 股票名称
   /// [klineData] K线数据 [{date, open, high, low, close, volume}, ...]
+  /// [filterCriteria] 可选的筛选条件（用户自然语言输入）
   /// 返回: {signal, reason, stop_loss, take_profit, confidence, technical_analysis}
   Future<Map<String, dynamic>?> analyzeStock({
     required String stockCode,
     required String stockName,
     required List<Map<String, dynamic>> klineData,
+    String? filterCriteria,
   }) async {
     try {
       if (klineData.length < 60) {
@@ -96,8 +98,9 @@ class EnhancedAIFilterService {
       final recentKlines = klineData.sublist(startIndex);
       final klineText = _buildKlineDataText(recentKlines);
       
-      // 调用AI分析
+      // 调用AI分析（传入筛选条件）
       final result = await _callAIAnalysis(
+        filterCriteria: filterCriteria,
         stockCode: stockCode,
         stockName: stockName,
         currentPrice: currentPrice,
@@ -225,6 +228,7 @@ class EnhancedAIFilterService {
   
   /// 调用AI分析
   Future<Map<String, dynamic>?> _callAIAnalysis({
+    String? filterCriteria,
     required String stockCode,
     required String stockName,
     required double currentPrice,
@@ -249,8 +253,9 @@ class EnhancedAIFilterService {
       throw Exception('AI配置未设置或不完整');
     }
     
-    // 构建优化的提示词
+    // 构建优化的提示词（包含筛选条件）
     final prompt = _buildPrompt(
+      filterCriteria: filterCriteria,
       stockCode: stockCode,
       stockName: stockName,
       currentPrice: currentPrice,
@@ -305,6 +310,7 @@ class EnhancedAIFilterService {
   
   /// 构建优化的提示词
   String _buildPrompt({
+    String? filterCriteria,
     required String stockCode,
     required String stockName,
     required double currentPrice,
@@ -317,6 +323,20 @@ class EnhancedAIFilterService {
     required double support,
     required double resistance,
   }) {
+    // 构建筛选条件部分
+    final filterSection = filterCriteria != null && filterCriteria.isNotEmpty
+        ? '''
+【用户筛选条件】
+$filterCriteria
+
+注意：在技术分析的基础上，请特别关注该股票是否符合用户的筛选条件。
+如果技术面良好且符合筛选条件，给出买入信号；
+如果技术面一般或不完全符合筛选条件，给出观望信号；
+如果技术面较差或明显不符合筛选条件，给出卖出信号。
+
+'''
+        : '';
+    
     return '''
 你是一个专业的A股交易分析师。请基于以下日线周期数据进行分析：
 
@@ -336,23 +356,23 @@ $technicalText
 - 支撑位: ¥${support.toStringAsFixed(2)}
 - 阻力位: ¥${resistance.toStringAsFixed(2)}
 
-【交易指导原则】
+$filterSection【交易指导原则】
 1. **技术分析主导** (权重70%)：趋势、支撑阻力、K线形态是主要依据
 2. **风险管理** (权重30%)：考虑止损位置和盈亏比
 3. **信号明确性**:
-   - 强势上涨趋势 + 多个指标确认 → 买入信号
-   - 震荡整理、技术面不明确 → 观望信号
-   - 明显下跌趋势 → 卖出信号（但A股做多为主，可以观望）
+   - 强势上涨趋势 + 多个指标确认 ${filterCriteria != null && filterCriteria.isNotEmpty ? '+ 符合筛选条件' : ''} → 买入信号
+   - 震荡整理、技术面不明确 ${filterCriteria != null && filterCriteria.isNotEmpty ? '或部分符合筛选条件' : ''} → 观望信号
+   - 明显下跌趋势 ${filterCriteria != null && filterCriteria.isNotEmpty ? '或不符合筛选条件' : ''} → 卖出信号（但A股做多为主，可以观望）
 4. **技术指标权重**: 趋势(均线排列) > RSI > MACD > 布林带
 
 【分析要求】
-基于以上分析，请给出明确的交易信号。注意：
-- 买入信号必须有明确的技术支撑
-- 观望信号用于技术面不明确或震荡整理的情况
+基于以上分析${filterCriteria != null && filterCriteria.isNotEmpty ? '和用户筛选条件' : ''}，请给出明确的交易信号。注意：
+- 买入信号必须有明确的技术支撑${filterCriteria != null && filterCriteria.isNotEmpty ? '且符合筛选条件' : ''}
+- 观望信号用于技术面不明确或震荡整理的情况${filterCriteria != null && filterCriteria.isNotEmpty ? '，或部分符合筛选条件' : ''}
 - 止损价应设在关键支撑位下方
 - 目标价应基于阻力位或技术测算
-- 置信度基于多个指标的一致性
-- 理由要简洁明了，50-100字，突出核心逻辑
+- 置信度基于多个指标的一致性${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件的匹配度' : ''}
+- 理由要简洁明了，50-100字，突出核心逻辑${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件匹配情况' : ''}
 
 请用以下JSON格式回复（只返回JSON，不要有其他文字）：
 {
