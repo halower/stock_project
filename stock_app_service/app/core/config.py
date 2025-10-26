@@ -90,10 +90,17 @@ API_TOKEN_ENABLED = os.getenv("API_TOKEN_ENABLED", "false").lower() in ("true", 
 # 日志配置
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-# 实时行情配置
+# 实时行情配置（股票）
 REALTIME_DATA_PROVIDER = os.getenv("REALTIME_DATA_PROVIDER", "eastmoney")  # eastmoney, sina, auto
 REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "20"))  # 实时更新周期，单位：分钟
 REALTIME_AUTO_SWITCH = os.getenv("REALTIME_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # 数据源自动切换
+
+# ETF实时行情配置
+ETF_REALTIME_PROVIDER = os.getenv("ETF_REALTIME_PROVIDER", "eastmoney")  # eastmoney, sina, auto
+ETF_UPDATE_INTERVAL = int(os.getenv("ETF_UPDATE_INTERVAL", "60"))  # ETF更新周期，单位：分钟（默认1小时）
+ETF_AUTO_SWITCH = os.getenv("ETF_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # ETF数据源自动切换
+ETF_RETRY_TIMES = int(os.getenv("ETF_RETRY_TIMES", "2"))  # ETF请求重试次数
+ETF_MIN_REQUEST_INTERVAL = float(os.getenv("ETF_MIN_REQUEST_INTERVAL", "3.0"))  # ETF最小请求间隔（秒）
 
 
 class Settings(BaseModel):
@@ -134,10 +141,17 @@ class Settings(BaseModel):
     DEFAULT_AI_API_KEY: str = DEFAULT_AI_API_KEY
     DEFAULT_AI_MODEL: str = DEFAULT_AI_MODEL
     
-    # 实时行情配置
+    # 实时行情配置（股票）
     REALTIME_DATA_PROVIDER: str = REALTIME_DATA_PROVIDER
     REALTIME_UPDATE_INTERVAL: int = REALTIME_UPDATE_INTERVAL
     REALTIME_AUTO_SWITCH: bool = REALTIME_AUTO_SWITCH
+    
+    # ETF实时行情配置
+    ETF_REALTIME_PROVIDER: str = ETF_REALTIME_PROVIDER
+    ETF_UPDATE_INTERVAL: int = ETF_UPDATE_INTERVAL
+    ETF_AUTO_SWITCH: bool = ETF_AUTO_SWITCH
+    ETF_RETRY_TIMES: int = ETF_RETRY_TIMES
+    ETF_MIN_REQUEST_INTERVAL: float = ETF_MIN_REQUEST_INTERVAL
     
     class Config:
         case_sensitive = True

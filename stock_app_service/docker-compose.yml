@@ -18,10 +18,16 @@ services:
       - GLOBAL_THREAD_POOL_SIZE=5
       # 后台任务配置 - 设置为低优先级避免影响API服务
       - BACKGROUND_TASK_PRIORITY=low
-      # 实时行情配置
+      # 实时行情配置（股票）
       - REALTIME_DATA_PROVIDER=auto
       - REALTIME_UPDATE_INTERVAL=15
       - REALTIME_AUTO_SWITCH=true
+      # ETF实时行情配置
+      - ETF_REALTIME_PROVIDER=eastmoney
+      - ETF_UPDATE_INTERVAL=60
+      - ETF_AUTO_SWITCH=true
+      - ETF_RETRY_TIMES=2
+      - ETF_MIN_REQUEST_INTERVAL=3.0
     volumes:
       - .:/app
     ports:

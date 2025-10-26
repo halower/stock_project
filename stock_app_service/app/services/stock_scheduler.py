@@ -50,6 +50,16 @@ STOCK_KEYS = {
     'last_update': 'stock:last_update',              # 最后更新时间
 }
 
+# ETF Redis键名规则
+ETF_KEYS = {
+    'etf_codes': 'etf:codes:all',                    # ETF代码列表
+    'etf_realtime': 'etf:realtime',                  # ETF实时数据
+    'etf_kline': 'etf_trend:{}',                     # ETF K线数据格式
+    'etf_signals': 'etf:buy_signals',                # ETF策略信号
+    'etf_scheduler_log': 'etf:scheduler:log',        # ETF调度器日志
+    'etf_last_update': 'etf:last_update',            # ETF最后更新时间
+}
+
 def add_stock_job_log(job_type: str, status: str, message: str, count: int = 0, execution_time: float = 0.0):
     """添加股票任务执行日志"""
     log_entry = {
@@ -1125,6 +1135,22 @@ def start_stock_scheduler():
         # 删除原有的17:35最终信号计算任务，因为实时更新已延长到15:20
         # 在K线全量更新后会自动触发信号计算
         
+        # 4. ETF实时数据更新任务 - 交易时间内每60分钟执行（9:30-15:30）
+        # 使用非阻塞的后台线程执行
+        def non_blocking_etf_update():
+            """非阻塞的ETF实时数据更新"""
+            def run_etf_update():
+                update_etf_realtime_data(force_update=False)
+            threading.Thread(target=run_etf_update, daemon=True).start()
+            
+        scheduler.add_job(
+            func=non_blocking_etf_update,
+            trigger=IntervalTrigger(minutes=settings.ETF_UPDATE_INTERVAL),  # 默认60分钟
+            id='etf_realtime_update',
+            name='ETF实时数据更新（非阻塞）',
+            replace_existing=True
+        )
+        
         # 启动调度器
         scheduler.start()
         
@@ -1134,6 +1160,7 @@ def start_stock_scheduler():
         logger.info("定时任务配置:")
         logger.info("  • K线数据刷新: 每个交易日17:30 (自动触发信号计算)")
         logger.info("  • 实时数据更新: 交易时间内每20分钟 (9:00-11:30, 13:00-15:20)")
+        logger.info(f"  • ETF实时更新: 每{settings.ETF_UPDATE_INTERVAL}分钟 (交易时间内)")
         logger.info("  • 已删除: 15:05收盘数据更新任务（实时更新已覆盖）")
         logger.info("  • 重要改进: 实时更新延长到15:20，确保收盘价格被捕获")
         logger.info("  • 已删除: 17:35最终信号计算任务")
@@ -1271,6 +1298,22 @@ def trigger_stock_task(task_type: str, mode: str = "only_tasks", is_closing_upda
                 'task_type': task_type,
                 'is_closing_update': is_closing_update
             }
+        elif task_type == 'init_etf':
+            # 初始化ETF历史K线数据
+            threading.Thread(target=init_etf_kline_data, daemon=True).start()
+            return {
+                'success': True,
+                'message': 'ETF历史数据初始化任务已触发',
+                'task_type': task_type
+            }
+        elif task_type == 'update_etf':
+            # 更新ETF实时数据
+            threading.Thread(target=lambda: update_etf_realtime_data(force_update=True), daemon=True).start()
+            return {
+                'success': True,
+                'message': 'ETF实时数据更新任务已触发',
+                'task_type': task_type
+            }
         else:
             return {
                 'success': False,
@@ -1342,6 +1385,330 @@ def refresh_stock_list() -> Dict[str, Any]:
         logger.error(f" {error_msg}")
         
         add_stock_job_log('refresh_stocks', 'failed', error_msg, 0, execution_time)
+        
+        return {
+            'success': False,
+            'message': error_msg,
+            'data': None
+        }
+
+
+# ==================== ETF实时更新相关函数 ====================
+
+def update_etf_realtime_data(force_update=False):
+    """
+    更新ETF实时数据
+    
+    Args:
+        force_update: 是否强制更新（忽略交易时间检查）
+    """
+    from app.services.etf_realtime_service import get_etf_realtime_service
+    import csv
+    import os
+    
+    start_time = datetime.now()
+    
+    try:
+        # 检查交易时间（除非强制更新）
+        if not force_update and not is_trading_time():
+            logger.info("非交易时间，跳过ETF实时数据更新（可以通过force_update=True强制执行）")
+            return
+        
+        logger.info("🎯 开始更新ETF实时数据...")
+        
+        # 1. 读取ETF列表
+        etf_list_path = os.path.join(os.getcwd(), 'app', 'etf', 'ETF列表.csv')
+        if not os.path.exists(etf_list_path):
+            raise Exception(f"ETF列表文件不存在: {etf_list_path}")
+        
+        etf_codes_list = []
+        with open(etf_list_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                etf_codes_list.append({
+                    'code': row['symbol'],
+                    'name': row['name'],
+                    'ts_code': row['ts_code'],
+                    'market': row.get('market', 'ETF')
+                })
+        
+        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只")
+        
+        # 存储ETF代码列表到Redis
+        redis_cache.set_cache(ETF_KEYS['etf_codes'], etf_codes_list, ttl=86400)
+        
+        # 2. 获取实时数据
+        etf_service = get_etf_realtime_service()
+        result = etf_service.get_all_etfs_realtime()
+        
+        if not result.get('success'):
+            raise Exception(result.get('error', '获取ETF实时数据失败'))
+        
+        realtime_data = result.get('data', [])
+        data_source = result.get('source', 'unknown')
+        
+        logger.info(f"✅ 成功从 {data_source} 获取 {len(realtime_data)} 只ETF实时数据")
+        
+        # 3. 转换为字典格式（以code为key）
+        realtime_dict = {}
+        for etf in realtime_data:
+            code = etf.get('code')
+            if code:
+                realtime_dict[code] = etf
+        
+        # 4. 存储到Redis
+        redis_cache.set_cache(
+            ETF_KEYS['etf_realtime'],
+            {
+                'data': realtime_dict,
+                'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'source': data_source,
+                'count': len(realtime_dict)
+            },
+            ttl=3600  # 1小时过期
+        )
+        
+        # 5. 更新K线数据（如果有历史K线数据）
+        updated_kline_count = _merge_etf_realtime_to_kline(realtime_dict)
+        
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        logger.info(f"🎉 ETF实时数据更新完成: {len(realtime_dict)}只，K线更新: {updated_kline_count}只，耗时 {execution_time:.2f}秒")
+        
+        add_stock_job_log(
+            'update_etf_realtime',
+            'success',
+            f'ETF实时数据更新完成: {len(realtime_dict)}只，K线更新: {updated_kline_count}只',
+            len(realtime_dict),
+            execution_time
+        )
+        
+    except Exception as e:
+        execution_time = (datetime.now() - start_time).total_seconds()
+        error_msg = f'ETF实时数据更新失败: {str(e)}'
+        logger.error(error_msg)
+        logger.error(traceback.format_exc())
+        
+        add_stock_job_log('update_etf_realtime', 'failed', error_msg, 0, execution_time)
+
+
+def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
+    """
+    将ETF实时数据合并到K线数据
+    
+    Args:
+        realtime_dict: 实时数据字典 {code: data}
+        
+    Returns:
+        更新的ETF数量
+    """
+    updated_count = 0
+    skipped_no_kline = 0
+    
+    try:
+        logger.info(f"📊 开始合并ETF实时数据到K线，共 {len(realtime_dict)} 只ETF")
+        
+        for code, etf_data in realtime_dict.items():
+            try:
+                # 构造ts_code
+                if code.startswith('5'):  # 上海ETF
+                    ts_code = f"{code}.SH"
+                else:  # 深圳ETF
+                    ts_code = f"{code}.SZ"
+                
+                # 获取K线数据
+                kline_key = ETF_KEYS['etf_kline'].format(ts_code)
+                kline_data = redis_cache.get_cache(kline_key)
+                
+                if not kline_data or not isinstance(kline_data, list) or len(kline_data) == 0:
+                    skipped_no_kline += 1
+                    continue
+                
+                # 获取最后一条K线
+                last_kline = kline_data[-1]
+                today = datetime.now().strftime('%Y-%m-%d')
+                
+                # 如果最后一条是今天的，更新它
+                if last_kline.get('date', '').startswith(today):
+                    last_kline['close'] = etf_data.get('price', last_kline.get('close', 0))
+                    last_kline['high'] = max(
+                        last_kline.get('high', 0),
+                        etf_data.get('high', 0),
+                        etf_data.get('price', 0)
+                    )
+                    last_kline['low'] = min(
+                        last_kline.get('low', 999999),
+                        etf_data.get('low', 999999),
+                        etf_data.get('price', 999999)
+                    ) if last_kline.get('low', 0) > 0 else etf_data.get('low', 0)
+                    last_kline['volume'] = etf_data.get('volume', last_kline.get('volume', 0))
+                    last_kline['amount'] = etf_data.get('amount', last_kline.get('amount', 0))
+                    last_kline['turnover_rate'] = etf_data.get('turnover_rate', last_kline.get('turnover_rate', 0))
+                    
+                    # 保存更新后的K线数据
+                    redis_cache.set_cache(kline_key, kline_data, ttl=86400)
+                    updated_count += 1
+                else:
+                    # 如果最后一条不是今天的，创建新的K线
+                    new_kline = {
+                        'date': today,
+                        'open': etf_data.get('open', etf_data.get('price', 0)),
+                        'close': etf_data.get('price', 0),
+                        'high': etf_data.get('high', etf_data.get('price', 0)),
+                        'low': etf_data.get('low', etf_data.get('price', 0)),
+                        'volume': etf_data.get('volume', 0),
+                        'amount': etf_data.get('amount', 0),
+                        'turnover_rate': etf_data.get('turnover_rate', 0),
+                        'change': etf_data.get('change', 0),
+                        'pct_chg': etf_data.get('change_percent', 0)
+                    }
+                    kline_data.append(new_kline)
+                    
+                    # 保持最多1000条K线
+                    if len(kline_data) > 1000:
+                        kline_data = kline_data[-1000:]
+                    
+                    redis_cache.set_cache(kline_key, kline_data, ttl=86400)
+                    updated_count += 1
+                    
+            except Exception as e:
+                logger.warning(f"合并ETF {code} 实时数据失败: {e}")
+                continue
+        
+        logger.info(f"📊 ETF K线合并完成: 成功更新 {updated_count} 只，跳过（无K线数据）{skipped_no_kline} 只")
+        
+        if skipped_no_kline > 0:
+            logger.warning(f"⚠️  有 {skipped_no_kline} 只ETF没有K线数据，请先初始化历史数据")
+        
+    except Exception as e:
+        logger.error(f"合并ETF实时数据到K线失败: {e}")
+        logger.error(traceback.format_exc())
+    
+    return updated_count
+
+
+def init_etf_kline_data():
+    """
+    初始化ETF历史K线数据
+    从akshare获取历史数据并存储到Redis
+    """
+    import csv
+    import os
+    
+    start_time = datetime.now()
+    
+    try:
+        logger.info("🚀 开始初始化ETF历史K线数据...")
+        
+        # 1. 读取ETF列表
+        etf_list_path = os.path.join(os.getcwd(), 'app', 'etf', 'ETF列表.csv')
+        if not os.path.exists(etf_list_path):
+            raise Exception(f"ETF列表文件不存在: {etf_list_path}")
+        
+        etf_codes_list = []
+        with open(etf_list_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                etf_codes_list.append({
+                    'code': row['symbol'],
+                    'name': row['name'],
+                    'ts_code': row['ts_code'],
+                })
+        
+        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只")
+        
+        success_count = 0
+        failed_count = 0
+        
+        # 2. 逐个获取历史数据
+        for idx, etf_info in enumerate(etf_codes_list, 1):
+            try:
+                code = etf_info['code']
+                ts_code = etf_info['ts_code']
+                name = etf_info['name']
+                
+                logger.info(f"[{idx}/{len(etf_codes_list)}] 获取 {name}({code}) 历史数据...")
+                
+                # 获取历史数据（最近1年）
+                end_date = datetime.now().strftime('%Y%m%d')
+                start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
+                
+                # 使用akshare获取ETF历史数据
+                df = ak.fund_etf_hist_em(
+                    symbol=code,
+                    period="daily",
+                    start_date=start_date,
+                    end_date=end_date,
+                    adjust="qfq"
+                )
+                
+                if df.empty:
+                    logger.warning(f"  {name}({code}) 无历史数据")
+                    failed_count += 1
+                    continue
+                
+                # 转换数据格式
+                kline_data = []
+                for _, row in df.iterrows():
+                    kline_item = {
+                        'date': row['日期'],
+                        'open': float(row['开盘']),
+                        'close': float(row['收盘']),
+                        'high': float(row['最高']),
+                        'low': float(row['最低']),
+                        'volume': float(row['成交量']),
+                        'amount': float(row['成交额']) if '成交额' in row else 0,
+                        'turnover_rate': float(row['换手率']) if '换手率' in row else 0,
+                        'change': float(row['涨跌额']) if '涨跌额' in row else 0,
+                        'pct_chg': float(row['涨跌幅']) if '涨跌幅' in row else 0
+                    }
+                    kline_data.append(kline_item)
+                
+                # 存储到Redis
+                kline_key = ETF_KEYS['etf_kline'].format(ts_code)
+                redis_cache.set_cache(kline_key, kline_data, ttl=86400)
+                
+                success_count += 1
+                logger.info(f"  ✅ {name}({code}) 成功: {len(kline_data)} 条K线")
+                
+                # 限流：每次请求后等待
+                time.sleep(random.uniform(0.5, 1.5))
+                
+            except Exception as e:
+                failed_count += 1
+                logger.error(f"  ❌ {etf_info.get('name')}({etf_info.get('code')}) 失败: {e}")
+                continue
+        
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        logger.info(f"🎉 ETF历史数据初始化完成: 成功 {success_count} 只，失败 {failed_count} 只，耗时 {execution_time:.2f}秒")
+        
+        add_stock_job_log(
+            'init_etf_kline',
+            'success',
+            f'ETF历史数据初始化完成: 成功 {success_count} 只，失败 {failed_count} 只',
+            success_count,
+            execution_time
+        )
+        
+        return {
+            'success': True,
+            'message': f'ETF历史数据初始化完成',
+            'data': {
+                'success_count': success_count,
+                'failed_count': failed_count,
+                'total': len(etf_codes_list),
+                'execution_time': execution_time
+            }
+        }
+        
+    except Exception as e:
+        execution_time = (datetime.now() - start_time).total_seconds()
+        error_msg = f'ETF历史数据初始化失败: {str(e)}'
+        logger.error(error_msg)
+        logger.error(traceback.format_exc())
+        
+        add_stock_job_log('init_etf_kline', 'failed', error_msg, 0, execution_time)
         
         return {
             'success': False,
