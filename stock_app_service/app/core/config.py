@@ -92,12 +92,12 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # 实时行情配置（股票）
 REALTIME_DATA_PROVIDER = os.getenv("REALTIME_DATA_PROVIDER", "eastmoney")  # eastmoney, sina, auto
-REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "20"))  # 实时更新周期，单位：分钟
+REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "20"))  # 股票实时更新周期，单位：分钟
 REALTIME_AUTO_SWITCH = os.getenv("REALTIME_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # 数据源自动切换
 
 # ETF实时行情配置
 ETF_REALTIME_PROVIDER = os.getenv("ETF_REALTIME_PROVIDER", "eastmoney")  # eastmoney, sina, auto
-ETF_UPDATE_INTERVAL = int(os.getenv("ETF_UPDATE_INTERVAL", "60"))  # ETF更新周期，单位：分钟（默认1小时）
+ETF_UPDATE_INTERVAL = int(os.getenv("ETF_UPDATE_INTERVAL", "30"))  # ETF更新周期，单位：分钟（默认30分钟）
 ETF_AUTO_SWITCH = os.getenv("ETF_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # ETF数据源自动切换
 ETF_RETRY_TIMES = int(os.getenv("ETF_RETRY_TIMES", "2"))  # ETF请求重试次数
 ETF_MIN_REQUEST_INTERVAL = float(os.getenv("ETF_MIN_REQUEST_INTERVAL", "3.0"))  # ETF最小请求间隔（秒）

@@ -1114,7 +1114,7 @@ def start_stock_scheduler():
             replace_existing=True
         )
         
-        # 3. 实时数据更新任务 - 交易时间内每20分钟执行（包含收盘后20分钟）
+        # 3. 实时数据更新任务 - 交易时间内每20分钟执行（9:00-15:00，共9次）
         # 使用非阻塞的后台线程执行，避免阻塞API服务
         def non_blocking_realtime_update():
             """非阻塞的实时数据更新"""
@@ -1126,7 +1126,7 @@ def start_stock_scheduler():
             func=non_blocking_realtime_update,
             trigger=CronTrigger(minute='0,20,40', second=0, hour='9-11,13-15', day_of_week='mon-fri'),
             id='realtime_data_update',
-            name='实时数据更新+信号计算（非阻塞）',
+            name='股票实时数据更新（每20分钟）',
             replace_existing=True
         )
         
@@ -1135,7 +1135,7 @@ def start_stock_scheduler():
         # 删除原有的17:35最终信号计算任务，因为实时更新已延长到15:20
         # 在K线全量更新后会自动触发信号计算
         
-        # 4. ETF实时数据更新任务 - 交易时间内每60分钟执行（9:30-15:30）
+        # 4. ETF实时数据更新任务 - 交易时间内每30分钟执行（启动后开始，自动间隔）
         # 使用非阻塞的后台线程执行
         def non_blocking_etf_update():
             """非阻塞的ETF实时数据更新"""
@@ -1145,9 +1145,9 @@ def start_stock_scheduler():
             
         scheduler.add_job(
             func=non_blocking_etf_update,
-            trigger=IntervalTrigger(minutes=settings.ETF_UPDATE_INTERVAL),  # 默认60分钟
+            trigger=IntervalTrigger(minutes=settings.ETF_UPDATE_INTERVAL),  # 默认30分钟
             id='etf_realtime_update',
-            name='ETF实时数据更新（非阻塞）',
+            name='ETF实时数据更新（每30分钟）',
             replace_existing=True
         )
         
@@ -1159,11 +1159,9 @@ def start_stock_scheduler():
         logger.info("=" * 70)
         logger.info("定时任务配置:")
         logger.info("  • K线数据刷新: 每个交易日17:30 (自动触发信号计算)")
-        logger.info("  • 实时数据更新: 交易时间内每20分钟 (9:00-11:30, 13:00-15:20)")
-        logger.info(f"  • ETF实时更新: 每{settings.ETF_UPDATE_INTERVAL}分钟 (交易时间内)")
-        logger.info("  • 已删除: 15:05收盘数据更新任务（实时更新已覆盖）")
-        logger.info("  • 重要改进: 实时更新延长到15:20，确保收盘价格被捕获")
-        logger.info("  • 已删除: 17:35最终信号计算任务")
+        logger.info("  • 股票实时更新: 交易时间内每20分钟 (9:00, 9:20, 9:40 ... 15:00)")
+        logger.info(f"  • ETF实时更新: 每{settings.ETF_UPDATE_INTERVAL}分钟 (交易日内持续)")
+        logger.info("  • 优化说明: 股票20分钟、ETF30分钟更新，平衡时效性与性能")
         logger.info("")
         logger.info("已注册的定时任务:")
         jobs = scheduler.get_jobs()
@@ -1437,38 +1435,55 @@ def update_etf_realtime_data(force_update=False):
         # 存储ETF代码列表到Redis
         redis_cache.set_cache(ETF_KEYS['etf_codes'], etf_codes_list, ttl=86400)
         
-        # 2. 获取实时数据
+        # 2. 获取实时数据（仅获取CSV中的ETF）
         etf_service = get_etf_realtime_service()
         result = etf_service.get_all_etfs_realtime()
         
         if not result.get('success'):
             raise Exception(result.get('error', '获取ETF实时数据失败'))
         
-        realtime_data = result.get('data', [])
+        all_realtime_data = result.get('data', [])
         data_source = result.get('source', 'unknown')
         
-        logger.info(f"✅ 成功从 {data_source} 获取 {len(realtime_data)} 只ETF实时数据")
+        logger.info(f"✅ 成功从 {data_source} 获取 {len(all_realtime_data)} 只ETF实时数据")
         
-        # 3. 转换为字典格式（以code为key）
+        # 3. 过滤出CSV中监控的ETF（以code为key）
+        # 构建CSV中的ETF代码集合
+        monitored_codes = {etf['code'] for etf in etf_codes_list}
+        
+        # 显示CSV中的示例代码
+        sample_monitored = list(monitored_codes)[:5]
+        logger.info(f"📋 CSV中监控的ETF示例代码: {sample_monitored}")
+        
         realtime_dict = {}
-        for etf in realtime_data:
+        matched_codes = []
+        for etf in all_realtime_data:
             code = etf.get('code')
-            if code:
+            # 只保留CSV中监控的ETF
+            if code and code in monitored_codes:
                 realtime_dict[code] = etf
+                if len(matched_codes) < 5:
+                    matched_codes.append(code)
         
-        # 4. 存储到Redis
+        logger.info(f"📋 过滤后监控的ETF数量: {len(realtime_dict)}/{len(all_realtime_data)}")
+        if matched_codes:
+            logger.info(f"📋 匹配到的示例代码: {matched_codes}")
+        
+        # 4. 存储到Redis（只存储监控的ETF）
         redis_cache.set_cache(
             ETF_KEYS['etf_realtime'],
             {
                 'data': realtime_dict,
                 'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'source': data_source,
-                'count': len(realtime_dict)
+                'count': len(realtime_dict),
+                'monitored_count': len(monitored_codes),
+                'total_count': len(all_realtime_data)
             },
             ttl=3600  # 1小时过期
         )
         
-        # 5. 更新K线数据（如果有历史K线数据）
+        # 5. 更新K线数据（只更新监控的ETF）
         updated_kline_count = _merge_etf_realtime_to_kline(realtime_dict)
         
         execution_time = (datetime.now() - start_time).total_seconds()

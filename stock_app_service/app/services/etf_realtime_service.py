@@ -312,7 +312,7 @@ class ETFRealtimeService:
         for _, row in df.iterrows():
             try:
                 # 新浪接口的代码格式可能是 "sz159949" 或 "sh510050" 等
-                raw_code = str(row.get('代码', ''))
+                raw_code = str(row.get('代码', '')).strip().lower()
                 
                 # 清理代码格式：去除前缀（sh、sz等）
                 code = raw_code
@@ -320,11 +320,15 @@ class ETFRealtimeService:
                     code = raw_code[2:]
                 elif raw_code.startswith('sz'):
                     code = raw_code[2:]
+                elif raw_code.startswith('bj'):
+                    code = raw_code[2:]
                 
                 # 确保代码是6位数字
                 if not code or len(code) != 6 or not code.isdigit():
                     logger.debug(f"跳过无效ETF代码: {raw_code} -> {code}")
                     continue
+                
+                logger.debug(f"新浪ETF代码转换: {row.get('代码', '')} -> {code}")
                 
                 # 新浪接口的字段名
                 etf_item = {
@@ -349,6 +353,12 @@ class ETFRealtimeService:
             except Exception as e:
                 logger.warning(f"解析新浪财经ETF数据行失败: {e}, row: {row.to_dict()}")
                 continue
+        
+        logger.info(f"新浪财经ETF数据解析完成: 共 {len(etf_data)} 只")
+        if len(etf_data) > 0:
+            # 显示前3个ETF代码供调试
+            sample_codes = [etf['code'] for etf in etf_data[:3]]
+            logger.info(f"新浪ETF示例代码: {sample_codes}")
         
         return {
             'success': True,

@@ -4,6 +4,11 @@ services:
     build: .
     container_name: stock_app_api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     environment:
       - TZ=Asia/Shanghai
       - REDIS_HOST=redis
@@ -20,11 +25,11 @@ services:
       - BACKGROUND_TASK_PRIORITY=low
       # 实时行情配置（股票）
       - REALTIME_DATA_PROVIDER=auto
-      - REALTIME_UPDATE_INTERVAL=15
+      - REALTIME_UPDATE_INTERVAL=20
       - REALTIME_AUTO_SWITCH=true
       # ETF实时行情配置
       - ETF_REALTIME_PROVIDER=eastmoney
-      - ETF_UPDATE_INTERVAL=60
+      - ETF_UPDATE_INTERVAL=30
       - ETF_AUTO_SWITCH=true
       - ETF_RETRY_TIMES=2
       - ETF_MIN_REQUEST_INTERVAL=3.0
@@ -38,6 +43,11 @@ services:
   redis:
     image: redis:latest
     container_name: stock_app_redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
