@@ -1523,6 +1523,9 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
     try:
         logger.info(f"📊 开始合并ETF实时数据到K线，共 {len(realtime_dict)} 只ETF")
         
+        # 调试：显示前3个ETF的key构造过程
+        debug_count = 0
+        
         for code, etf_data in realtime_dict.items():
             try:
                 # 构造ts_code
@@ -1534,6 +1537,13 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                 # 获取K线数据
                 kline_key = ETF_KEYS['etf_kline'].format(ts_code)
                 kline_data = redis_cache.get_cache(kline_key)
+                
+                # 调试：显示前3个ETF的详细信息
+                if debug_count < 3:
+                    logger.info(f"  调试 [{debug_count+1}] code={code}, ts_code={ts_code}, kline_key={kline_key}, "
+                               f"has_data={kline_data is not None}, "
+                               f"data_len={len(kline_data) if kline_data else 0}")
+                    debug_count += 1
                 
                 if not kline_data or not isinstance(kline_data, list) or len(kline_data) == 0:
                     skipped_no_kline += 1
@@ -1560,8 +1570,8 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                     last_kline['amount'] = etf_data.get('amount', last_kline.get('amount', 0))
                     last_kline['turnover_rate'] = etf_data.get('turnover_rate', last_kline.get('turnover_rate', 0))
                     
-                    # 保存更新后的K线数据
-                    redis_cache.set_cache(kline_key, kline_data, ttl=86400)
+                    # 保存更新后的K线数据（TTL设为7天）
+                    redis_cache.set_cache(kline_key, kline_data, ttl=604800)
                     updated_count += 1
                 else:
                     # 如果最后一条不是今天的，创建新的K线
@@ -1583,7 +1593,7 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                     if len(kline_data) > 1000:
                         kline_data = kline_data[-1000:]
                     
-                    redis_cache.set_cache(kline_key, kline_data, ttl=86400)
+                    redis_cache.set_cache(kline_key, kline_data, ttl=604800)
                     updated_count += 1
                     
             except Exception as e:
@@ -1648,46 +1658,64 @@ def init_etf_kline_data():
                 end_date = datetime.now().strftime('%Y%m%d')
                 start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
                 
-                # 使用akshare获取ETF历史数据
-                df = ak.fund_etf_hist_em(
-                    symbol=code,
-                    period="daily",
+                # 使用tushare获取ETF历史数据
+                import tushare as ts
+                pro = ts.pro_api()
+                
+                df = pro.fund_daily(
+                    ts_code=ts_code,
                     start_date=start_date,
-                    end_date=end_date,
-                    adjust="qfq"
+                    end_date=end_date
                 )
+                
+                # tushare返回的数据需要按日期排序（从旧到新）
+                if not df.empty:
+                    df = df.sort_values('trade_date')
                 
                 if df.empty:
                     logger.warning(f"  {name}({code}) 无历史数据")
                     failed_count += 1
                     continue
                 
-                # 转换数据格式
+                # 转换数据格式（tushare字段）
+                import pandas as pd
                 kline_data = []
                 for _, row in df.iterrows():
+                    # tushare日期格式：20241028 -> 2024-10-28
+                    date_str = str(row['trade_date'])
+                    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+                    
                     kline_item = {
-                        'date': row['日期'],
-                        'open': float(row['开盘']),
-                        'close': float(row['收盘']),
-                        'high': float(row['最高']),
-                        'low': float(row['最低']),
-                        'volume': float(row['成交量']),
-                        'amount': float(row['成交额']) if '成交额' in row else 0,
-                        'turnover_rate': float(row['换手率']) if '换手率' in row else 0,
-                        'change': float(row['涨跌额']) if '涨跌额' in row else 0,
-                        'pct_chg': float(row['涨跌幅']) if '涨跌幅' in row else 0
+                        'date': formatted_date,
+                        'open': float(row['open']) if pd.notna(row['open']) else 0.0,
+                        'close': float(row['close']) if pd.notna(row['close']) else 0.0,
+                        'high': float(row['high']) if pd.notna(row['high']) else 0.0,
+                        'low': float(row['low']) if pd.notna(row['low']) else 0.0,
+                        'volume': float(row['vol']) if pd.notna(row['vol']) else 0.0,  # tushare用vol
+                        'amount': float(row['amount']) if pd.notna(row['amount']) else 0.0,
+                        'turnover_rate': 0.0,  # tushare fund_daily没有换手率
+                        'change': 0.0,  # 需要计算
+                        'pct_chg': float(row['pct_chg']) if pd.notna(row['pct_chg']) else 0.0
                     }
                     kline_data.append(kline_item)
                 
-                # 存储到Redis
+                # 存储到Redis（TTL设为7天，避免频繁过期）
                 kline_key = ETF_KEYS['etf_kline'].format(ts_code)
-                redis_cache.set_cache(kline_key, kline_data, ttl=86400)
+                redis_cache.set_cache(kline_key, kline_data, ttl=604800)  # 7天 = 7*24*3600
                 
                 success_count += 1
-                logger.info(f"  ✅ {name}({code}) 成功: {len(kline_data)} 条K线")
+                # 前3个显示详细信息
+                if success_count <= 3:
+                    logger.info(f"  ✅ {name}({code}) 成功: {len(kline_data)} 条K线, ts_code={ts_code}, key={kline_key}")
+                else:
+                    logger.info(f"  ✅ {name}({code}) 成功: {len(kline_data)} 条K线")
                 
-                # 限流：每次请求后等待
-                time.sleep(random.uniform(0.5, 1.5))
+                # Tushare限流：
+                # - 普通用户：每分钟200次
+                # - 为了安全，设置为每次0.3-0.5秒（每分钟约120-200次）
+                import time as time_module
+                import random
+                time_module.sleep(random.uniform(0.3, 0.5))
                 
             except Exception as e:
                 failed_count += 1
