@@ -37,9 +37,9 @@ logger = logging.getLogger(__name__)
 class TushareRateLimiter:
     """Tushare API频率限制器 - 支持线程管理"""
     
-    def __init__(self, max_calls_per_minute=50, max_threads=5):
+    def __init__(self, max_calls_per_minute=480, max_threads=10):
         self.call_times = []  # 记录调用时间
-        self.max_calls_per_minute = max_calls_per_minute  # Tushare限制
+        self.max_calls_per_minute = max_calls_per_minute  # Tushare限制（2000积分=500次/分钟，设置480留余量）
         self.daily_limit_reached = False
         self.daily_limit_check_time = None
         self.lock = threading.Lock()
@@ -144,16 +144,16 @@ class StockDataManager:
     6. 系统启动检查: 在系统启动时检查数据完整性
     
     参数:
-        batch_size: 常规批处理大小，默认10
-        small_batch_size: 小批量处理大小，默认5
-        max_calls_per_minute: 每分钟最大API调用次数，默认200（2000积分）
-        max_threads: 最大并行线程数，默认5
+        batch_size: 常规批处理大小，默认20
+        small_batch_size: 小批量处理大小，默认10
+        max_calls_per_minute: 每分钟最大API调用次数，默认480（2000积分，留20次余量）
+        max_threads: 最大并行线程数，默认10
     """
     
-    def __init__(self, batch_size=10, small_batch_size=5, max_calls_per_minute=200, max_threads=None):
+    def __init__(self, batch_size=20, small_batch_size=10, max_calls_per_minute=480, max_threads=None):
         self.redis_client = None
         
-        # 单Token配置（2000积分，每分钟200次请求）
+        # 单Token配置（2000积分，每分钟500次请求，设置480次留余量）
         self.tushare_token = settings.TUSHARE_TOKEN
         
         # 初始化Tushare API
@@ -161,7 +161,7 @@ class StockDataManager:
             ts.set_token(self.tushare_token)
             self.pro = ts.pro_api()
             logger.info(f"初始化Tushare Token: {self.tushare_token[:20]}...")
-            logger.info(f"✅ Token已配置（2000积分，每分钟200次请求）")
+            logger.info(f"✅ Token已配置（2000积分，每分钟500次请求，设置480次留余量）")
         else:
             self.pro = None
             logger.warning("未配置Tushare Token")
@@ -176,7 +176,7 @@ class StockDataManager:
         if max_threads is None:
             max_threads = settings.MAX_THREADS if self.use_multithreading else 1
         
-        # 频率限制器（单Token，每分钟200次调用）
+        # 频率限制器（单Token，每分钟480次调用，留20次余量）
         self.rate_limiter = TushareRateLimiter(
             max_calls_per_minute=max_calls_per_minute, 
             max_threads=max_threads

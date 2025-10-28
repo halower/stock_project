@@ -62,15 +62,15 @@ if STOCK_INIT_MODE in _old_mode_mapping:
     STOCK_INIT_MODE = _old_mode_mapping[STOCK_INIT_MODE]
 
 # 股票数据获取多线程配置
-USE_MULTITHREADING = os.environ.get("USE_MULTITHREADING", "false").lower() in ("true", "1", "yes")
-MAX_THREADS = int(os.environ.get("MAX_THREADS", "5"))
+USE_MULTITHREADING = os.environ.get("USE_MULTITHREADING", "true").lower() in ("true", "1", "yes")
+MAX_THREADS = int(os.environ.get("MAX_THREADS", "10"))
 # 全局线程池大小 - 控制整个应用的总线程数
-GLOBAL_THREAD_POOL_SIZE = int(os.environ.get("GLOBAL_THREAD_POOL_SIZE", "5"))
+GLOBAL_THREAD_POOL_SIZE = int(os.environ.get("GLOBAL_THREAD_POOL_SIZE", "10"))
 
 # 后台任务配置 - 控制后台任务对API服务的影响
 BACKGROUND_TASK_PRIORITY = os.environ.get("BACKGROUND_TASK_PRIORITY", "low").lower()  # low, normal, high
 
-# 外部API配置 - 单个Token（2000积分，每分钟200次请求）
+# 外部API配置 - 单个Token（2000积分，每分钟500次请求，设置480次留余量）
 TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN", "76777e0e5682492c8d346030b5f6d7547b77dbab8ddab96d51ab8267")
 
 # AI分析配置
