@@ -1615,7 +1615,7 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
 def init_etf_kline_data():
     """
     初始化ETF历史K线数据
-    从akshare获取历史数据并存储到Redis
+    从tushare获取历史数据并存储到Redis
     """
     import csv
     import os

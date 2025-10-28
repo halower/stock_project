@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """数据源服务 - 处理不同数据源的股票历史数据获取"""
 
-import akshare as ak
 import tushare as ts
 import pandas as pd
 from typing import List, Dict, Any, Optional
@@ -23,58 +22,6 @@ except Exception as e:
     logger.warning(f"Tushare初始化失败: {str(e)}")
 
 
-def get_stock_history_akshare(stock_code: str, days: int = 120) -> List[Dict[str, Any]]:
-    """
-    通过akshare获取股票历史K线数据
-    
-    Args:
-        stock_code: 股票代码 (如: 000001)
-        days: 获取天数，默认120个交易日
-        
-    Returns:
-        历史数据列表
-    """
-    try:
-        logger.info(f"开始通过akshare获取股票 {stock_code} 的历史数据，天数: {days}")
-        
-        # 计算开始日期
-        end_date = datetime.now().strftime('%Y%m%d')
-        start_date = (datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d')  # 乘以2确保有足够的交易日
-        
-        # 使用akshare获取历史数据
-        df = ak.stock_zh_a_hist(symbol=stock_code, period="daily", start_date=start_date, end_date=end_date, adjust="")
-        
-        if df.empty:
-            logger.warning(f"akshare未获取到股票 {stock_code} 的历史数据")
-            return []
-        
-        # 只取最近的指定天数
-        df = df.tail(days)
-        
-        # 转换数据格式
-        history_data = []
-        for _, row in df.iterrows():
-            data = {
-                "日期": row["日期"],
-                "开盘": float(row["开盘"]),
-                "收盘": float(row["收盘"]),
-                "最高": float(row["最高"]),
-                "最低": float(row["最低"]),
-                "成交量": float(row["成交量"]) if pd.notna(row["成交量"]) else None,
-                "成交额": float(row["成交额"]) if pd.notna(row["成交额"]) else None,
-                "振幅": float(row["振幅"]) if "振幅" in row and pd.notna(row["振幅"]) else None,
-                "涨跌幅": float(row["涨跌幅"]) if "涨跌幅" in row and pd.notna(row["涨跌幅"]) else None,
-                "涨跌额": float(row["涨跌额"]) if "涨跌额" in row and pd.notna(row["涨跌额"]) else None,
-                "换手率": float(row["换手率"]) if "换手率" in row and pd.notna(row["换手率"]) else None,
-            }
-            history_data.append(data)
-        
-        logger.info(f"akshare成功获取股票 {stock_code} 的历史数据，共 {len(history_data)} 条")
-        return history_data
-        
-    except Exception as e:
-        logger.error(f"akshare获取股票 {stock_code} 历史数据失败: {str(e)}")
-        raise
 
 
 def get_stock_history_tushare(stock_code: str, days: int = 120) -> List[Dict[str, Any]]:
@@ -212,52 +159,6 @@ def save_stock_history_to_db(db: Session, stock_code: str, history_data: List[Di
         raise
 
 
-def fetch_and_save_akshare_history(db: Session, stock_code: str, days: int = 120, auto_delete_delisted: bool = True) -> Dict[str, Any]:
-    """
-    通过akshare获取股票历史数据并保存到数据库
-    
-    Args:
-        db: 数据库会话
-        stock_code: 股票代码
-        days: 获取天数
-        auto_delete_delisted: 是否自动删除退市股票（已废弃，保留参数但不再自动删除）
-        
-    Returns:
-        操作结果
-    """
-    try:
-        # 股票代码有效性校验
-        if not stock_code or not isinstance(stock_code, str) or stock_code.strip() == "":
-            logger.warning(f"股票代码无效，未进行任何操作: '{stock_code}'")
-            return {
-                "stock_code": stock_code,
-                "status": "invalid_code",
-                "message": "股票代码无效，未进行任何操作",
-                "data_source": "akshare"
-            }
-        # 获取历史数据
-        history_data = get_stock_history_akshare(stock_code, days)
-        
-        if not history_data:
-            logger.warning(f"akshare未获取到股票 {stock_code} 的历史数据，不做删除，仅返回警告")
-            return {
-                "stock_code": stock_code,
-                "status": "no_data",
-                "message": "未获取到历史数据，不做删除操作",
-                "data_source": "akshare"
-            }
-        # 保存到数据库
-        result = save_stock_history_to_db(db, stock_code, history_data)
-        result["data_source"] = "akshare"
-        return result
-    except Exception as e:
-        logger.error(f"akshare获取并保存股票 {stock_code} 历史数据失败: {str(e)}")
-        return {
-            "stock_code": stock_code,
-            "status": "error",
-            "message": str(e),
-            "data_source": "akshare"
-        }
 
 
 def fetch_and_save_tushare_history(db: Session, stock_code: str, days: int = 120, auto_delete_delisted: bool = True) -> Dict[str, Any]:

@@ -5,7 +5,6 @@
 """
 
 import tushare as ts
-import akshare as ak
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
@@ -22,87 +21,40 @@ redis_cache = RedisCache()
 def get_stock_names() -> Dict[str, Any]:
     """
     获取股票代码和名称列表
-    优先使用Tushare，失败时使用AKShare
+    使用Tushare
     """
     try:
         logger.info("开始获取股票代码列表...")
         
-        # 尝试使用Tushare获取
-        try:
-            pro = ts.pro_api()
-            df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market')
+        pro = ts.pro_api()
+        df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market')
+        
+        if not df.empty:
+            stock_list = []
+            for _, row in df.iterrows():
+                stock_list.append({
+                    'ts_code': row['ts_code'],
+                    'symbol': row['symbol'],
+                    'name': row['name'],
+                    'area': row['area'] if pd.notna(row['area']) else '',
+                    'industry': row['industry'] if pd.notna(row['industry']) else '',
+                    'market': row['market'] if pd.notna(row['market']) else ''
+                })
             
-            if not df.empty:
-                stock_list = []
-                for _, row in df.iterrows():
-                    stock_list.append({
-                        'ts_code': row['ts_code'],
-                        'symbol': row['symbol'],
-                        'name': row['name'],
-                        'area': row['area'] if pd.notna(row['area']) else '',
-                        'industry': row['industry'] if pd.notna(row['industry']) else '',
-                        'market': row['market'] if pd.notna(row['market']) else ''
-                    })
+            logger.info(f"Tushare成功获取 {len(stock_list)} 只股票代码")
+            return {
+                'success': True,
+                'data': stock_list,
+                'count': len(stock_list),
+                'source': 'tushare'
+            }
+        else:
+            return {
+                'error': '未获取到股票代码数据'
+            }
                 
-                logger.info(f"Tushare成功获取 {len(stock_list)} 只股票代码")
-                return {
-                    'success': True,
-                    'data': stock_list,
-                    'count': len(stock_list),
-                    'source': 'tushare'
-                }
-                
-        except Exception as e:
-            logger.warning(f"Tushare获取股票代码失败: {str(e)}")
-        
-        # 备用方案：使用AKShare获取
-        try:
-            logger.info("使用AKShare获取股票代码...")
-            df = ak.stock_info_a_code_name()
-            
-            if not df.empty:
-                stock_list = []
-                for _, row in df.iterrows():
-                    code = row['code']
-                    name = row['name']
-                    
-                    # 判断交易所
-                    if code.startswith('6'):
-                        ts_code = f"{code}.SH"
-                        market = 'SH'
-                    elif code.startswith(('43', '83', '87', '88')):
-                        ts_code = f"{code}.BJ"
-                        market = 'BJ'
-                    else:
-                        ts_code = f"{code}.SZ"
-                        market = 'SZ'
-                    
-                    stock_list.append({
-                        'ts_code': ts_code,
-                        'symbol': code,
-                        'name': name,
-                        'area': '',
-                        'industry': '',
-                        'market': market
-                    })
-                
-                logger.info(f"AKShare成功获取 {len(stock_list)} 只股票代码")
-                return {
-                    'success': True,
-                    'data': stock_list,
-                    'count': len(stock_list),
-                    'source': 'akshare'
-                }
-                
-        except Exception as e:
-            logger.error(f"AKShare获取股票代码也失败: {str(e)}")
-        
-        return {
-            'error': '所有数据源都无法获取股票代码'
-        }
-        
     except Exception as e:
-        logger.error(f"获取股票代码异常: {str(e)}")
+        logger.error(f"Tushare获取股票代码失败: {str(e)}")
         return {
             'error': str(e)
         }
@@ -110,43 +62,26 @@ def get_stock_names() -> Dict[str, Any]:
 def get_stock_history(stock_code: str, days: int = 120) -> Dict[str, Any]:
     """
     获取股票历史数据
-    优先使用Tushare，失败时使用AKShare
+    使用Tushare
     """
     try:
         logger.info(f"开始获取股票 {stock_code} 的历史数据，天数: {days}")
         
-        # 尝试使用Tushare获取
-        try:
-            history_data = get_stock_history_tushare(stock_code, days)
-            if history_data:
-                return {
-                    'success': True,
-                    'data': history_data,
-                    'count': len(history_data),
-                    'source': 'tushare'
-                }
-        except Exception as e:
-            logger.warning(f"Tushare获取历史数据失败: {str(e)}")
-        
-        # 备用方案：使用AKShare获取
-        try:
-            history_data = get_stock_history_akshare(stock_code, days)
-            if history_data:
-                return {
-                    'success': True,
-                    'data': history_data,
-                    'count': len(history_data),
-                    'source': 'akshare'
-                }
-        except Exception as e:
-            logger.error(f"AKShare获取历史数据也失败: {str(e)}")
-        
-        return {
-            'error': f'无法获取股票 {stock_code} 的历史数据'
-        }
+        history_data = get_stock_history_tushare(stock_code, days)
+        if history_data:
+            return {
+                'success': True,
+                'data': history_data,
+                'count': len(history_data),
+                'source': 'tushare'
+            }
+        else:
+            return {
+                'error': f'未获取到股票 {stock_code} 的历史数据'
+            }
         
     except Exception as e:
-        logger.error(f"获取股票历史数据异常: {str(e)}")
+        logger.error(f"获取股票历史数据失败: {str(e)}")
         return {
             'error': str(e)
         }
@@ -215,45 +150,6 @@ def get_stock_history_tushare(stock_code: str, days: int = 120) -> List[Dict[str
         logger.error(f"Tushare获取股票 {stock_code} 历史数据失败: {str(e)}")
         raise
 
-def get_stock_history_akshare(stock_code: str, days: int = 120) -> List[Dict[str, Any]]:
-    """
-    通过AKShare获取股票历史数据
-    """
-    try:
-        # 计算日期范围
-        end_date = datetime.now().strftime('%Y%m%d')
-        start_date = (datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d')
-        
-        # 使用akshare获取历史数据
-        df = ak.stock_zh_a_hist(symbol=stock_code, period="daily", start_date=start_date, end_date=end_date, adjust="")
-        
-        if df.empty:
-            return []
-        
-        # 只取最近的指定天数
-        df = df.tail(days)
-        
-        # 转换数据格式
-        history_data = []
-        for _, row in df.iterrows():
-            data = {
-                "date": row["日期"].strftime('%Y-%m-%d') if pd.notna(row["日期"]) else '',
-                "open": float(row["开盘"]),
-                "close": float(row["收盘"]),
-                "high": float(row["最高"]),
-                "low": float(row["最低"]),
-                "volume": float(row["成交量"]) if pd.notna(row["成交量"]) else 0,
-                "amount": float(row["成交额"]) if pd.notna(row["成交额"]) else 0,
-                "pct_chg": float(row["涨跌幅"]) if "涨跌幅" in row and pd.notna(row["涨跌幅"]) else 0,
-                "change": float(row["涨跌额"]) if "涨跌额" in row and pd.notna(row["涨跌额"]) else 0,
-            }
-            history_data.append(data)
-        
-        return history_data
-        
-    except Exception as e:
-        logger.error(f"AKShare获取股票 {stock_code} 历史数据失败: {str(e)}")
-        raise
 
 def get_realtime_stock_data(stock_code: str, provider: str = None) -> Dict[str, Any]:
     """
@@ -330,16 +226,6 @@ def get_realtime_stock_data(stock_code: str, provider: str = None) -> Dict[str, 
             }
         }
 
-def get_realtime_data_akshare(stock_code: str) -> Dict[str, Any]:
-    """
-    通过AKShare获取股票实时数据（已废弃，保留用于向后兼容）
-    建议使用 get_realtime_stock_data() 或直接使用 realtime_service
-    """
-    logger.warning("get_realtime_data_akshare() 已废弃，建议使用 get_realtime_stock_data()")
-    result = get_realtime_stock_data(stock_code, provider='eastmoney')
-    if result.get('success'):
-        return result.get('data')
-    return None
 
 def store_stock_data_to_redis(key: str, data: Any, ttl: int = None) -> bool:
     """
