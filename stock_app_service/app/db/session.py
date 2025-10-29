@@ -159,43 +159,7 @@ def get_redis_db():
         logger.error(f"获取Redis存储失败: {e}")
         return None
 
-# 临时兼容性函数，用于向后兼容
+# 兼容性函数 - 返回Redis存储实例
 def get_db():
-    """临时兼容性函数 - 返回Redis存储实例"""
-    logger.warning("get_db函数已废弃，请使用get_redis_db")
-    return get_redis_db()
-
-# 临时兼容性支持 - 为尚未迁移到Redis的代码提供Base类
-# TODO: 完全迁移到Redis后可以移除这部分代码
-try:
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    
-    # 创建临时的SQLAlchemy Base类
-    Base = declarative_base()
-    
-    # 如果需要数据库引擎（用于兼容性）
-    def get_legacy_engine():
-        """临时兼容性函数 - 获取SQLAlchemy引擎"""
-        logger.warning("使用了已废弃的SQLAlchemy引擎，请迁移到Redis存储")
-        return None
-    
-    def get_legacy_session():
-        """临时兼容性函数 - 获取SQLAlchemy会话"""
-        logger.warning("使用了已废弃的SQLAlchemy会话，请迁移到Redis存储")
-        return None
-        
-    logger.info("SQLAlchemy兼容性模块已加载（临时支持）")
-    
-except ImportError:
-    logger.warning("SQLAlchemy未安装，跳过兼容性支持")
-    # 创建一个虚拟Base类以避免导入错误
-    class Base:
-        """虚拟Base类 - 用于避免导入错误"""
-        metadata = None
-        
-        @classmethod
-        def __init_subclass__(cls, **kwargs):
-            logger.warning(f"类 {cls.__name__} 继承了虚拟Base，请迁移到Redis数据类")
-            super().__init_subclass__(**kwargs) 
+    """兼容性函数 - 返回Redis存储实例"""
+    return get_redis_db() 

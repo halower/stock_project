@@ -35,22 +35,14 @@ from app.core.thread_pool import global_thread_pool
 logger = logging.getLogger(__name__)
 
 class TushareRateLimiter:
-    """Tushare API频率限制器 - 支持线程管理"""
+    """Tushare API频率限制器 - 纯异步IO模式"""
     
-    def __init__(self, max_calls_per_minute=480, max_threads=10):
+    def __init__(self, max_calls_per_minute=480):
         self.call_times = []  # 记录调用时间
         self.max_calls_per_minute = max_calls_per_minute  # Tushare限制（2000积分=500次/分钟，设置480留余量）
         self.daily_limit_reached = False
         self.daily_limit_check_time = None
         self.lock = threading.Lock()
-        
-        # 线程管理
-        self.active_threads = 0
-        self.max_threads = max_threads  # 最大并行线程数
-        self.thread_semaphore = asyncio.Semaphore(self.max_threads)
-        self.suspended_threads = {}  # 暂停的线程
-        self.resume_event = threading.Event()  # 恢复事件
-        self.resume_event.set()  # 初始状态为可执行
         
     def _record_call(self):
         """记录API调用"""
@@ -72,49 +64,16 @@ class TushareRateLimiter:
             # 检查是否超过限制
             return len(self.call_times) >= self.max_calls_per_minute
     
-    async def acquire_thread(self):
-        """获取线程资源"""
-        await self.thread_semaphore.acquire()
-        with self.lock:
-            self.active_threads += 1
-        return self.active_threads
-        
-    def release_thread(self):
-        """释放线程资源"""
-        with self.lock:
-            if self.active_threads > 0:
-                self.active_threads -= 1
-        self.thread_semaphore.release()
-    
-    async def wait_for_rate_limit(self, thread_id: str = None):
-        """等待频率限制解除 - 支持线程暂停"""
+    async def wait_for_rate_limit(self):
+        """等待频率限制解除 - 纯异步模式"""
         if self._check_rate_limit():
-            thread_info = f"[{thread_id}] " if thread_id else ""
-            logger.warning(f"{thread_info}触发Tushare频率限制，暂停所有线程...")
-            
-            # 暂停所有线程
-            self.resume_event.clear()
-            
-            if thread_id:
-                self.suspended_threads[thread_id] = time_module.time()
-                logger.info(f"线程 {thread_id} 已暂停")
-            
             # 计算等待时间（到下一分钟开始）
             wait_seconds = 60 - (time_module.time() % 60) + 1
-            logger.info(f"{thread_info}等待 {wait_seconds:.1f} 秒后恢复所有线程...")
+            logger.warning(f"触发Tushare频率限制，等待 {wait_seconds:.1f} 秒...")
             
             await asyncio.sleep(wait_seconds)
             
-            # 恢复所有线程
-            self.resume_event.set()
-            
-            # 清理暂停记录
-            if thread_id and thread_id in self.suspended_threads:
-                suspend_duration = time_module.time() - self.suspended_threads[thread_id]
-                logger.info(f"线程 {thread_id} 已恢复，暂停时长 {suspend_duration:.1f} 秒")
-                del self.suspended_threads[thread_id]
-            
-            logger.info("所有线程已恢复，继续数据获取...")
+            logger.info("频率限制解除，继续数据获取...")
     
     def handle_daily_limit_error(self, ts_code: str, days: int):
         """处理每日限制错误"""
@@ -144,13 +103,12 @@ class StockDataManager:
     6. 系统启动检查: 在系统启动时检查数据完整性
     
     参数:
-        batch_size: 常规批处理大小，默认20
-        small_batch_size: 小批量处理大小，默认10
+        batch_size: 常规批处理大小，默认30
+        small_batch_size: 小批量处理大小，默认15
         max_calls_per_minute: 每分钟最大API调用次数，默认480（2000积分，留20次余量）
-        max_threads: 最大并行线程数，默认10
     """
     
-    def __init__(self, batch_size=20, small_batch_size=10, max_calls_per_minute=480, max_threads=None):
+    def __init__(self, batch_size=30, small_batch_size=15, max_calls_per_minute=480):
         self.redis_client = None
         
         # 单Token配置（2000积分，每分钟500次请求，设置480次留余量）
@@ -161,7 +119,7 @@ class StockDataManager:
             ts.set_token(self.tushare_token)
             self.pro = ts.pro_api()
             logger.info(f"初始化Tushare Token: {self.tushare_token[:20]}...")
-            logger.info(f"✅ Token已配置（2000积分，每分钟500次请求，设置480次留余量）")
+            logger.info(f"✅ Token已配置（2000积分，每分钟480次请求，纯异步IO模式）")
         else:
             self.pro = None
             logger.warning("未配置Tushare Token")
@@ -170,23 +128,11 @@ class StockDataManager:
         self.batch_size = batch_size  # 常规批处理大小
         self.small_batch_size = small_batch_size  # 小批量处理大小
         
-        # 使用配置文件中的多线程设置
-        self.use_multithreading = settings.USE_MULTITHREADING
-        # 如果没有指定线程数，使用配置文件中的值
-        if max_threads is None:
-            max_threads = settings.MAX_THREADS if self.use_multithreading else 1
-        
-        # 频率限制器（单Token，每分钟480次调用，留20次余量）
-        self.rate_limiter = TushareRateLimiter(
-            max_calls_per_minute=max_calls_per_minute, 
-            max_threads=max_threads
-        )
+        # 频率限制器（纯异步模式，无需线程管理）
+        self.rate_limiter = TushareRateLimiter(max_calls_per_minute=max_calls_per_minute)
         self.failed_stocks = []  # 记录失败的股票，用于后续补偿
         
-        # 使用全局线程池
-        self.thread_pool = global_thread_pool
-        
-        logger.info(f"📊 数据管理器配置: 每分钟{max_calls_per_minute}次调用")
+        logger.info(f"📊 数据管理器配置: 每分钟{max_calls_per_minute}次调用，纯异步IO模式")
     
         
     async def initialize(self):
@@ -692,7 +638,7 @@ class StockDataManager:
         """
         try:
             # 检查并等待API调用限制
-            await self.rate_limiter.wait_for_rate_limit(thread_id)
+            await self.rate_limiter.wait_for_rate_limit()
             
             # 记录API调用
             self.rate_limiter._record_call()
@@ -782,7 +728,7 @@ class StockDataManager:
             logger.debug(f"更新股票 {ts_code} 走势数据失败: {e}")
             return False
     
-    async def _fetch_stock_history(self, ts_code: str, days: int = 180, thread_id: str = None) -> Optional[pd.DataFrame]:
+    async def _fetch_stock_history(self, ts_code: str, days: int = 180) -> Optional[pd.DataFrame]:
         """获取股票/ETF历史数据（支持频率控制和失败重试，默认180天以支持EMA169）"""
         try:
             # 计算开始日期
@@ -830,10 +776,10 @@ class StockDataManager:
                             self.rate_limiter.handle_daily_limit_error(ts_code, days)
                         else:
                             # 分钟限制错误 - 不跳过，而是暂停等待
-                            logger.info(f"{ts_code} 触发分钟限制，线程将暂停等待...")
-                            await self.rate_limiter.wait_for_rate_limit(thread_id)
+                            logger.info(f"{ts_code} 触发分钟限制，等待恢复...")
+                            await self.rate_limiter.wait_for_rate_limit()
                             # 重试一次
-                            return await self._fetch_stock_history(ts_code, days, thread_id)
+                            return await self._fetch_stock_history(ts_code, days)
             elif self.rate_limiter.daily_limit_reached:
                 logger.debug(f"tushare每日限制已达上限，无法获取 {ts_code} 数据")
             elif not hasattr(self, 'pro') or not self.tushare_token:

@@ -125,7 +125,7 @@ from app.api import (
     system, public, news_analysis, stocks_redis, strategy, 
     signal_management, task_management, stock_scheduler_api,
     stock_data_management, stock_ai_analysis, chart, market_types,
-    realtime_config, etf_config
+    realtime_config, etf_config, etf_diagnosis
 )
 
 # 注册路由
@@ -143,6 +143,7 @@ app.include_router(chart.router)
 app.include_router(market_types.router)
 app.include_router(realtime_config.router, prefix="/api", tags=["实时行情配置"])
 app.include_router(etf_config.router, prefix="/api", tags=["ETF配置管理"])
+app.include_router(etf_diagnosis.router)
 
 # 基础路由
 @app.get("/ping")

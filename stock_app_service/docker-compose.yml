@@ -16,11 +16,7 @@ services:
       - API_TOKEN=eXvM4zU8nP9qWt3dRfKgH7jBcA2yE5sZ
       - API_TOKEN_ENABLED=true
       # 可选值: none, only_tasks, clear_all
-      - STOCK_INIT_MODE=etf_only
-      # 多线程配置 - 2000积分支持每分钟500次调用，开启10线程加速
-      - USE_MULTITHREADING=true
-      - MAX_THREADS=10
-      - GLOBAL_THREAD_POOL_SIZE=10
+      - STOCK_INIT_MODE=skip
       # 后台任务配置 - 设置为低优先级避免影响API服务
       - BACKGROUND_TASK_PRIORITY=low
       # 实时行情配置（股票）

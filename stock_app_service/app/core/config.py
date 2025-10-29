@@ -61,13 +61,7 @@ _old_mode_mapping = {
 if STOCK_INIT_MODE in _old_mode_mapping:
     STOCK_INIT_MODE = _old_mode_mapping[STOCK_INIT_MODE]
 
-# 股票数据获取多线程配置
-USE_MULTITHREADING = os.environ.get("USE_MULTITHREADING", "true").lower() in ("true", "1", "yes")
-MAX_THREADS = int(os.environ.get("MAX_THREADS", "10"))
-# 全局线程池大小 - 控制整个应用的总线程数
-GLOBAL_THREAD_POOL_SIZE = int(os.environ.get("GLOBAL_THREAD_POOL_SIZE", "10"))
-
-# 后台任务配置 - 控制后台任务对API服务的影响
+# 后台任务配置 - 控制后台任务对API服务的影响（使用asyncio，无需线程池）
 BACKGROUND_TASK_PRIORITY = os.environ.get("BACKGROUND_TASK_PRIORITY", "low").lower()  # low, normal, high
 
 # 外部API配置 - 单个Token（2000积分，每分钟500次请求，设置480次留余量）
@@ -128,12 +122,7 @@ class Settings(BaseModel):
     # 股票系统启动初始化模式配置
     STOCK_INIT_MODE: str = STOCK_INIT_MODE
     
-    # 多线程配置
-    USE_MULTITHREADING: bool = USE_MULTITHREADING
-    MAX_THREADS: int = MAX_THREADS
-    GLOBAL_THREAD_POOL_SIZE: int = GLOBAL_THREAD_POOL_SIZE
-    
-    # 后台任务配置
+    # 后台任务配置（纯异步IO模式，无需线程池）
     BACKGROUND_TASK_PRIORITY: str = BACKGROUND_TASK_PRIORITY
     
     # AI服务配置

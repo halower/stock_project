@@ -17,26 +17,22 @@ from app import indicators
 class SignalManager:
     """买入信号管理器"""
     
-    def __init__(self, batch_size=50, max_threads=10):
+    def __init__(self, batch_size=50):
         self.redis_client = None
-        self.batch_size = batch_size  # 批处理大小（降低避免 Redis 连接过多）
-        self.max_threads = max_threads  # 最大并行线程数（降低避免 Redis 连接过多）
+        self.batch_size = batch_size  # 批处理大小
         
-        # 使用优化后的StockDataManager，需要传入所有必需参数
-        # 虽然信号计算从Redis读取数据，但StockDataManager构造函数需要这些参数
+        # 使用StockDataManager（纯异步IO模式，无需max_threads参数）
+        # 信号计算从Redis读取数据，不需要调用API
         self.stock_data_manager = StockDataManager(
             batch_size=batch_size,
-            small_batch_size=batch_size // 2,  # 小批量为批量的一半
-            max_calls_per_minute=50,  # 保留默认值，实际上信号计算不会调用API
-            max_threads=max_threads
+            small_batch_size=batch_size // 2,
+            max_calls_per_minute=50  # 保留默认值，实际不会调用API
         )
         
         self.buy_signals_key = "buy_signals"
         # 获取可用策略
         self.strategies = indicators.get_all_strategies()
         
-        # 线程管理
-        self.thread_semaphore = None  # 将在initialize方法中初始化
     
     async def _get_redis_client(self):
         """获取Redis客户端 - 复用已有连接，避免事件循环冲突"""
@@ -63,13 +59,10 @@ class SignalManager:
             # 初始化Redis客户端
             await self._get_redis_client()
             
-            # 初始化线程信号量
-            self.thread_semaphore = asyncio.Semaphore(self.max_threads)
-            
             # 初始化StockDataManager
             await self.stock_data_manager.initialize()
             
-            logger.info(f"SignalManager初始化成功，最大线程数: {self.max_threads}，批处理大小: {self.batch_size}")
+            logger.info(f"SignalManager初始化成功（纯异步IO模式），批处理大小: {self.batch_size}")
             return True
         except Exception as e:
             logger.error(f"SignalManager初始化失败: {e}")
@@ -88,15 +81,12 @@ class SignalManager:
             logger.error(f"SignalManager关闭失败: {e}")
             
     async def acquire_thread(self):
-        """获取线程资源"""
-        if self.thread_semaphore is None:
-            self.thread_semaphore = asyncio.Semaphore(self.max_threads)
-        await self.thread_semaphore.acquire()
+        """空方法 - 纯异步IO模式不需要线程管理"""
+        pass
         
     def release_thread(self):
-        """释放线程资源"""
-        if self.thread_semaphore is not None:
-            self.thread_semaphore.release()
+        """空方法 - 纯异步IO模式不需要线程管理"""
+        pass
     
     async def initialize_all_buy_signals(self) -> bool:
         """初始化所有买入信号"""
@@ -616,8 +606,8 @@ class SignalManager:
                     item_type = "股票"
                 else:
                     item_type = "股票/ETF"
-                logger.info(f"将处理全部 {len(stock_list)} 个{item_type}，使用线程控制和优化的批处理")
-                logger.info(f"线程配置: 最大并行线程数 {self.max_threads}, 批处理大小 {self.batch_size} (优化配置，无API调用限制)")
+                logger.info(f"将处理全部 {len(stock_list)} 个{item_type}，使用纯异步IO和批处理")
+                logger.info(f"配置: 批处理大小 {self.batch_size} (纯异步IO模式，无API调用限制)")
                 
                 total_signals = 0
                 strategy_counts = {}
