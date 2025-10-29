@@ -117,7 +117,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
     
     if (_isInWatchlist) {
       success = await WatchlistService.removeFromWatchlist(_currentStockCode);
-      message = success ? '已从关注列表移除' : '移除失败';
+      message = success ? '已从备选池移除' : '移除失败';
     } else {
       // 获取当前K线走势使用的策略参数
       final apiProvider = Provider.of<ApiProvider>(context, listen: false);
@@ -128,12 +128,12 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
         market: '', // 这里可以从API或其他地方获取市场信息
         code: _currentStockCode,
         name: _currentStockName,
-        signal: '关注',
+        signal: '备选',
         details: {},
         strategy: currentStrategy, // 使用当前K线走势的策略参数
       );
       success = await WatchlistService.addToWatchlist(stockIndicator);
-      message = success ? '已添加到关注列表' : '添加失败';
+      message = success ? '已加入备选池' : '添加失败';
     }
 
     if (mounted) {
@@ -150,14 +150,14 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
           content: Text(message),
           duration: const Duration(seconds: 2),
           backgroundColor: success 
-              ? (_isInWatchlist ? Colors.green : Colors.orange)
+              ? (_isInWatchlist ? Colors.green : Colors.blue)
               : Colors.red,
         ),
       );
     }
   }
 
-  // 构建关注按钮
+  // 构建加入备选池按钮
   Widget _buildWatchlistButton() {
     return GestureDetector(
       onTap: _toggleWatchlist,
@@ -168,40 +168,26 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
           gradient: _isInWatchlist 
               ? LinearGradient(
                   colors: [
-                    const Color(0xFFFFD700), // 金色
-                    const Color(0xFFFF8C00), // 深橙色
-                    const Color(0xFFFF6B35), // 橙红色
+                    const Color(0xFF4CAF50), // 绿色
+                    const Color(0xFF45A049), // 深绿色
                   ],
-                  stops: const [0.0, 0.6, 1.0],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
               : LinearGradient(
                   colors: [
-                    const Color(0xFF9C27B0), // 紫色
-                    const Color(0xFF673AB7), // 深紫色
-                    const Color(0xFF3F51B5), // 靛蓝色
+                    const Color(0xFF2196F3), // 主流蓝色
+                    const Color(0xFF1976D2), // 深蓝色
                   ],
-                  stops: const [0.0, 0.6, 1.0],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.4),
-            width: 0.8,
-          ),
           boxShadow: [
             BoxShadow(
-              color: (_isInWatchlist ? const Color(0xFFFF8C00) : const Color(0xFF9C27B0)).withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-              spreadRadius: 0,
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: (_isInWatchlist ? const Color(0xFF4CAF50) : const Color(0xFF2196F3)).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -219,13 +205,13 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
               )
             else
               Icon(
-                _isInWatchlist ? Icons.star : Icons.star_border,
-                size: 16,
+                _isInWatchlist ? Icons.check_circle : Icons.add_circle_outline,
+                size: 18,
                 color: Colors.white,
               ),
             const SizedBox(width: 6),
             Text(
-              _isInWatchlist ? '已关注' : '关注',
+              _isInWatchlist ? '已在备选池' : '加入备选池',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -259,7 +245,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
       appBar: AppBar(
         title: Text('$_currentStockName ($_currentStockCode)'),
         actions: [
-          // 关注按钮
+          // 加入备选池按钮
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: _buildWatchlistButton(),

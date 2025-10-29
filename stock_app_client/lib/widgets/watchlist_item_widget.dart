@@ -381,7 +381,8 @@ class WatchlistItemWidget extends StatelessWidget {
 
   // 构建策略标签（缩小版）
   Widget _buildStrategyBadge(String strategyName) {
-    const strategyColor = Color(0xFF2196F3);
+    // 使用现代化的渐变蓝色
+    const strategyColor = Color(0xFF3B82F6); // 更现代的蓝色
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       height: 26,
@@ -389,20 +390,19 @@ class WatchlistItemWidget extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            strategyColor.withOpacity(0.2),
-            strategyColor.withOpacity(0.1),
-            strategyColor.withOpacity(0.05),
+            strategyColor.withOpacity(0.15),
+            const Color(0xFF60A5FA).withOpacity(0.1),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: strategyColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: strategyColor.withOpacity(0.25), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: strategyColor.withOpacity(0.15),
+            color: strategyColor.withOpacity(0.12),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -412,7 +412,7 @@ class WatchlistItemWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: strategyColor.withOpacity(0.2),
+              color: const Color(0xFF3B82F6).withOpacity(0.2),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Icon(

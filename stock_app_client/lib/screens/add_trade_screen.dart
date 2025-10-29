@@ -2232,59 +2232,36 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                         // 标题行
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF3B82F6),
-                                    Color(0xFF2563EB),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF3B82F6).withOpacity(0.5),
-                                    blurRadius: 12,
-                                    spreadRadius: 2,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.psychology_rounded,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Text(
-                                    'AI开单分析',
-                                    style: TextStyle(
-                                          fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          letterSpacing: 0.5,
+                                      const Flexible(
+                                        child: Text(
+                                          'AI开单分析',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            letterSpacing: 0.5,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF10B981),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(6),
                                           boxShadow: [
                                             BoxShadow(
                                               color: const Color(0xFF10B981).withOpacity(0.3),
-                                              blurRadius: 8,
+                                              blurRadius: 6,
                                               spreadRadius: 0,
                                             ),
                                           ],
@@ -2292,10 +2269,10 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                                         child: const Text(
                                           'PRO',
                                           style: TextStyle(
-                                            fontSize: 10,
+                                            fontSize: 9,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
-                                            letterSpacing: 1,
+                                            letterSpacing: 0.5,
                                           ),
                                         ),
                                       ),
@@ -2310,77 +2287,10 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                                       fontWeight: FontWeight.w500,
                                       letterSpacing: 0.3,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                 ],
-                              ),
-                            ),
-                            // 思考过程按钮 - 优化样式
-                            GestureDetector(
-                              onTap: () {
-                                setDialogState(() {
-                                  _showThinkingProcess = !_showThinkingProcess;
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  gradient: _showThinkingProcess
-                                      ? const LinearGradient(
-                                          colors: [
-                                            Color(0xFF3B82F6),
-                                            Color(0xFF2563EB),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        )
-                                      : null,
-                                  color: _showThinkingProcess
-                                      ? null
-                                      : Colors.white.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: _showThinkingProcess
-                                        ? Colors.transparent
-                                        : Colors.white.withOpacity(0.3),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: _showThinkingProcess
-                                      ? [
-                                          BoxShadow(
-                                            color: const Color(0xFF3B82F6).withOpacity(0.4),
-                                            blurRadius: 8,
-                                            spreadRadius: 0,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.psychology_rounded,
-                                      color: _showThinkingProcess
-                                          ? Colors.white
-                                          : Colors.white70,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "思考过程",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: _showThinkingProcess
-                                            ? Colors.white
-                                            : Colors.white70,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               ),
                             ),
                           ],
@@ -3266,56 +3176,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _hasAnalyzed 
-                    ? [const Color(0xFF10B981), const Color(0xFF059669)]  // 明亮的绿色
-                    : [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],  // 明亮的紫色
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: (_hasAnalyzed ? const Color(0xFF10B981) : const Color(0xFF8B5CF6)).withOpacity(0.4),
-                  blurRadius: 8,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _hasAnalyzed ? Icons.check_circle : Icons.psychology,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                  tooltip: 'AI交易分析',
-                  onPressed: _isAnalyzing ? null : _analyzeTradeWithAI,
-                ),
-                if (!_hasAnalyzed)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+        
       ),
       body: Form(
         key: _formKey,
@@ -3583,49 +3444,99 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-        padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF667EEA).withOpacity(0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
+         
+              // 现代化加载动画
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 外圈渐变光圈
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF667EEA).withOpacity(0.1),
+                          const Color(0xFF764BA2).withOpacity(0.1),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.psychology,
-                  color: Colors.white,
-                  size: 32,
-                ),
+                  ),
+                  // 旋转的进度环
+                  SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        const Color(0xFF667EEA),
+                      ),
+                      strokeWidth: 4,
+                      backgroundColor: const Color(0xFF667EEA).withOpacity(0.1),
+                    ),
+                  ),
+                  // 中心图标
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.psychology,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF667EEA)),
-                strokeWidth: 3,
-              ),
-              const SizedBox(height: 20),
+              
+              const SizedBox(height: 28),
               const Text(
-                'AI正在分析交易计划',
+                'AI正在深度分析',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E293B),
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              
+              // 分析步骤指示
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF667EEA).withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF667EEA).withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _buildAnalysisStep(Icons.trending_up, '分析市场趋势'),
+                    const SizedBox(height: 8),
+                    _buildAnalysisStep(Icons.bar_chart, '评估技术指标'),
+                    const SizedBox(height: 8),
+                    _buildAnalysisStep(Icons.security, '计算风险因素'),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
               Text(
-                '正在分析市场趋势、技术指标和风险因素\n大概需要10-20秒,请耐心等待...',
+                '预计需要 10-20 秒',
                 style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                  color: Colors.grey.shade500,
+                  fontStyle: FontStyle.italic,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -3634,6 +3545,47 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
           ),
         ),
       );
+  }
+
+  // 构建分析步骤指示器
+  Widget _buildAnalysisStep(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: const Color(0xFF667EEA).withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: 14,
+            color: const Color(0xFF667EEA),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const Spacer(),
+        SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              const Color(0xFF667EEA).withOpacity(0.5),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildModernActionButtons() {

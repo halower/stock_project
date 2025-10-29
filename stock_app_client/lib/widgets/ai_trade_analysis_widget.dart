@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import '../models/ai_config.dart';
 import '../models/trade_record.dart';
@@ -396,50 +395,120 @@ class _AITradeAnalysisWidgetState extends State<AITradeAnalysisWidget> {
             
             const SizedBox(height: 24),
             
-            // 加载动画
-            Container(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Colors.blue.shade600,
+            // 现代化加载动画
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // 外圈渐变光圈
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.shade300.withOpacity(0.15),
+                        Colors.purple.shade300.withOpacity(0.15),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                // 中圈
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.blue.shade50,
+                  ),
+                ),
+                // 旋转的进度环
+                SizedBox(
+                  width: 70,
+                  height: 70,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.blue.shade600,
+                    ),
+                    strokeWidth: 4,
+                    backgroundColor: Colors.blue.shade200.withOpacity(0.2),
+                  ),
+                ),
+                // 中心AI图标
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.shade500,
+                        Colors.blue.shade700,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.psychology,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ],
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             
             // 标题
             Text(
-              'AI 正在分析中',
+              'AI 正在深度分析',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey.shade800,
+                letterSpacing: 0.5,
               ),
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             
-            // 描述文字
-            Text(
-              '大模型正在深度分析您的交易计划',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-                height: 1.4,
+            // 分析步骤卡片
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.blue.shade200,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  _buildLoadingStep(Icons.assessment, '评估交易可行性'),
+                  const SizedBox(height: 12),
+                  _buildLoadingStep(Icons.analytics, '分析技术指标'),
+                  const SizedBox(height: 12),
+                  _buildLoadingStep(Icons.security, '计算风险收益'),
+                ],
               ),
             ),
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
             
             // 时间提示
             Text(
               '预计需要 10-20 秒',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: Colors.grey.shade500,
                 fontStyle: FontStyle.italic,
               ),
@@ -487,6 +556,47 @@ class _AITradeAnalysisWidgetState extends State<AITradeAnalysisWidget> {
     );
   }
   
+  /// 构建加载步骤指示器
+  Widget _buildLoadingStep(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.blue.shade100,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: Colors.blue.shade700,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const Spacer(),
+        SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Colors.blue.shade600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
   /// 格式化历史数据
   String _formatHistoryData() {
     if (widget.historyData.isEmpty) return "无历史数据";
@@ -497,10 +607,22 @@ class _AITradeAnalysisWidgetState extends State<AITradeAnalysisWidget> {
         ? widget.historyData.sublist(widget.historyData.length - lastNDays) 
         : widget.historyData;
     
-    String historyDataText = "最近${recentHistory.length}天K线数据:\n";
-    for (var i = 0; i < recentHistory.length; i++) {
-      final item = recentHistory[i];
-      historyDataText += "${item['date']} 开:${item['open']} 高:${item['high']} 低:${item['low']} 收:${item['close']} 量:${item['volume']}\n";
+    // 反转顺序，让最新的在最前面
+    final reversedHistory = recentHistory.reversed.toList();
+    
+    String historyDataText = "最近${reversedHistory.length}天K线数据（第一行是最新日期）:\n";
+    historyDataText += "**重要提示**: 下面的数据第一行是最新的，越往下越旧。请重点分析最近几天的走势！\n\n";
+    
+    for (var i = 0; i < reversedHistory.length; i++) {
+      final item = reversedHistory[i];
+      
+      // 标注最近的几天
+      String prefix = '';
+      if (i == 0) prefix = '【最新】';
+      else if (i == 1) prefix = '【前一天】';
+      else if (i == 2) prefix = '【前两天】';
+      
+      historyDataText += "$prefix${item['date']} 开:${item['open']} 高:${item['high']} 低:${item['low']} 收:${item['close']} 量:${item['volume']}\n";
     }
     
     return historyDataText;
@@ -533,8 +655,12 @@ $_analysisResult
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+            maxWidth: MediaQuery.of(context).size.width - 40,
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -604,20 +730,15 @@ $_analysisResult
                 ),
               ),
               
-              // 内容区域
-              Flexible(
-                child: Container(
-                  constraints: const BoxConstraints(
-                    maxHeight: 500,
-                    minHeight: 200,
-                  ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Markdown(
-                      data: markdownContent,
-                      selectable: true,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
+              // 内容区域 - 修复溢出问题
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Markdown(
+                    data: markdownContent,
+                    selectable: true,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                       styleSheet: MarkdownStyleSheet(
                         h2: const TextStyle(
                           fontSize: 18,
@@ -674,7 +795,6 @@ $_analysisResult
                       ),
                     ),
                   ),
-                ),
               ),
               
               // 底部操作栏

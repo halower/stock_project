@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../services/ai_config_service.dart';
+import '../utils/technical_indicators.dart';
 import 'http_client.dart';
 
 /// 客户端AI分析服务
@@ -345,8 +346,12 @@ class ClientAIService {
     try {
       debugPrint('开始通过AI分析股票: $stockCode ($stockName)');
       
-      // 调用新的POST接口
-      final response = await _callAIAnalysisPostAPI(stockCode, stockData, forceRefresh: forceRefresh);
+      // 在客户端计算技术指标
+      final indicators = _calculateTechnicalIndicators(stockData);
+      debugPrint('技术指标计算完成: ${indicators.keys}');
+      
+      // 调用新的POST接口,传入计算好的指标
+      final response = await _callAIAnalysisPostAPI(stockCode, stockData, indicators, forceRefresh: forceRefresh);
       
         if (response.isNotEmpty) {
         debugPrint('AI分析完成，生成报告长度: ${response.length}');
@@ -362,7 +367,8 @@ class ClientAIService {
   }
 
   /// 调用新的AI分析POST接口
-  Future<String> _callAIAnalysisPostAPI(String stockCode, Map<String, dynamic> stockData, {bool forceRefresh = false}) async {
+  Future<String> _callAIAnalysisPostAPI(String stockCode, Map<String, dynamic> stockData, 
+      Map<String, dynamic> indicators, {bool forceRefresh = false}) async {
     try {
       // 获取有效的AI配置
       final effectiveUrl = await AIConfigService.getEffectiveUrl();
@@ -381,16 +387,17 @@ class ClientAIService {
       final url = ApiConfig.getStockAIAnalysisPostUrl();
       debugPrint('调用AI分析POST接口: $url');
 
-            // 构建请求体（按照需求文档格式）
+      // 构建请求体（包含计算好的技术指标）
       final requestBody = {
         'stock_code': stockCode,
         'force_refresh': forceRefresh,
         'ai_model_name': effectiveModel,
         'ai_endpoint': effectiveUrl,
         'ai_api_key': effectiveApiKey,
+        'indicators': indicators,  // 传入计算好的技术指标
       };
 
-      debugPrint('POST请求体: ${jsonEncode(requestBody)}');
+      debugPrint('POST请求体（含技术指标）: indicators=${indicators.keys}');
 
       final response = await HttpClient.post(url, requestBody);
 
@@ -466,6 +473,94 @@ class ClientAIService {
       debugPrint('调用AI服务出错: $e');
       throw e;
     }
+  }
+  
+  /// 客户端计算技术指标
+  Map<String, dynamic> _calculateTechnicalIndicators(Map<String, dynamic> stockData) {
+    if (!stockData.containsKey('data') || stockData['data'] is! List || (stockData['data'] as List).isEmpty) {
+      return {};
+    }
+
+    final List<dynamic> history = stockData['data'];
+    
+    // 提取价格和成交量数据
+    final closes = history.map((item) => (item['close'] as num?)?.toDouble() ?? 0.0).toList();
+    final highs = history.map((item) => (item['high'] as num?)?.toDouble() ?? 0.0).toList();
+    final lows = history.map((item) => (item['low'] as num?)?.toDouble() ?? 0.0).toList();
+    final volumes = history.map((item) => (item['volume'] as num?)?.toDouble() ?? 0.0).toList();
+    
+    // 导入技术指标工具类
+    final indicators = <String, dynamic>{};
+    
+    try {
+      // 计算EMA均线
+      final ema5 = TechnicalIndicators.calculateEMA(closes, 5);
+      final ema10 = TechnicalIndicators.calculateEMA(closes, 10);
+      final ema20 = TechnicalIndicators.calculateEMA(closes, 20);
+      final ema60 = TechnicalIndicators.calculateEMA(closes, 60);
+      
+      indicators['ema'] = {
+        'ema5': ema5.first,
+        'ema10': ema10.first,
+        'ema20': ema20.first,
+        'ema60': ema60.first,
+      };
+      
+      // 判断趋势
+      indicators['trend'] = TechnicalIndicators.analyzeTrend(
+        ema5.first, ema10.first, ema20.first, ema60.first
+      );
+      
+      // 计算RSI
+      final rsi = TechnicalIndicators.calculateRSI(closes);
+      indicators['rsi'] = {
+        'value': rsi.first,
+        'status': TechnicalIndicators.analyzeRSI(rsi.first),
+      };
+      
+      // 计算MACD
+      final macdData = TechnicalIndicators.calculateMACD(closes);
+      indicators['macd'] = {
+        'macd': macdData['macd']?.first,
+        'signal': macdData['signal']?.first,
+        'histogram': macdData['histogram']?.first,
+        'status': TechnicalIndicators.analyzeMACDSignal(
+          macdData['macd']?.first,
+          macdData['signal']?.first,
+          macdData['histogram']?.first,
+        ),
+      };
+      
+      // 计算布林带
+      final boll = TechnicalIndicators.calculateBollingerBands(closes);
+      indicators['boll'] = {
+        'upper': boll['upper']?.first,
+        'middle': boll['middle']?.first,
+        'lower': boll['lower']?.first,
+      };
+      
+      // 计算ATR
+      final atr = TechnicalIndicators.calculateATR(highs, lows, closes);
+      indicators['atr'] = atr.first;
+      
+      // 计算支撑阻力位
+      final sr = TechnicalIndicators.calculateSupportResistance(highs, lows);
+      indicators['support_resistance'] = sr;
+      
+      // 添加当前价格信息
+      indicators['current'] = {
+        'price': closes.first,
+        'high': highs.first,
+        'low': lows.first,
+        'volume': volumes.first,
+      };
+      
+      debugPrint('技术指标计算完成');
+    } catch (e) {
+      debugPrint('计算技术指标出错: $e');
+    }
+    
+    return indicators;
   }
   
   /// 构建专业的A股日线技术分析提示词

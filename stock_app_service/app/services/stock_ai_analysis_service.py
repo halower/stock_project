@@ -116,7 +116,8 @@ class StockAIAnalysisService:
         ai_model_name: str,
         ai_endpoint: str,
         ai_api_key: str,
-        force_refresh: bool = False
+        force_refresh: bool = False,
+        indicators: Optional[Dict[str, any]] = None
     ) -> AsyncGenerator[Dict[str, any], None]:
         """获取股票AI分析（流式响应，支持当天缓存）"""
         
@@ -357,15 +358,16 @@ class StockAIAnalysisService:
         stock_data: Dict[str, any],
         ai_endpoint: str,
         ai_api_key: str,
-        ai_model: str
+        ai_model: str,
+        indicators: Optional[Dict[str, any]] = None
     ) -> str:
-        """使用AI生成股票分析报告"""
+        """使用AI生成股票分析报告 - 支持多空辩论模式"""
         try:
             logger.info(f"开始通过AI分析股票: {stock_code}")
             logger.info(f"AI配置 - 端点: {ai_endpoint}, 模型: {ai_model}")
             
-            # 构建含有历史数据的提示词
-            prompt = self._build_analysis_prompt_with_data(stock_code, stock_data)
+            # 构建含有历史数据和技术指标的提示词
+            prompt = self._build_analysis_prompt_with_data(stock_code, stock_data, indicators)
             logger.info(f"构建的提示词长度: {len(prompt)}")
             
             # 调用AI服务
@@ -503,14 +505,26 @@ class StockAIAnalysisService:
     def _build_analysis_prompt_with_data(
         self,
         stock_code: str,
-        stock_data: Dict[str, any]
+        stock_data: Dict[str, any],
+        indicators: Optional[Dict[str, any]] = None
     ) -> str:
-        """构建专业的A股日线技术分析提示词"""
+        """构建专业的A股日线技术分析提示词 - 多空辩论模式"""
         
         prompt_parts = []
         
+        # 获取当前日期
+        from datetime import datetime
+        current_date = datetime.now().strftime('%Y年%m月%d日')
+        
         prompt_parts.append(f"""
-你是一位资深的A股技术分析师，请对股票 {stock_code} 进行专业的日线技术分析。
+你是一位资深的A股技术分析专家团队，现在是{current_date}。请对股票 {stock_code} 进行专业的技术分析。
+
+**重要说明**：
+1. 当前日期是{current_date}，请关注**最近的K线走势**
+2. 下面提供的K线数据**第一行是最新日期**，越往下越旧
+3. 散户最关心的是1-3天的短线交易机会
+4. 请重点分析最近几天的价格走势、成交量变化
+5. 请以多空双方辩论的形式展开分析，更贴近人性化思考
 
 """)
         
@@ -526,9 +540,17 @@ class StockAIAnalysisService:
             prompt_parts.append('日期 | 开盘 | 收盘 | 最高 | 最低 | 成交量(万手) | 成交额(万元)\n')
             prompt_parts.append('---- | ---- | ---- | ---- | ---- | --------- | ----------\n')
             
-            # 选取最近的20个交易日数据
-            recent_data = history[:20]  # 取前20条
-            for item in recent_data:
+            # 重要：确保数据从旧到新排序，然后取最近20条
+            # 先排序确保时间顺序正确
+            sorted_history = sorted(history, key=lambda x: x.get('trade_date') or x.get('date', ''))
+            
+            # 取最近的20个交易日数据（最新的20条）
+            recent_data = sorted_history[-20:] if len(sorted_history) >= 20 else sorted_history
+            
+            # 反转顺序，让最新的日期在前面显示
+            recent_data_reversed = list(reversed(recent_data))
+            
+            for item in recent_data_reversed:
                 date = item.get('trade_date') or item.get('date', '')
                 volume = (item.get('volume', 0) or item.get('vol', 0)) / 10000  # 转换为万手
                 amount = (item.get('amount', 0)) / 10000 if item.get('amount') else 0  # 转换为万元
@@ -539,10 +561,11 @@ class StockAIAnalysisService:
                     f"{volume:.2f} | {amount:.0f}\n"
                 )
             
-            # 计算技术指标基础数据
-            if data_points >= 5:
-                prices = [float(item.get('close', 0)) for item in history[:5]]
-                volumes = [float(item.get('volume', 0) or item.get('vol', 0)) for item in history[:5]]
+            # 计算技术指标基础数据 - 使用最新的5条数据
+            if len(sorted_history) >= 5:
+                latest_5 = sorted_history[-5:]  # 最新的5条
+                prices = [float(item.get('close', 0)) for item in reversed(latest_5)]  # 反转让最新的在前
+                volumes = [float(item.get('volume', 0) or item.get('vol', 0)) for item in reversed(latest_5)]
                 
                 if prices[0] > 0 and prices[1] > 0:
                     latest_price = prices[0]
@@ -555,60 +578,132 @@ class StockAIAnalysisService:
                     prompt_parts.append(f'- 日涨跌幅：{price_change_percent:.2f}%\n')
                     prompt_parts.append(f'- 近5日平均成交量：{avg_volume:.0f}万手\n\n')
         
-        prompt_parts.append("""
-## 请进行以下专业技术分析：
+        # 添加客户端计算的技术指标
+        if indicators:
+            prompt_parts.append('## 技术指标数据（已计算）\n\n')
+            
+            # EMA均线
+            if 'ema' in indicators:
+                ema_data = indicators['ema']
+                prompt_parts.append('### 均线系统：\n')
+                prompt_parts.append(f"- EMA5: {ema_data.get('ema5')}\n")
+                prompt_parts.append(f"- EMA10: {ema_data.get('ema10')}\n")
+                prompt_parts.append(f"- EMA20: {ema_data.get('ema20')}\n")
+                prompt_parts.append(f"- EMA60: {ema_data.get('ema60')}\n")
+            
+            # 趋势判断
+            if 'trend' in indicators:
+                prompt_parts.append(f"- 趋势状态: {indicators['trend']}\n\n")
+            
+            # RSI指标
+            if 'rsi' in indicators:
+                rsi_data = indicators['rsi']
+                prompt_parts.append('### RSI指标：\n')
+                prompt_parts.append(f"- RSI值: {rsi_data.get('value')}\n")
+                prompt_parts.append(f"- RSI状态: {rsi_data.get('status')}\n\n")
+            
+            # MACD指标
+            if 'macd' in indicators:
+                macd_data = indicators['macd']
+                prompt_parts.append('### MACD指标：\n')
+                prompt_parts.append(f"- MACD: {macd_data.get('macd')}\n")
+                prompt_parts.append(f"- Signal: {macd_data.get('signal')}\n")
+                prompt_parts.append(f"- Histogram: {macd_data.get('histogram')}\n")
+                prompt_parts.append(f"- MACD信号: {macd_data.get('status')}\n\n")
+            
+            # 布林带
+            if 'boll' in indicators:
+                boll_data = indicators['boll']
+                prompt_parts.append('### 布林带：\n')
+                prompt_parts.append(f"- 上轨: {boll_data.get('upper')}\n")
+                prompt_parts.append(f"- 中轨: {boll_data.get('middle')}\n")
+                prompt_parts.append(f"- 下轨: {boll_data.get('lower')}\n\n")
+            
+            # 支撑阻力
+            if 'support_resistance' in indicators:
+                sr = indicators['support_resistance']
+                prompt_parts.append('### 支撑阻力位：\n')
+                prompt_parts.append(f"- 支撑位: {sr.get('support')}\n")
+                prompt_parts.append(f"- 阻力位: {sr.get('resistance')}\n\n")
+        
+        prompt_parts.append(f"""
+## 分析要求 - 多空辩论模式
 
-### 1. 价格走势分析
-- **趋势判断**：分析日线级别的主要趋势（上升/下降/横盘整理）
-- **波浪结构**：识别当前所处的波浪位置和形态特征
-- **价格形态**：识别重要的K线组合形态（如头肩顶底、双顶双底、三角形等）
-- **缺口分析**：是否存在跳空缺口，缺口性质和回补概率
+请以**多空双方辩论**的形式进行分析，这样更符合人性化思考过程。具体格式如下：
 
-### 2. 支撑阻力分析
-- **关键支撑位**：计算并标注重要的支撑价位（至少3个层级）
-- **关键阻力位**：计算并标注重要的阻力价位（至少3个层级）
-- **心理价位**：分析整数关口等心理价位的技术意义
-- **前期高低点**：标注历史重要高低点位的支撑阻力作用
+### 🐂 多方观点（看涨理由）
 
-### 3. 均线系统分析
-- **短期均线**：MA5、MA10的走势和交叉情况
-- **中期均线**：MA20、MA30的支撑阻力作用
-- **长期均线**：MA60、MA120的趋势指导意义
-- **均线排列**：多头/空头排列状态和变化趋势
+**技术面支持：**
+1. 从均线系统看，[具体分析多头排列或金叉信号]
+2. 从MACD指标看，[分析看涨信号]
+3. 从RSI指标看，[分析超卖或上涨潜力]
+4. 从成交量看，[分析放量上涨信号]
+5. 从布林带看，[分析突破上轨或支撑]
 
-### 4. 技术指标分析
-- **MACD指标**：DIF、DEA数值，柱状线变化，金叉死叉信号
-- **RSI指标**：当前数值，超买超卖判断，背离情况
-- **KDJ指标**：K、D、J三线数值和交叉状态
-- **BOLL指标**：布林带开口状态，价格位置，压力支撑
+**价格形态支持：**
+- [分析支持上涨的K线形态]
+- [分析突破阻力位的可能性]
 
-### 5. 成交量分析
-- **量价关系**：分析价涨量增、价跌量缩等经典量价配合
-- **成交量形态**：识别放量突破、缩量整理等形态
-- **换手率分析**：评估市场活跃度和资金参与程度
-- **量能背离**：价格与成交量的背离信号
+**短线机会（1-3天）：**
+- 入场点：[具体价位]
+- 目标位：[具体价位]
+- 预期涨幅：[百分比]
 
-### 6. 市场结构分析
-- **级别划分**：日线级别的买卖点识别
-- **结构破坏**：重要结构位的突破确认
-- **回调预期**：正常回调的空间和时间预期
-- **风险控制点**：关键的止损位设定建议
+---
 
-### 7. 操作策略建议
-- **短线策略**：1-3日的交易机会和风险点
-- **中线策略**：1-4周的持仓建议和目标位
-- **仓位管理**：建议的仓位配置和加减仓时机
-- **风险提示**：主要技术风险点和应对策略
+### 🐻 空方观点（看跌理由）
+
+**技术面压制：**
+1. 从均线系统看，[具体分析空头排列或死叉信号]
+2. 从MACD指标看，[分析看跌信号]
+3. 从RSI指标看，[分析超买或回调压力]
+4. 从成交量看，[分析缩量下跌或背离]
+5. 从布林带看，[分析跌破下轨或压力]
+
+**价格形态压制：**
+- [分析支持下跌的K线形态]
+- [分析跌破支撑位的风险]
+
+**短线风险（1-3天）：**
+- 止损点：[具体价位]
+- 支撑位：[具体价位]
+- 预期跌幅：[百分比]
+
+---
+
+### ⚖️ 综合研判
+
+**力量对比：**
+- 多空力量对比：[X%看涨 vs Y%看跌]
+- 主导力量：[多方/空方/均衡]
+
+**短线操作建议（1-3天内）：**
+1. **激进策略**：[具体操作建议]
+2. **稳健策略**：[具体操作建议]
+3. **观望策略**：[等待信号]
+
+**关键价位：**
+- 强支撑位：[价位1] → [价位2] → [价位3]
+- 强阻力位：[价位1] → [价位2] → [价位3]
+- 突破买入点：[具体价位]
+- 跌破止损点：[具体价位]
+
+**风险提示：**
+- [列出主要技术风险]
+- [建议仓位控制]
+
+---
 
 ## 输出要求：
-1. 使用专业的技术分析术语，体现分析师水准
-2. 提供具体的价位数据，不要模糊表述
-3. 给出明确的操作建议和风险控制措施
-4. 分析要客观中性，避免过度主观判断
-5. 使用Markdown格式，结构清晰，重点突出
-6. 每个技术指标都要给出具体数值和信号判断
+1. **必须严格按照上述多空辩论格式输出**
+2. **重点关注1-3天的短线机会**，这是散户最关心的
+3. 所有价位必须具体，不要模糊表述
+4. 给出明确的多空力量对比百分比
+5. 使用Markdown格式，使用表情符号🐂🐻⚖️增强可读性
+6. 分析要客观，既要看到机会也要看到风险
+7. 每个技术指标的分析要结合当前{current_date}的实际情况
 
-请基于提供的日线数据进行深度技术分析，给出专业、实用的分析报告。
+请基于提供的数据和技术指标，以多空辩论的方式进行深度分析！
 """)
         
         return ''.join(prompt_parts)

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/strategy.dart';
 import '../services/providers/strategy_provider.dart';
-import '../services/providers/theme_provider.dart';
 import '../widgets/strategy_assistant_dialog.dart';
 import 'strategy_edit_screen.dart';
 
@@ -440,13 +439,13 @@ class StrategyCard extends StatelessWidget {
                     
                     const SizedBox(height: 20),
                     
-                    // 策略条件
+                    // 策略条件 - 使用更鲜艳的颜色
                     if (strategy.entryConditions.isNotEmpty) ...[
                       _buildConditionSection(
                         context,
                         '入场条件',
                         strategy.entryConditions,
-                        Colors.green,
+                        const Color(0xFF10B981), // 鲜艳的绿色
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -456,7 +455,7 @@ class StrategyCard extends StatelessWidget {
                         context,
                         '离场条件',
                         strategy.exitConditions,
-                        Colors.red,
+                        const Color(0xFFEF4444), // 鲜艳的红色
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -466,7 +465,7 @@ class StrategyCard extends StatelessWidget {
                         context,
                         '风险控制',
                         strategy.riskControls,
-                        Colors.orange,
+                        const Color(0xFFF59E0B), // 鲜艳的橙色
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -564,21 +563,28 @@ class StrategyCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 标题区域 - 美化
+        // 标题区域 - 美化加强版
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                color.withOpacity(0.1),
-                color.withOpacity(0.05),
+                color.withOpacity(0.2),
+                color.withOpacity(0.12),
               ],
             ),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: color.withOpacity(0.2),
-              width: 1,
+              color: color.withOpacity(0.35),
+              width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.15),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -601,9 +607,10 @@ class StrategyCard extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   color: color,
-                  fontSize: 14,
+                  fontSize: 15,
+                  letterSpacing: 0.3,
                 ),
               ),
               const Spacer(),
@@ -626,16 +633,23 @@ class StrategyCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        // 条件列表 - 美化
+        // 条件列表 - 美化加强版
         ...conditions.map((condition) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8),
+              gradient: LinearGradient(
+                colors: [
+                  color.withOpacity(0.08),
+                  color.withOpacity(0.04),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.1),
+                color: color.withOpacity(0.2),
                 width: 1,
               ),
             ),
@@ -647,12 +661,12 @@ class StrategyCard extends StatelessWidget {
                   height: 8,
                   margin: const EdgeInsets.only(top: 4, right: 12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.8),
+                    color: color,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.3),
-                        blurRadius: 3,
+                        color: color.withOpacity(0.4),
+                        blurRadius: 4,
                         offset: const Offset(0, 1),
                       ),
                     ],
@@ -662,10 +676,12 @@ class StrategyCard extends StatelessWidget {
                   child: Text(
                     condition,
                     style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: theme.brightness == Brightness.dark 
+                          ? Colors.white.withOpacity(0.9)
+                          : Colors.black87,
                       fontSize: 13,
                       height: 1.4,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

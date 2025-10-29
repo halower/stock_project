@@ -207,8 +207,14 @@ class EnhancedAIFilterService {
     final buffer = StringBuffer();
     buffer.writeln('【近期K线数据】(最近30个交易日)');
     buffer.writeln('');
+    buffer.writeln('**重要提示**: 下面的数据第一行是最新日期，越往下越旧。请重点分析最近几天的走势！');
+    buffer.writeln('');
     
-    for (var kline in klines) {
+    // 反转顺序，让最新的在前面
+    final reversedKlines = klines.reversed.toList();
+    
+    for (var i = 0; i < reversedKlines.length; i++) {
+      final kline = reversedKlines[i];
       final date = kline['date'];
       final open = (kline['open'] as num).toDouble();
       final high = (kline['high'] as num).toDouble();
@@ -217,7 +223,14 @@ class EnhancedAIFilterService {
       final volume = (kline['volume'] as num).toDouble();
       
       final change = ((close - open) / open * 100).toStringAsFixed(2);
-      buffer.writeln('$date: 开${open.toStringAsFixed(2)} '
+      
+      // 标注最近的几天
+      String prefix = '';
+      if (i == 0) prefix = '【最新】';
+      else if (i == 1) prefix = '【前一天】';
+      else if (i == 2) prefix = '【前两天】';
+      
+      buffer.writeln('$prefix$date: 开${open.toStringAsFixed(2)} '
           '高${high.toStringAsFixed(2)} 低${low.toStringAsFixed(2)} '
           '收${close.toStringAsFixed(2)} 涨跌$change% '
           '量${(volume / 10000).toStringAsFixed(0)}万');

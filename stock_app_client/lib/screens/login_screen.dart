@@ -1297,7 +1297,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       GestureDetector(
                         onTap: _handleVersionTap,
                         child: Text(
-                          '版本: v1.2.0+2',
+                          '版本: v1.2.5+2',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.white.withOpacity(0.4),

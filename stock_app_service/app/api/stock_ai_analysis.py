@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+from typing import Optional, Dict, Any
+
 class AIAnalysisRequest(BaseModel):
     """AI分析请求参数"""
     stock_code: str
@@ -20,6 +22,7 @@ class AIAnalysisRequest(BaseModel):
     ai_model_name: str
     ai_endpoint: str
     ai_api_key: str
+    indicators: Optional[Dict[str, Any]] = None  # 客户端计算的技术指标
 
 @router.get("/api/stocks/ai-analysis/cache",
            summary="查询股票AI分析缓存",
@@ -132,7 +135,8 @@ async def get_stock_ai_analysis_simple(
             ai_model_name=request.ai_model_name,
             ai_endpoint=request.ai_endpoint,
             ai_api_key=request.ai_api_key,
-            force_refresh=request.force_refresh
+            force_refresh=request.force_refresh,
+            indicators=request.indicators
         ):
             if update.get('status') == 'completed':
                 final_result = update

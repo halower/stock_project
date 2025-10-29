@@ -29,44 +29,41 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
   double _progress = 0.0;
   late AnimationController _animationController;
   bool _isFromCache = false; // 标记是否来自缓存
-  bool _hasError = false; // 是否有错误
   bool _showConfigRequired = false; // 是否显示配置要求
   bool _isInitializing = true; // 初始化状态
   
-  // 添加进度阶段控制
+  // 添加进度阶段控制 - 优化为技术分析相关
   final Map<String, double> _progressStages = {
     'started': 0.1,
-    'data_collecting': 0.2,
-    'technical_analysis': 0.4,
-    'fundamental_analysis': 0.6,
-    'market_sentiment': 0.8,
-    'risk_assessment': 0.9,
+    'fetching_data': 0.25,
+    'calculating_indicators': 0.4,
+    'bull_analysis': 0.6,
+    'bear_analysis': 0.8,
+    'final_verdict': 0.95,
     'completed': 1.0,
   };
   
-  // 添加进度提示信息
+  // 添加进度提示信息 - 优化为多空辩论流程
   final Map<String, String> _stageMessages = {
-    'started': '正在连接AI分析服务...',
-    'data_collecting': '正在收集股票数据...',
-    'technical_analysis': '正在进行技术面分析...',
-    'fundamental_analysis': '正在进行基本面分析...',
-    'market_sentiment': '正在分析市场情绪...',
-    'risk_assessment': '正在进行风险评估...',
-    'completed': '分析完成',
+    'started': '🚀 启动AI多空辩论分析...',
+    'fetching_data': '📊 获取K线数据...',
+    'calculating_indicators': '🧮 计算技术指标...',
+    'bull_analysis': '🐂 多方正在分析看涨理由...',
+    'bear_analysis': '🐻 空方正在分析看跌理由...',
+    'final_verdict': '⚖️ 综合研判中...',
+    'completed': '✅ 分析完成',
   };
 
   // 添加阶段时间控制
   final Map<String, Duration> _stageDurations = {
-    'started': const Duration(seconds: 2),
-    'data_collecting': const Duration(seconds: 3),
-    'technical_analysis': const Duration(seconds: 10),
-    'fundamental_analysis': const Duration(seconds: 10),
-    'market_sentiment': const Duration(seconds: 10),
-    'risk_assessment': const Duration(seconds: 10),
+    'started': const Duration(seconds: 1),
+    'fetching_data': const Duration(seconds: 2),
+    'calculating_indicators': const Duration(seconds: 2),
+    'bull_analysis': const Duration(seconds: 8),
+    'bear_analysis': const Duration(seconds: 8),
+    'final_verdict': const Duration(seconds: 5),
   };
   
-  // 储存原始的响应数据
-  Map<String, dynamic> _rawResponse = {};
   String _currentStage = 'started';
   Timer? _stageTimer;
   
@@ -197,12 +194,12 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
     _finalProgressTimer?.cancel();
     _finalProgress = 0.0;
     
-    // 每200毫秒增加0.2%的进度，直到99.8%
-    _finalProgressTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
-      if (_finalProgress < 0.098) {  // 从90%到99.8%
+    // 每300毫秒增加0.1%的进度，最多到99%，避免用户认为已完成
+    _finalProgressTimer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
+      if (_finalProgress < 0.09) {  // 从95%到99%，不到100%
         setState(() {
-          _finalProgress += 0.002;
-          _progress = 0.9 + _finalProgress;
+          _finalProgress += 0.001;
+          _progress = 0.95 + _finalProgress;
         });
       } else {
         timer.cancel();
@@ -224,7 +221,6 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
       _progress = 0.0;
       _finalProgress = 0.0;
       _isFinalStage = false;
-      _rawResponse = {};
       _currentStage = 'started';
       _isFromCache = false;
     });
@@ -241,9 +237,6 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
         
         debugPrint('处理AI分析流数据: ${data['status']}');
         
-        // 保存原始响应
-        _rawResponse = data;
-        
         // 处理不同状态
         switch (data['status']) {
           case 'started':
@@ -251,37 +244,24 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
             break;
             
           case 'checking_cache':
-            setState(() {
-              _progressMessage = data['message'] ?? '检查本地缓存...';
-              _progress = 0.05;
-            });
+            _updateStage('started');
             break;
             
           case 'fetching_data':
-            setState(() {
-              _progressMessage = data['message'] ?? '正在获取历史数据...';
-              _progress = 0.15;
-            });
+            _updateStage('fetching_data');
             break;
             
           case 'checking_ai_config':
-            setState(() {
-              _progressMessage = data['message'] ?? '检查AI配置...';
-              _progress = 0.25;
-            });
+            _updateStage('calculating_indicators');
             break;
             
           case 'analyzing':
-            setState(() {
-              _progressMessage = data['message'] ?? '正在进行AI分析...';
-              _progress = 0.3;
-            });
+            _updateStage('bull_analysis');
             break;
             
           case 'config_required':
             setState(() {
               _isLoading = false;
-              _hasError = true;
               _errorMessage = '需要配置AI服务才能使用分析功能';
               _showConfigRequired = true;
             });
@@ -308,15 +288,12 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
             _finalProgressTimer?.cancel();
             // 检查是否来自缓存
             final fromCache = data['from_cache'] == true;
-            if (!fromCache) {
-            // 添加一个短暂的延迟，让用户看到100%
-            await Future.delayed(const Duration(milliseconds: 500));
-            }
+            
             if (!mounted) return;
             
             setState(() {
               _isLoading = false;
-              _progress = 1.0;
+              _progress = 1.0;  // 只有在真正完成时才设置为100%
               _isFromCache = fromCache;
               _progressMessage = fromCache ? '已从缓存加载' : _stageMessages['completed']!;
               
@@ -516,57 +493,143 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
               ),
             ),
             
-            // 分析结果内容
+            // 分析结果内容 - 优化展示多空辩论
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey[850]  // 暗色模式：深灰色背景
-                    : Colors.grey[50],   // 亮色模式：浅灰色背景
-                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.blue.shade50.withOpacity(0.3),
+                    Colors.white.withOpacity(0.3),
+                    Colors.red.shade50.withOpacity(0.3),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[700]!  // 暗色模式：灰色边框
-                      : Colors.grey[300]!,  // 亮色模式：浅灰色边框
+                  color: Colors.blue.shade200,
+                  width: 2,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: MarkdownBody(
-                data: _report,
-                selectable: true,
-                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                  // 确保文本颜色适配主题
-                  p: Theme.of(context).textTheme.bodyMedium,
-                  h1: Theme.of(context).textTheme.headlineMedium,
-                  h2: Theme.of(context).textTheme.headlineSmall,
-                  h3: Theme.of(context).textTheme.titleLarge,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 标题栏
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.purple.shade600],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(14),
+                        topRight: Radius.circular(14),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.psychology, color: Colors.white, size: 24),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'AI 多空辩论分析',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // 分析内容
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: MarkdownBody(
+                      data: _report,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                        // 确保文本颜色适配主题
+                        p: Theme.of(context).textTheme.bodyMedium,
+                        h1: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        h2: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.purple.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        h3: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.indigo.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        listBullet: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.blue.shade600,
+                        ),
+                        strong: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             
-            // 底部提示信息
-            const SizedBox(height: 16),
+            // 底部提示信息 - 美化版
+            const SizedBox(height: 20),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade50, Colors.purple.shade50],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue[600], size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _isFromCache 
-                        ? '此分析结果来自10分钟内的本地缓存，可节约流量。如需最新分析请点击"刷新分析"。'
-                        : _report.isNotEmpty 
-                          ? '此分析结果来自后端缓存，已同步保存到本地缓存，10分钟内有效。'
-                          : '分析结果已保存到本地缓存，10分钟内有效。',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue[600],
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue.shade600, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        '分析说明',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isFromCache 
+                      ? '📌 此分析结果来自10分钟内的本地缓存，可节约流量。如需最新分析请点击"刷新分析"。'
+                      : _report.isNotEmpty 
+                        ? '📌 此分析采用多空辩论模式，更贴近真实市场博弈。\n💡 重点关注短线机会(1-3天)，适合散户操作。\n⚠️ 技术指标由客户端计算后传递给AI分析。'
+                        : '📌 分析结果已保存到本地缓存，10分钟内有效。',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue.shade700,
+                      height: 1.5,
                     ),
                   ),
                 ],
@@ -577,42 +640,106 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
       );
     }
     
-    // 未开始分析时，显示分析按钮界面
+    // 未开始分析时，显示分析按钮界面 - 美化版
     if (!_isAnalysisStarted) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.psychology,
-              size: 64,
-              color: Colors.blue,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '点击下方按钮开始对${widget.stockName}进行AI分析',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            // 主图标
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade400, Colors.purple.shade400],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.psychology,
+                size: 64,
+                color: Colors.white,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              '分析将基于技术面、基本面和市场情绪综合评估',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
+            const SizedBox(height: 30),
+            
+            // 标题
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                '点击下方按钮开始对\n${widget.stockName}进行AI多空辩论分析',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  height: 1.4,
+                ),
               ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _startAnalysis,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('开始分析'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            const SizedBox(height: 16),
+            
+            // 特性说明
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                children: [
+                  _buildFeatureRow(Icons.trending_up, '多空辩论模式'),
+                  const SizedBox(height: 8),
+                  _buildFeatureRow(Icons.access_time, '关注短线机会(1-3天)'),
+                  const SizedBox(height: 8),
+                  _buildFeatureRow(Icons.calculate, '客户端计算技术指标'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+            
+            // 开始按钮
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade600, Colors.purple.shade600],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: _startAnalysis,
+                icon: const Icon(Icons.play_arrow, color: Colors.white),
+                label: const Text(
+                  '开始分析',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
               ),
             ),
           ],
@@ -646,9 +773,9 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.blue.shade600, Colors.purple.shade600],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    colors: [Colors.red.shade400, Colors.blue.shade600],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
@@ -661,10 +788,28 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                 ),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.psychology_outlined,
-                      color: Colors.white,
-                      size: 32,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '🐻',
+                          style: TextStyle(fontSize: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'VS',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '🐂',
+                          style: TextStyle(fontSize: 24),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -678,7 +823,7 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'AI智能分析中',
+                      '多空辩论分析中',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
@@ -691,7 +836,7 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
               
               const SizedBox(height: 40),
               
-              // 圆形进度指示器
+              // 圆形进度指示器 - 多空对决风格
               Container(
                 width: 180,
                 height: 180,
@@ -699,13 +844,15 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
+                      Colors.red.shade100,
                       Colors.blue.shade100,
-                      Colors.purple.shade100,
                     ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.2),
+                      color: Colors.purple.withOpacity(0.2),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -720,7 +867,7 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                       height: 140,
                       child: CircularProgressIndicator(
                         value: 1.0,
-                        strokeWidth: 8,
+                        strokeWidth: 10,
                         backgroundColor: Colors.grey.shade200,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           Colors.grey.shade200,
@@ -728,49 +875,41 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                       ),
                     ),
                     
-                    // 进度圆环
+                    // 进度圆环 - 渐变色从红到蓝
                     SizedBox(
                       width: 140,
                       height: 140,
                       child: AnimatedBuilder(
                         animation: _animationController,
                         builder: (context, child) {
+                          // 根据进度改变颜色：前半段红色(空方)，后半段蓝色(多方)
+                          Color progressColor;
+                          if (_progress < 0.5) {
+                            progressColor = Colors.red.shade400;
+                          } else if (_progress < 0.8) {
+                            progressColor = Colors.blue.shade400;
+                          } else {
+                            progressColor = Colors.green.shade400;
+                          }
+                          
                           return CircularProgressIndicator(
                             value: _progress,
-                            strokeWidth: 8,
+                            strokeWidth: 10,
                             strokeCap: StrokeCap.round,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color.lerp(
-                                Colors.blue.shade400,
-                                Colors.purple.shade400,
-                                _animationController.value,
-                              )!,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                           );
                         },
                       ),
                     ),
                     
-                    // 中心内容
+                    // 中心内容 - 显示当前阶段图标
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AnimatedBuilder(
-                          animation: _animationController,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: 1.0 + (_animationController.value * 0.1),
-                              child: Icon(
-                                Icons.auto_awesome,
-                                size: 40,
-                                color: Color.lerp(
-                                  Colors.blue.shade600,
-                                  Colors.purple.shade600,
-                                  _animationController.value,
-                                ),
-                              ),
-                            );
-                          },
+                        Icon(
+                          _getCurrentStageIcon(),
+                          size: 45,
+                          color: _getProgressColor(),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -972,7 +1111,6 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                     _isAnalysisStarted = false;
                     _errorMessage = '';
                     _showConfigRequired = false;
-                    _hasError = false;
                   });
                 },
                 icon: const Icon(Icons.arrow_back),
@@ -984,7 +1122,6 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
                 setState(() {
                   _isAnalysisStarted = false;
                   _errorMessage = '';
-                    _hasError = false;
                 });
               },
               icon: const Icon(Icons.refresh),
@@ -1018,21 +1155,21 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
   IconData _getCurrentStageIcon() {
     switch (_currentStage) {
       case 'started':
-        return Icons.connect_without_contact;
-      case 'data_collecting':
-        return Icons.data_usage;
-      case 'technical_analysis':
-        return Icons.analytics;
-      case 'fundamental_analysis':
-        return Icons.bar_chart;
-      case 'market_sentiment':
-        return Icons.sentiment_satisfied;
-      case 'risk_assessment':
-        return Icons.security;
+        return Icons.rocket_launch;
+      case 'fetching_data':
+        return Icons.show_chart;
+      case 'calculating_indicators':
+        return Icons.calculate;
+      case 'bull_analysis':
+        return Icons.trending_up;
+      case 'bear_analysis':
+        return Icons.trending_down;
+      case 'final_verdict':
+        return Icons.balance;
       case 'completed':
         return Icons.check_circle;
       default:
-        return Icons.help;
+        return Icons.psychology;
     }
   }
 
@@ -1087,9 +1224,7 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
         // 阶段点
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: stages.asMap().entries.map((entry) {
-            final index = entry.key;
-            final stage = entry.value;
+          children: stages.map((stage) {
             final stageProgress = _progressStages[stage]!;
             final isActive = _progress >= stageProgress;
             final isCurrent = _currentStage == stage;
@@ -1161,20 +1296,38 @@ class _StockAIAnalysisState extends State<StockAIAnalysis> with SingleTickerProv
     switch (stage) {
       case 'started':
         return '启动';
-      case 'data_collecting':
-        return '数据收集';
-      case 'technical_analysis':
-        return '技术分析';
-      case 'fundamental_analysis':
-        return '基本面';
-      case 'market_sentiment':
-        return '市场情绪';
-      case 'risk_assessment':
-        return '风险评估';
+      case 'fetching_data':
+        return '获取数据';
+      case 'calculating_indicators':
+        return '计算指标';
+      case 'bull_analysis':
+        return '🐂多方';
+      case 'bear_analysis':
+        return '🐻空方';
+      case 'final_verdict':
+        return '⚖️研判';
       case 'completed':
         return '完成';
       default:
         return '进行中';
     }
+  }
+  
+  // 构建特性行
+  Widget _buildFeatureRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.blue.shade600),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.blue.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 }
