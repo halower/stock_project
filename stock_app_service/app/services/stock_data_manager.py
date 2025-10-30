@@ -311,13 +311,36 @@ class StockDataManager:
             return False
     
     async def _fetch_stock_basic_info(self) -> List[Dict]:
-        """获取股票基本信息"""
+        """获取股票基本信息（包括沪深A股和北交所）"""
         try:
             # 使用tushare获取股票基本信息
             if self.pro:
+                all_stocks = []
+                
                 try:
-                    df = self.pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,list_date')
-                    return df.to_dict('records')
+                    # 1. 获取沪深A股（SSE和SZSE）
+                    logger.info("获取沪深A股基本信息...")
+                    df_a = self.pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,list_date')
+                    if not df_a.empty:
+                        all_stocks.extend(df_a.to_dict('records'))
+                        logger.info(f"获取到 {len(df_a)} 只沪深A股")
+                    
+                    # 2. 获取北交所股票（BSE）
+                    logger.info("获取北交所股票基本信息...")
+                    try:
+                        # 北交所使用 bj_basic 接口
+                        df_bj = self.pro.bj_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,list_date')
+                        if not df_bj.empty:
+                            all_stocks.extend(df_bj.to_dict('records'))
+                            logger.info(f"获取到 {len(df_bj)} 只北交所股票")
+                    except Exception as bj_e:
+                        logger.warning(f"获取北交所股票失败（可能权限不足或接口不支持）: {bj_e}")
+                        logger.info("继续使用沪深A股数据...")
+                    
+                    if all_stocks:
+                        logger.info(f"总计获取 {len(all_stocks)} 只股票（沪深A股+北交所）")
+                        return all_stocks
+                    
                 except Exception as e:
                     logger.warning(f"tushare获取股票基本信息失败: {e}")
             
@@ -757,10 +780,22 @@ class StockDataManager:
                     # 判断是否为 ETF
                     is_etf = await self._is_etf(ts_code)
                     
+                    # 判断是否为北交所股票
+                    is_bj = ts_code.endswith('.BJ')
+                    
                     # 使用对应的接口
                     if is_etf:
                         logger.debug(f"使用 fund_daily 接口获取 ETF {ts_code} 数据...")
                         df = self.pro.fund_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+                    elif is_bj:
+                        # 北交所使用独立的接口
+                        logger.debug(f"使用 bj_daily 接口获取北交所 {ts_code} 数据...")
+                        try:
+                            df = self.pro.bj_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+                        except Exception as bj_error:
+                            logger.warning(f"bj_daily接口调用失败: {bj_error}，尝试使用daily接口...")
+                            # 如果bj_daily失败，尝试用daily接口（可能是老代码）
+                            df = self.pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
                     else:
                         logger.debug(f"使用 daily 接口获取股票 {ts_code} 数据...")
                         df = self.pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
