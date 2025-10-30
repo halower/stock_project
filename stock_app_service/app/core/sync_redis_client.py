@@ -25,7 +25,7 @@ def get_sync_redis_client():
                 retry_on_timeout=True,
                 socket_connect_timeout=5,
                 socket_timeout=5,
-                max_connections=20
+                max_connections=100  # 增加连接池大小以支持并发访问
             )
             
             # 测试连接

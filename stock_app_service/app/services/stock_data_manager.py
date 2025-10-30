@@ -128,11 +128,14 @@ class StockDataManager:
         self.batch_size = batch_size  # 常规批处理大小
         self.small_batch_size = small_batch_size  # 小批量处理大小
         
+        # 纯异步IO模式标识（不使用多线程）
+        self.use_multithreading = False  # 纯异步IO模式，不使用多线程
+        
         # 频率限制器（纯异步模式，无需线程管理）
         self.rate_limiter = TushareRateLimiter(max_calls_per_minute=max_calls_per_minute)
         self.failed_stocks = []  # 记录失败的股票，用于后续补偿
         
-        logger.info(f"📊 数据管理器配置: 每分钟{max_calls_per_minute}次调用，纯异步IO模式")
+        logger.info(f"📊 数据管理器配置: 每分钟{max_calls_per_minute}次调用，纯异步IO模式（use_multithreading=False）")
     
         
     async def initialize(self):

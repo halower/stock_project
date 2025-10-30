@@ -623,7 +623,8 @@ class SignalManager:
                     strategy_valid_data = 0
                     
                     # 分批处理股票，使用优化的批处理大小
-                    batch_size = self.batch_size
+                    # 限制并发数量，避免Redis连接数过多
+                    batch_size = min(self.batch_size, 10)  # 将批处理大小限制为10，避免Too many connections
                     total_batches = (len(stock_list) + batch_size - 1) // batch_size
                     
                     for batch_idx in range(0, len(stock_list), batch_size):
@@ -632,11 +633,15 @@ class SignalManager:
                         
                         logger.info(f"  处理第 {current_batch}/{total_batches} 批股票 ({len(batch)} 只)")
                         
+                        # 使用信号量限制实际并发数量
+                        semaphore = asyncio.Semaphore(5)  # 最多5个并发任务，避免Redis连接耗尽
+                        
+                        async def process_with_semaphore(stock):
+                            async with semaphore:
+                                return await self._process_stock_with_thread_control(stock, strategy_code, strategy_info)
+                        
                         # 创建任务列表
-                        tasks = []
-                        for stock in batch:
-                            task = self._process_stock_with_thread_control(stock, strategy_code, strategy_info)
-                            tasks.append(task)
+                        tasks = [process_with_semaphore(stock) for stock in batch]
                         
                         # 并行执行任务
                         batch_results = await asyncio.gather(*tasks, return_exceptions=True)

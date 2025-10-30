@@ -138,7 +138,7 @@ class RedisClientManager:
                         retry_on_timeout=True,
                         socket_connect_timeout=10,
                         socket_timeout=10,
-                        max_connections=50,  # 连接池大小
+                        max_connections=100,  # 增加连接池大小以支持并发访问
                         health_check_interval=30  # 健康检查间隔
                     )
                 

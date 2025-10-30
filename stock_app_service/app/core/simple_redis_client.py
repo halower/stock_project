@@ -48,7 +48,7 @@ async def _create_redis_client():
             retry_on_timeout=True,
             socket_connect_timeout=5,  # 减少连接超时
             socket_timeout=5,          # 减少操作超时
-            max_connections=20,        # 减少连接池大小
+            max_connections=100,       # 增加连接池大小以支持并发访问
             health_check_interval=30
         )
         
