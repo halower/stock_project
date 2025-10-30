@@ -475,8 +475,7 @@ async def _fetch_all_kline_data(stock_codes: List[Dict]):
             # 串行处理以避免占用过多资源影响API服务
             for j, stock in enumerate(batch):
                 try:
-                    thread_id = f"batch_{current_batch}_stock_{j}" if stock_data_manager.use_multithreading else None
-                    result = await _fetch_single_stock_data(stock_data_manager, stock, thread_id)
+                    result = await _fetch_single_stock_data(stock_data_manager, stock)
                     
                     if isinstance(result, Exception):
                         failed_count += 1
@@ -507,7 +506,7 @@ async def _fetch_all_kline_data(stock_codes: List[Dict]):
     finally:
         await stock_data_manager.close()
 
-async def _fetch_single_stock_data(manager: StockDataManager, stock: Dict, thread_id: str = None) -> bool:
+async def _fetch_single_stock_data(manager: StockDataManager, stock: Dict) -> bool:
     """获取单只股票数据"""
     try:
         ts_code = stock.get('ts_code')
@@ -515,13 +514,8 @@ async def _fetch_single_stock_data(manager: StockDataManager, stock: Dict, threa
             logger.warning(f" 股票数据缺少ts_code: {stock}")
             return False
         
-        # 根据配置决定是否使用线程控制
-        if manager.use_multithreading and thread_id:
-            logger.debug(f"[{thread_id}] 开始获取股票数据")
-            success = await manager.update_stock_trend_data(ts_code, days=180)
-        else:
-            # 直接获取数据
-            success = await manager.update_stock_trend_data(ts_code, days=180)
+        # 纯异步IO模式：直接获取数据
+        success = await manager.update_stock_trend_data(ts_code, days=180)
         
         if success:
             logger.debug(f" {ts_code} 数据获取成功")

@@ -7,15 +7,11 @@
 1. 股票清单管理: 初始化和更新股票基本信息
 2. 股票走势数据管理: 获取、存储和更新股票历史交易数据
 3. API频率限制控制: 通过TushareRateLimiter类确保API调用不超过限制
-4. 线程管理: 控制并发线程数量，避免过多请求
-5. 数据补偿机制: 对获取失败的股票数据进行补偿处理
-6. 系统启动检查: 在系统启动时检查数据完整性
+4. 数据补偿机制: 对获取失败的股票数据进行补偿处理
+5. 系统启动检查: 在系统启动时检查数据完整性
 
-优化说明:
-1. 仅使用Tushare API作为数据源
-2. 限制API调用频率为每分钟50次
-3. 控制最大并行线程数为5
-4. 批处理大小调整为适应API限制
+架构说明:
+纯异步IO模式 - 使用asyncio实现高效并发，无需多线程/多进程
 """
 import asyncio
 import logging
@@ -29,8 +25,6 @@ from app.core.config import settings
 import time as time_module
 from collections import defaultdict
 import threading
-from queue import Queue, Empty
-from app.core.thread_pool import global_thread_pool
 
 logger = logging.getLogger(__name__)
 
@@ -98,14 +92,15 @@ class StockDataManager:
     1. 股票清单管理: 初始化和更新股票基本信息
     2. 股票走势数据管理: 获取、存储和更新股票历史交易数据
     3. API频率限制控制: 通过TushareRateLimiter类确保API调用不超过限制
-    4. 线程管理: 控制并发线程数量，避免过多请求
-    5. 数据补偿机制: 对获取失败的股票数据进行补偿处理
-    6. 系统启动检查: 在系统启动时检查数据完整性
+    4. 数据补偿机制: 对获取失败的股票数据进行补偿处理
+    5. 系统启动检查: 在系统启动时检查数据完整性
     
     参数:
         batch_size: 常规批处理大小，默认30
         small_batch_size: 小批量处理大小，默认15
         max_calls_per_minute: 每分钟最大API调用次数，默认480（2000积分，留20次余量）
+    
+    架构: 纯异步IO模式，不使用多线程
     """
     
     def __init__(self, batch_size=30, small_batch_size=15, max_calls_per_minute=480):
@@ -128,14 +123,11 @@ class StockDataManager:
         self.batch_size = batch_size  # 常规批处理大小
         self.small_batch_size = small_batch_size  # 小批量处理大小
         
-        # 纯异步IO模式标识（不使用多线程）
-        self.use_multithreading = False  # 纯异步IO模式，不使用多线程
-        
-        # 频率限制器（纯异步模式，无需线程管理）
+        # 频率限制器（纯异步模式）
         self.rate_limiter = TushareRateLimiter(max_calls_per_minute=max_calls_per_minute)
         self.failed_stocks = []  # 记录失败的股票，用于后续补偿
         
-        logger.info(f"📊 数据管理器配置: 每分钟{max_calls_per_minute}次调用，纯异步IO模式（use_multithreading=False）")
+        logger.info(f"📊 数据管理器配置: 每分钟{max_calls_per_minute}次调用，纯异步IO模式")
     
         
     async def initialize(self):
@@ -151,7 +143,7 @@ class StockDataManager:
             await self.redis_client.close()
             self.redis_client = None
             
-    async def update_processing_parameters(self, batch_size=None, small_batch_size=None, max_calls_per_minute=None, max_threads=None):
+    async def update_processing_parameters(self, batch_size=None, small_batch_size=None, max_calls_per_minute=None):
         """
         动态更新处理参数
         
@@ -159,7 +151,6 @@ class StockDataManager:
             batch_size: 常规批处理大小
             small_batch_size: 小批量处理大小
             max_calls_per_minute: 每分钟最大API调用次数
-            max_threads: 最大并行线程数
         """
         if batch_size is not None:
             self.batch_size = batch_size
@@ -173,18 +164,10 @@ class StockDataManager:
             self.rate_limiter.max_calls_per_minute = max_calls_per_minute
             logger.info(f"更新每分钟最大API调用次数为: {max_calls_per_minute}")
             
-        if max_threads is not None:
-            # 更新最大线程数需要重新创建信号量
-            self.rate_limiter.max_threads = max_threads
-            self.rate_limiter.thread_semaphore = asyncio.Semaphore(max_threads)
-            logger.info(f"更新最大并行线程数为: {max_threads}")
-            
         return {
             "batch_size": self.batch_size,
             "small_batch_size": self.small_batch_size,
-            "max_calls_per_minute": self.rate_limiter.max_calls_per_minute,
-            "max_threads": self.rate_limiter.max_threads,
-            "active_threads": self.rate_limiter.active_threads
+            "max_calls_per_minute": self.rate_limiter.max_calls_per_minute
         }
 
     async def get_processing_status(self) -> Dict:
@@ -206,11 +189,7 @@ class StockDataManager:
                 "batch_size": self.batch_size,
                 "small_batch_size": self.small_batch_size,
                 "max_calls_per_minute": self.rate_limiter.max_calls_per_minute,
-                "max_threads": self.rate_limiter.max_threads
-            },
-            "thread_status": {
-                "active_threads": self.rate_limiter.active_threads,
-                "suspended_threads": len(self.rate_limiter.suspended_threads)
+                "architecture": "纯异步IO模式"
             },
             "api_status": {
                 "current_minute_calls": current_minute_calls,
@@ -631,9 +610,9 @@ class StockDataManager:
         except:
             return False
     
-    async def _fetch_with_tushare(self, ts_code: str, days: int, thread_id: str = None) -> bool:
+    async def _fetch_with_tushare(self, ts_code: str, days: int) -> bool:
         """
-        使用 tushare 获取股票/ETF 数据 - 支持线程管理
+        使用 tushare 获取股票/ETF 数据 - 纯异步IO模式
         
         自动识别 ETF 并使用正确的接口：
         - 股票：使用 daily 接口
@@ -745,7 +724,7 @@ class StockDataManager:
             if self.pro and not self.rate_limiter.daily_limit_reached:
                 try:
                     # 检查并等待API调用限制
-                    await self.rate_limiter.wait_for_rate_limit(thread_id)
+                    await self.rate_limiter.wait_for_rate_limit()
                     
                     # 记录API调用
                     self.rate_limiter._record_call()
@@ -1057,7 +1036,7 @@ class StockDataManager:
         return total_success
     
     async def _small_batch_parallel_compensate(self, missing_stocks: List[Dict]) -> Tuple[int, List[Dict]]:
-        """小批量补偿 - 根据配置决定是否并行处理"""
+        """小批量补偿 - 异步串行处理"""
         success_count = 0
         failed_stocks = []
         
@@ -1070,27 +1049,15 @@ class StockDataManager:
             
             logger.info(f"小批量处理 第 {i//batch_size + 1} 批 ({i+1}-{min(i + batch_size, total)}/{total})")
             
-            # 根据配置决定处理方式
-            if self.use_multithreading:
-                # 多线程模式：使用信号量控制实际并发数
-                semaphore = asyncio.Semaphore(self.thread_pool.max_threads)
-                
-                async def process_with_semaphore(stock):
-                    async with semaphore:
-                        return await self._process_stock_with_thread_control(stock['ts_code'])
-                
-                tasks = [process_with_semaphore(stock) for stock in batch]
-                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
-            else:
-                # 单线程模式：串行处理
-                batch_results = []
-                for stock in batch:
-                    try:
-                        result = await self.update_stock_trend_data(stock['ts_code'])
-                        batch_results.append(result)
-                    except Exception as e:
-                        logger.error(f"小批量处理股票 {stock['ts_code']} 异常: {e}")
-                        batch_results.append(False)
+            # 异步串行处理
+            batch_results = []
+            for stock in batch:
+                try:
+                    result = await self.update_stock_trend_data(stock['ts_code'])
+                    batch_results.append(result)
+                except Exception as e:
+                    logger.error(f"小批量处理股票 {stock['ts_code']} 异常: {e}")
+                    batch_results.append(False)
             
             # 统计结果
             for idx, result in enumerate(batch_results):
@@ -1106,7 +1073,7 @@ class StockDataManager:
         return success_count, failed_stocks
 
 # 创建股票数据管理器工厂函数，避免单例问题
-def create_stock_data_manager(batch_size=10, small_batch_size=5, max_calls_per_minute=50, max_threads=None):
+def create_stock_data_manager(batch_size=10, small_batch_size=5, max_calls_per_minute=50):
     """
     创建新的股票数据管理器实例
     
@@ -1114,13 +1081,11 @@ def create_stock_data_manager(batch_size=10, small_batch_size=5, max_calls_per_m
         batch_size: 常规批处理大小
         small_batch_size: 小批量处理大小
         max_calls_per_minute: 每分钟最大API调用次数
-        max_threads: 最大并行线程数，如果为None则使用配置文件中的值
     """
     return StockDataManager(
         batch_size=batch_size,
         small_batch_size=small_batch_size,
-        max_calls_per_minute=max_calls_per_minute,
-        max_threads=max_threads
+        max_calls_per_minute=max_calls_per_minute
     )
 
 # 全局实例（向后兼容）
