@@ -3444,7 +3444,6 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-         
               // 现代化加载动画
               Stack(
                 alignment: Alignment.center,

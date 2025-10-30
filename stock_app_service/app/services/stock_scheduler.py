@@ -462,7 +462,7 @@ async def _fetch_all_kline_data(stock_codes: List[Dict]):
     try:
         success_count = 0
         failed_count = 0
-        batch_size = 10  # 减小批处理大小，避免阻塞API服务
+        batch_size = 100  # 增加批处理大小，充分利用API限制（480/分钟）
         
         total_batches = (len(stock_codes) + batch_size - 1) // batch_size
         
@@ -472,34 +472,37 @@ async def _fetch_all_kline_data(stock_codes: List[Dict]):
             
             logger.info(f" 处理第 {current_batch}/{total_batches} 批股票 ({len(batch)} 只)")
             
-            # 串行处理以避免占用过多资源影响API服务
-            for j, stock in enumerate(batch):
-                try:
-                    result = await _fetch_single_stock_data(stock_data_manager, stock)
-                    
-                    if isinstance(result, Exception):
-                        failed_count += 1
-                    elif result:
-                        success_count += 1
-                    else:
-                        failed_count += 1
-                        
-                    # 根据后台任务优先级设置休息时间
-                    if settings.BACKGROUND_TASK_PRIORITY == "low":
-                        await asyncio.sleep(0.5)  # 低优先级：更多休息时间
-                    elif settings.BACKGROUND_TASK_PRIORITY == "normal":
-                        await asyncio.sleep(0.2)  # 正常优先级
-                    else:  # high priority
-                        await asyncio.sleep(0.1)  # 高优先级：最少休息时间
-                        
-                except Exception as e:
-                    logger.error(f"处理股票异常: {e}")
+            # 使用信号量控制并发，避免突破API限制
+            # 480次/分钟 = 8次/秒，设置并发为3更稳定
+            # 降低并发避免在限流解除后瞬间又达到限制
+            semaphore = asyncio.Semaphore(3)
+            
+            async def process_with_semaphore(stock):
+                async with semaphore:
+                    try:
+                        result = await _fetch_single_stock_data(stock_data_manager, stock)
+                        return result
+                    except Exception as e:
+                        logger.error(f"处理股票异常: {e}")
+                        return False
+            
+            # 并发处理整个批次
+            tasks = [process_with_semaphore(stock) for stock in batch]
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # 统计结果
+            for result in batch_results:
+                if isinstance(result, Exception):
+                    failed_count += 1
+                elif result:
+                    success_count += 1
+                else:
                     failed_count += 1
             
             logger.info(f" 第 {current_batch} 批完成 | 总计成功: {success_count}, 失败: {failed_count}")
             
-            # 批次间休息，避免频率限制，同时释放资源给API服务
-            await asyncio.sleep(2)
+            # 批次间休息，给限流器充足的恢复时间
+            await asyncio.sleep(1.5)
         
         logger.info(f" K线数据获取完成: 成功 {success_count} 只, 失败 {failed_count} 只")
         

@@ -37,6 +37,7 @@ class TushareRateLimiter:
         self.daily_limit_reached = False
         self.daily_limit_check_time = None
         self.lock = threading.Lock()
+        self.async_lock = None  # 异步锁，用于并发控制
         
     def _record_call(self):
         """记录API调用"""
@@ -59,15 +60,39 @@ class TushareRateLimiter:
             return len(self.call_times) >= self.max_calls_per_minute
     
     async def wait_for_rate_limit(self):
-        """等待频率限制解除 - 纯异步模式"""
-        if self._check_rate_limit():
-            # 计算等待时间（到下一分钟开始）
-            wait_seconds = 60 - (time_module.time() % 60) + 1
-            logger.warning(f"触发Tushare频率限制，等待 {wait_seconds:.1f} 秒...")
-            
-            await asyncio.sleep(wait_seconds)
-            
-            logger.info("频率限制解除，继续数据获取...")
+        """等待频率限制解除 - 纯异步模式，支持并发安全"""
+        # 初始化异步锁（延迟初始化，确保在正确的事件循环中）
+        if self.async_lock is None:
+            self.async_lock = asyncio.Lock()
+        
+        # 使用异步锁保护，避免并发竞态条件
+        async with self.async_lock:
+            # 在锁内再次检查，确保并发安全
+            if self._check_rate_limit():
+                # 计算等待时间：等待最早的API调用过期（60秒后）
+                with self.lock:
+                    if self.call_times:
+                        oldest_call = min(self.call_times)
+                        elapsed = time_module.time() - oldest_call
+                        wait_seconds = max(5.0, 60 - elapsed + 1.0)  # 最少等5秒，确保有足够恢复时间
+                    else:
+                        wait_seconds = 5.0
+                
+                logger.warning(f"触发Tushare频率限制（{len(self.call_times)}/{self.max_calls_per_minute}），等待 {wait_seconds:.1f} 秒...")
+                
+                await asyncio.sleep(wait_seconds)
+                
+                # 等待后立即清理过期记录
+                with self.lock:
+                    current_time = time_module.time()
+                    cutoff_time = current_time - 60
+                    old_count = len(self.call_times)
+                    self.call_times = [t for t in self.call_times if t > cutoff_time]
+                    new_count = len(self.call_times)
+                    if old_count > new_count:
+                        logger.info(f"清理过期API记录: {old_count} → {new_count}")
+                
+                logger.info("频率限制解除，继续数据获取...")
     
     def handle_daily_limit_error(self, ts_code: str, days: int):
         """处理每日限制错误"""

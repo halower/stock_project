@@ -30,19 +30,28 @@ async def get_buy_signals(
             raise HTTPException(status_code=500, detail="SignalManager初始化失败")
         
         # 检查并清理旧策略信号（一次性检查）
-        redis_client = await signal_manager._get_redis_client()
-        
-        # 检查是否需要清理旧信号
+        # 使用独立的Redis客户端获取，避免事件循环冲突
         check_key = "signal_migration_checked"
+        migration_checked = None
+        
         try:
+            # 每次都重新获取Redis客户端，避免事件循环冲突
+            from app.core.redis_client import get_redis_client
+            redis_client = await get_redis_client()
             migration_checked = await redis_client.get(check_key)
         except Exception as e:
+            # 捕获所有异常，包括事件循环冲突
             logger.warning(f"检查迁移状态失败，跳过: {e}")
             migration_checked = "1"  # 跳过迁移检查
         
         if not migration_checked:
             logger.info("首次访问，检查是否有旧策略信号需要清理...")
             try:
+                # 确保使用新获取的Redis客户端
+                if 'redis_client' not in locals():
+                    from app.core.redis_client import get_redis_client
+                    redis_client = await get_redis_client()
+                
                 signals_data = await redis_client.hgetall(signal_manager.buy_signals_key)
                 
                 old_strategy_names = {"ma_breakout", "volume_price", "breakthrough"}
@@ -72,8 +81,14 @@ async def get_buy_signals(
                 logger.info("信号迁移检查完成")
             except Exception as e:
                 logger.error(f"信号迁移检查失败: {e}")
-                # 标记已检查，避免重复尝试
-                await redis_client.set(check_key, "1", ex=3600)  # 1小时过期
+                # 尝试标记已检查，避免重复尝试
+                try:
+                    if 'redis_client' not in locals():
+                        from app.core.redis_client import get_redis_client
+                        redis_client = await get_redis_client()
+                    await redis_client.set(check_key, "1", ex=3600)  # 1小时过期
+                except:
+                    pass  # 如果还是失败就放弃
         
         # 获取信号（不再传递limit参数）
         signals = await signal_manager.get_buy_signals(strategy=strategy)
