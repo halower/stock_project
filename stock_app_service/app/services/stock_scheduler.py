@@ -1510,6 +1510,10 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
     """
     将ETF实时数据合并到K线数据
     
+    修复说明：
+    - 增强日期判断逻辑，支持多种日期格式
+    - 添加详细日志，诊断盘中更新问题
+    
     Args:
         realtime_dict: 实时数据字典 {code: data}
         
@@ -1517,12 +1521,19 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
         更新的ETF数量
     """
     updated_count = 0
+    appended_count = 0
     skipped_no_kline = 0
     
     try:
         logger.info(f"📊 开始合并ETF实时数据到K线，共 {len(realtime_dict)} 只ETF")
         
-        # 调试：显示前3个ETF的key构造过程
+        # 当前日期的多种格式
+        today_str = datetime.now().strftime('%Y-%m-%d')  # 2025-10-31
+        today_trade_date = datetime.now().strftime('%Y%m%d')  # 20251031
+        
+        logger.info(f"📅 当前日期: {today_str} (trade_date: {today_trade_date})")
+        
+        # 调试：显示前3个ETF的详细信息
         debug_count = 0
         
         for code, etf_data in realtime_dict.items():
@@ -1537,23 +1548,51 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                 kline_key = ETF_KEYS['etf_kline'].format(ts_code)
                 kline_data = redis_cache.get_cache(kline_key)
                 
-                # 调试：显示前3个ETF的详细信息
-                if debug_count < 3:
-                    logger.info(f"  调试 [{debug_count+1}] code={code}, ts_code={ts_code}, kline_key={kline_key}, "
-                               f"has_data={kline_data is not None}, "
-                               f"data_len={len(kline_data) if kline_data else 0}")
-                    debug_count += 1
-                
                 if not kline_data or not isinstance(kline_data, list) or len(kline_data) == 0:
                     skipped_no_kline += 1
                     continue
                 
                 # 获取最后一条K线
                 last_kline = kline_data[-1]
-                today = datetime.now().strftime('%Y-%m-%d')
                 
-                # 如果最后一条是今天的，更新它
-                if last_kline.get('date', '').startswith(today):
+                # 获取最后一条K线的日期（支持多种字段名和格式）
+                last_date = ''
+                last_trade_date = ''
+                
+                # 优先使用date字段
+                if 'date' in last_kline:
+                    last_date = str(last_kline['date'])
+                    # 如果是YYYY-MM-DD格式，转换为YYYYMMDD
+                    if '-' in last_date:
+                        last_trade_date = last_date.replace('-', '')
+                    else:
+                        last_trade_date = last_date
+                
+                # 或者使用trade_date字段
+                if 'trade_date' in last_kline:
+                    last_trade_date = str(last_kline['trade_date'])
+                    # 如果是YYYYMMDD格式，转换为YYYY-MM-DD
+                    if len(last_trade_date) == 8 and '-' not in last_trade_date:
+                        last_date = f"{last_trade_date[:4]}-{last_trade_date[4:6]}-{last_trade_date[6:8]}"
+                    else:
+                        last_date = last_trade_date
+                
+                # 调试：显示前3个ETF的详细信息
+                if debug_count < 3:
+                    logger.info(f"  🔍 调试 [{debug_count+1}] {ts_code}:")
+                    logger.info(f"      - K线数据条数: {len(kline_data)}")
+                    logger.info(f"      - 最后K线date字段: {last_kline.get('date', 'N/A')}")
+                    logger.info(f"      - 最后K线trade_date字段: {last_kline.get('trade_date', 'N/A')}")
+                    logger.info(f"      - 解析后last_date: {last_date}")
+                    logger.info(f"      - 解析后last_trade_date: {last_trade_date}")
+                    logger.info(f"      - 实时价格: {etf_data.get('price', 'N/A')}")
+                    logger.info(f"      - 判断: last_date==today_str? {last_date == today_str}, last_trade_date==today_trade_date? {last_trade_date == today_trade_date}")
+                    debug_count += 1
+                
+                # 双重判断：如果最后一条K线的日期等于今天，则更新；否则新增
+                is_today = (last_date == today_str) or (last_trade_date == today_trade_date)
+                
+                if is_today:
                     last_kline['close'] = etf_data.get('price', last_kline.get('close', 0))
                     last_kline['high'] = max(
                         last_kline.get('high', 0),
@@ -1572,10 +1611,14 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                     # 保存更新后的K线数据（TTL设为7天）
                     redis_cache.set_cache(kline_key, kline_data, ttl=604800)
                     updated_count += 1
+                    
+                    if debug_count <= 3:
+                        logger.info(f"      ✅ 更新现有K线: close={etf_data.get('price')}")
                 else:
                     # 如果最后一条不是今天的，创建新的K线
                     new_kline = {
-                        'date': today,
+                        'date': today_str,
+                        'trade_date': today_trade_date,  # 添加trade_date字段，保持一致
                         'open': etf_data.get('open', etf_data.get('price', 0)),
                         'close': etf_data.get('price', 0),
                         'high': etf_data.get('high', etf_data.get('price', 0)),
@@ -1593,13 +1636,18 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                         kline_data = kline_data[-1000:]
                     
                     redis_cache.set_cache(kline_key, kline_data, ttl=604800)
-                    updated_count += 1
+                    appended_count += 1
+                    
+                    if debug_count <= 3:
+                        logger.info(f"      ➕ 新增今日K线: {today_str}, close={etf_data.get('price')}")
                     
             except Exception as e:
                 logger.warning(f"合并ETF {code} 实时数据失败: {e}")
                 continue
         
-        logger.info(f"📊 ETF K线合并完成: 成功更新 {updated_count} 只，跳过（无K线数据）{skipped_no_kline} 只")
+        total_processed = updated_count + appended_count
+        logger.info(f"📊 ETF K线合并完成: 更新 {updated_count} 只，新增 {appended_count} 只，共处理 {total_processed} 只")
+        logger.info(f"📊 跳过（无K线数据）{skipped_no_kline} 只")
         
         if skipped_no_kline > 0:
             logger.warning(f"⚠️  有 {skipped_no_kline} 只ETF没有K线数据，请先初始化历史数据")

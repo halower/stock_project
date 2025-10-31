@@ -350,8 +350,23 @@ $filterCriteria
 '''
         : '';
     
+    // 获取当前日期
+    final now = DateTime.now();
+    final currentDate = '${now.year}年${now.month}月${now.day}日';
+    
     return '''
-你是一个专业的A股交易分析师。请基于以下日线周期数据进行分析：
+你是一个专业的A股交易分析师，现在是$currentDate。请基于以下日线周期数据进行分析：
+
+🚨 **极其重要的时间说明**：
+1. **当前日期是 $currentDate（今天）**
+2. **下面的K线数据是按时间倒序排列的：**
+   - **标记【最新】的是最近的交易日（今天或最近一个交易日）**
+   - **越往下越旧，最后一条是30个交易日之前的数据**
+   - **请务必重点分析标记【最新】【前一天】【前两天】的数据！**
+3. **短线分析重点**：
+   - 散户最关心1-3天的短线机会
+   - **请重点分析最近3-5个交易日的价格和成交量变化**
+   - **不要把30天前的旧数据当作最新数据！**
 
 【股票信息】
 代码: $stockCode
@@ -379,6 +394,12 @@ $filterSection【交易指导原则】
 4. **技术指标权重**: 趋势(均线排列) > RSI > MACD > 布林带
 
 【分析要求】
+🚨 **再次强调时间重点**：
+- 今天是 $currentDate
+- 请重点分析**标记【最新】【前一天】【前两天】的K线数据**
+- **这些是最近几天的数据，是短线分析的关键！**
+- **不要分析30天前的旧数据，那些对短线交易没有意义！**
+
 基于以上分析${filterCriteria != null && filterCriteria.isNotEmpty ? '和用户筛选条件' : ''}，请给出明确的交易信号。注意：
 - 买入信号必须有明确的技术支撑${filterCriteria != null && filterCriteria.isNotEmpty ? '且符合筛选条件' : ''}
 - 观望信号用于技术面不明确或震荡整理的情况${filterCriteria != null && filterCriteria.isNotEmpty ? '，或部分符合筛选条件' : ''}
@@ -386,6 +407,7 @@ $filterSection【交易指导原则】
 - 目标价应基于阻力位或技术测算
 - 置信度基于多个指标的一致性${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件的匹配度' : ''}
 - 理由要简洁明了，50-100字，突出核心逻辑${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件匹配情况' : ''}
+- **所有分析必须基于最近几天（标记【最新】）的数据，而不是30天前的旧数据！**
 
 请用以下JSON格式回复（只返回JSON，不要有其他文字）：
 {
