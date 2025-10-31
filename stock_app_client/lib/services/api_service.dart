@@ -882,7 +882,7 @@ class ApiService {
   // 获取市场类型列表
   Future<List<Map<String, dynamic>>> getMarketTypes() async {
     try {
-      final url = '$apiBaseUrl/api/market-types';
+      final url = '$apiBaseUrl/market-types';
       debugPrint('获取市场类型列表: $url');
       
       final response = await HttpClient.get(url);
