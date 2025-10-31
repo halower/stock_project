@@ -13,7 +13,7 @@ import time
 
 from app.core.logging import logger
 from app.db.session import RedisCache
-from app.services.realtime_service import get_realtime_service
+from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
 
 # Redis缓存客户端
 redis_cache = RedisCache()
@@ -166,9 +166,31 @@ def get_realtime_stock_data(stock_code: str, provider: str = None) -> Dict[str, 
     try:
         logger.info(f"开始获取股票 {stock_code} 的实时数据")
         
-        # 使用新的统一实时行情服务
-        service = get_realtime_service()
-        result = service.get_single_stock_realtime(stock_code, provider)
+        # 使用V2实时行情服务
+        proxy_manager = get_proxy_manager()
+        service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
+        # V2版本只有get_all_stocks_realtime，需要从结果中筛选
+        all_result = service.get_all_stocks_realtime(provider=provider)
+        
+        if not all_result.get('success'):
+            result = all_result
+        else:
+            # 从所有股票中找到指定股票
+            all_stocks = all_result.get('data', [])
+            stock_data = next((s for s in all_stocks if s['code'] == stock_code), None)
+            if stock_data:
+                result = {
+                    'success': True,
+                    'data': stock_data,
+                    'source': all_result.get('source')
+                }
+            else:
+                result = {
+                    'success': False,
+                    'error': f'未找到股票: {stock_code}',
+                    'data': {},
+                    'source': all_result.get('source')
+                }
         
         if result.get('success'):
             # 转换为旧格式以保持兼容性

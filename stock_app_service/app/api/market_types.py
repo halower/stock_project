@@ -75,6 +75,7 @@ def categorize_market(market_value: str) -> str:
 
 
 @router.get("/api/market-types", summary="获取所有市场类型", dependencies=[Depends(verify_token)])
+@router.get("/market-types", summary="获取所有市场类型（兼容路径）", dependencies=[Depends(verify_token)])
 async def get_market_types() -> Dict[str, Any]:
     """
     获取系统中所有可用的市场类型
@@ -99,7 +100,9 @@ async def get_market_types() -> Dict[str, Any]:
         }
     }
     """
+    redis_client = None
     try:
+        # 每次请求都重新获取Redis客户端，确保在正确的事件循环中
         redis_client = await get_redis_client()
         
         # 从Redis获取所有股票数据
@@ -198,6 +201,7 @@ async def get_market_types() -> Dict[str, Any]:
 
 
 @router.get("/api/market-types/stats", summary="获取市场类型统计", dependencies=[Depends(verify_token)])
+@router.get("/market-types/stats", summary="获取市场类型统计（兼容路径）", dependencies=[Depends(verify_token)])
 async def get_market_type_stats() -> Dict[str, Any]:
     """
     获取各市场类型的统计信息（股票数量、ETF数量等）
@@ -205,7 +209,9 @@ async def get_market_type_stats() -> Dict[str, Any]:
     Returns:
         市场类型统计信息
     """
+    redis_client = None
     try:
+        # 每次请求都重新获取Redis客户端，确保在正确的事件循环中
         redis_client = await get_redis_client()
         
         # 从Redis获取所有股票数据

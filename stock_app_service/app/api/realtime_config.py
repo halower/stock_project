@@ -9,7 +9,7 @@ from typing import Optional, Literal
 
 from app.core.logging import logger
 from app.core.config import settings
-from app.services.realtime_service import get_realtime_service, DataProvider
+from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
 from app.api.dependencies import verify_token
 
 router = APIRouter()
@@ -51,7 +51,8 @@ async def get_realtime_config(token: str = Depends(verify_token)):
     - available_providers: 可用的数据提供商列表
     """
     try:
-        service = get_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
         
         return RealtimeConfigResponse(
             default_provider=service.default_provider,
@@ -79,7 +80,8 @@ async def update_realtime_config(
     注意：此配置仅在当前运行时生效，重启后会恢复为环境变量配置
     """
     try:
-        service = get_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
         
         # 更新配置
         if config.default_provider is not None:
@@ -118,7 +120,8 @@ async def get_realtime_stats(token: str = Depends(verify_token)):
     - config: 当前配置
     """
     try:
-        service = get_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
         stats = service.get_stats()
         
         return RealtimeStatsResponse(**stats)
@@ -133,7 +136,8 @@ async def reset_realtime_stats(token: str = Depends(verify_token)):
     重置实时行情服务的统计信息
     """
     try:
-        service = get_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
         service.reset_stats()
         
         return {
@@ -160,7 +164,8 @@ async def test_realtime_provider(
     返回测试结果和获取的数据量
     """
     try:
-        service = get_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
         
         logger.info(f"开始测试数据源: {provider}")
         result = service.get_all_stocks_realtime(provider=provider)

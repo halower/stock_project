@@ -51,8 +51,10 @@ class StockAIAnalysisService:
     async def _get_cached_analysis(self, stock_code: str) -> Optional[str]:
         """检查缓存是否存在且有效（当天有效）"""
         try:
+            # 每次都重新获取Redis客户端，确保在正确的事件循环中
+            redis_client = await get_redis_client()
             cache_key = self._get_cache_key(stock_code)
-            cached_data = await self.redis_client.get(cache_key)
+            cached_data = await redis_client.get(cache_key)
             
             if cached_data:
                 logger.debug(f"找到{stock_code}的缓存分析报告（当天有效）")
@@ -67,6 +69,8 @@ class StockAIAnalysisService:
     async def _save_analysis_to_cache(self, stock_code: str, analysis: str):
         """保存分析结果到缓存（当天结束时自动失效）"""
         try:
+            # 每次都重新获取Redis客户端，确保在正确的事件循环中
+            redis_client = await get_redis_client()
             cache_key = self._get_cache_key(stock_code)
             
             # 计算到当天结束的秒数
@@ -76,11 +80,11 @@ class StockAIAnalysisService:
             
             # 设置缓存，当天结束时自动过期
             if seconds_until_end_of_day > 0:
-                await self.redis_client.setex(cache_key, seconds_until_end_of_day, analysis)
+                await redis_client.setex(cache_key, seconds_until_end_of_day, analysis)
                 logger.debug(f"已保存{stock_code}的分析报告到缓存（{seconds_until_end_of_day}秒后过期）")
             else:
                 # 如果已经是当天最后时刻，设置短期缓存
-                await self.redis_client.setex(cache_key, 3600, analysis)  # 1小时
+                await redis_client.setex(cache_key, 3600, analysis)  # 1小时
                 logger.debug(f"已保存{stock_code}的分析报告到缓存（1小时后过期）")
         except Exception as e:
             logger.error(f"保存缓存失败: {e}")
@@ -88,8 +92,10 @@ class StockAIAnalysisService:
     async def clear_stock_cache(self, stock_code: str):
         """清除特定股票的缓存"""
         try:
+            # 每次都重新获取Redis客户端，确保在正确的事件循环中
+            redis_client = await get_redis_client()
             cache_key = self._get_cache_key(stock_code)
-            await self.redis_client.delete(cache_key)
+            await redis_client.delete(cache_key)
             logger.debug(f"已清除{stock_code}的缓存")
         except Exception as e:
             logger.error(f"清除缓存失败: {e}")
@@ -97,13 +103,15 @@ class StockAIAnalysisService:
     async def clear_all_cache(self):
         """清除所有AI分析缓存"""
         try:
+            # 每次都重新获取Redis客户端，确保在正确的事件循环中
+            redis_client = await get_redis_client()
             pattern = f"{self.cache_prefix}*"
             keys = []
-            async for key in self.redis_client.scan_iter(match=pattern):
+            async for key in redis_client.scan_iter(match=pattern):
                 keys.append(key)
             
             if keys:
-                await self.redis_client.delete(*keys)
+                await redis_client.delete(*keys)
                 logger.info(f"已清除所有AI分析缓存，共{len(keys)}条")
             else:
                 logger.info("没有找到需要清除的缓存")
@@ -255,10 +263,13 @@ class StockAIAnalysisService:
     async def _fetch_stock_history_data(self, stock_code: str) -> Dict[str, any]:
         """获取股票历史数据"""
         try:
+            # 每次都重新获取Redis客户端，确保在正确的事件循环中
+            redis_client = await get_redis_client()
+            
             # 首先尝试从股票基础信息中查找正确的ts_code（与图表API保持一致）
             logger.info(f"查找股票代码: {stock_code}")
             stocks_key = "stocks:codes:all"
-            stocks_data = await self.redis_client.get(stocks_key)
+            stocks_data = await redis_client.get(stocks_key)
             
             if not stocks_data:
                 logger.error("Redis中没有stocks:codes:all数据")
@@ -312,7 +323,7 @@ class StockAIAnalysisService:
             
             # 从Redis获取股票走势数据
             trend_key = f"stock_trend:{ts_code}"
-            trend_data = await self.redis_client.get(trend_key)
+            trend_data = await redis_client.get(trend_key)
             
             if trend_data:
                 try:
@@ -333,7 +344,7 @@ class StockAIAnalysisService:
                 
                 # 列出一些现有的stock_trend键用于调试
                 try:
-                    keys = await self.redis_client.keys("stock_trend:*")
+                    keys = await redis_client.keys("stock_trend:*")
                     if keys:
                         sample_keys = keys[:10]  # 只显示前10个
                         logger.info(f"现有stock_trend键示例: {[key.decode() if isinstance(key, bytes) else key for key in sample_keys]}")

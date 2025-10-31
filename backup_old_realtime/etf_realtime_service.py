@@ -150,7 +150,11 @@ class ETFRealtimeService:
                     
                 except Exception as e:
                     last_error = str(e)
-                    logger.warning(f"获取ETF数据失败 (provider={prov.value}, retry={retry+1}): {e}")
+                    # 检测HTML错误
+                    if 'Can not decode' in last_error or 'HTML' in last_error or '<' in last_error:
+                        logger.error(f"获取ETF数据失败 (provider={prov.value}, retry={retry+1}): 接口返回HTML而非JSON，可能被封禁")
+                    else:
+                        logger.warning(f"获取ETF数据失败 (provider={prov.value}, retry={retry+1}): {e}")
                     
                     # 重试前等待（随机延迟，防止被封）
                     if retry < self.retry_times - 1:
@@ -295,10 +299,41 @@ class ETFRealtimeService:
                 'source': 'sina'
             }
         
-        # 获取ETF基金实时行情（新浪只有一个分类）
-        df = ak.fund_etf_category_sina(symbol="ETF基金")
+        try:
+            # 获取ETF基金实时行情（新浪只有一个分类）
+            df = ak.fund_etf_category_sina(symbol="ETF基金")
+        except Exception as e:
+            error_msg = str(e)
+            # 检测是否是HTML错误（通常表示接口被封或返回错误页面）
+            if 'Can not decode' in error_msg or 'HTML' in error_msg or '<' in error_msg:
+                logger.error(f"新浪接口返回非JSON数据（可能被封禁或返回错误页面）: {error_msg}")
+                return {
+                    'success': False,
+                    'error': '新浪接口暂时不可用（返回HTML而非数据）',
+                    'data': [],
+                    'count': 0,
+                    'source': 'sina'
+                }
+            else:
+                logger.error(f"新浪接口调用失败: {error_msg}")
+                return {
+                    'success': False,
+                    'error': f'新浪接口调用失败: {error_msg}',
+                    'data': [],
+                    'count': 0,
+                    'source': 'sina'
+                }
         
-        if df.empty:
+        if df is None:
+            return {
+                'success': False,
+                'error': '新浪财经返回None',
+                'data': [],
+                'count': 0,
+                'source': 'sina'
+            }
+        
+        if df is not None and df.empty:
             return {
                 'success': False,
                 'error': '新浪财经返回空数据',

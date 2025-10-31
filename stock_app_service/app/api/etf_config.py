@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
 from app.core.logging import logger
-from app.services.etf_realtime_service import get_etf_realtime_service
+from app.services.realtime import get_proxy_manager, get_etf_realtime_service_v2
 from app.services.stock_scheduler import trigger_stock_task
 
 router = APIRouter()
@@ -31,7 +31,8 @@ async def get_etf_config():
         当前ETF配置信息
     """
     try:
-        service = get_etf_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_etf_realtime_service_v2(proxy_manager=proxy_manager)
         config = service.get_config()
         
         return {
@@ -56,7 +57,8 @@ async def update_etf_config(config_update: ETFConfigUpdate):
         更新后的配置信息
     """
     try:
-        service = get_etf_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_etf_realtime_service_v2(proxy_manager=proxy_manager)
         
         # 更新配置
         updated_config = service.update_config(
@@ -85,7 +87,8 @@ async def get_etf_stats():
         统计信息（成功次数、失败次数、自动切换次数等）
     """
     try:
-        service = get_etf_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_etf_realtime_service_v2(proxy_manager=proxy_manager)
         stats = service.get_stats()
         
         return {
@@ -107,7 +110,8 @@ async def reset_etf_stats():
         重置结果
     """
     try:
-        service = get_etf_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_etf_realtime_service_v2(proxy_manager=proxy_manager)
         service.reset_stats()
         
         return {
@@ -136,7 +140,8 @@ async def test_etf_provider(provider: str):
         if provider not in ['eastmoney', 'sina']:
             raise HTTPException(status_code=400, detail=f"不支持的数据源: {provider}")
         
-        service = get_etf_realtime_service()
+        proxy_manager = get_proxy_manager()
+        service = get_etf_realtime_service_v2(proxy_manager=proxy_manager)
         
         start_time = time.time()
         result = service.get_all_etfs_realtime(provider=provider)

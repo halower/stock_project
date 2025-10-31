@@ -24,7 +24,7 @@ from app.services.stock_data_manager import StockDataManager
 # 移除全局线程池导入，scheduler不应该影响API服务
 # from app.core.thread_pool import global_thread_pool
 from app.services.signal_manager import signal_manager
-from app.services.realtime_service import get_realtime_service
+from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
 import akshare as ak
 import pandas as pd
 import json
@@ -641,8 +641,9 @@ def update_realtime_stock_data(force_update=False, is_closing_update=False, auto
         else:
             logger.info(" 开始更新实时股票数据...")
         
-        # 使用新的统一实时行情服务获取数据
-        realtime_service = get_realtime_service()
+        # 使用V2实时行情服务获取数据（支持代理）
+        proxy_manager = get_proxy_manager()
+        realtime_service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
         result = realtime_service.get_all_stocks_realtime()
         
         if not result.get('success'):
@@ -1397,7 +1398,7 @@ def update_etf_realtime_data(force_update=False):
     Args:
         force_update: 是否强制更新（忽略交易时间检查）
     """
-    from app.services.etf_realtime_service import get_etf_realtime_service
+    from app.services.realtime import get_etf_realtime_service_v2
     import csv
     import os
     
@@ -1432,8 +1433,9 @@ def update_etf_realtime_data(force_update=False):
         # 存储ETF代码列表到Redis
         redis_cache.set_cache(ETF_KEYS['etf_codes'], etf_codes_list, ttl=86400)
         
-        # 2. 获取实时数据（仅获取CSV中的ETF）
-        etf_service = get_etf_realtime_service()
+        # 2. 获取实时数据（仅获取CSV中的ETF）- 使用V2服务（支持代理）
+        proxy_manager = get_proxy_manager()
+        etf_service = get_etf_realtime_service_v2(proxy_manager=proxy_manager)
         result = etf_service.get_all_etfs_realtime()
         
         if not result.get('success'):

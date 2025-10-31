@@ -96,6 +96,15 @@ ETF_AUTO_SWITCH = os.getenv("ETF_AUTO_SWITCH", "true").lower() in ("true", "1", 
 ETF_RETRY_TIMES = int(os.getenv("ETF_RETRY_TIMES", "2"))  # ETF请求重试次数
 ETF_MIN_REQUEST_INTERVAL = float(os.getenv("ETF_MIN_REQUEST_INTERVAL", "3.0"))  # ETF最小请求间隔（秒）
 
+# 动态代理IP配置（实时服务V2）
+PROXY_ENABLED = os.getenv("PROXY_ENABLED", "false").lower() in ("true", "1", "yes")  # 是否启用代理
+PROXY_API_URL = os.getenv("PROXY_API_URL", "https://share.proxy.qg.net/get")  # 代理API地址
+PROXY_API_KEY = os.getenv("PROXY_API_KEY", "")  # 代理API密钥
+PROXY_AUTH_PASSWORD = os.getenv("PROXY_AUTH_PASSWORD", "")  # 代理认证密码（Authpwd）
+PROXY_POOL_SIZE = int(os.getenv("PROXY_POOL_SIZE", "1"))  # 代理池大小（默认1个，按需获取）
+PROXY_REFRESH_INTERVAL = int(os.getenv("PROXY_REFRESH_INTERVAL", "300"))  # 代理刷新间隔（秒）
+PROXY_MAX_FAIL_COUNT = int(os.getenv("PROXY_MAX_FAIL_COUNT", "3"))  # 代理最大失败次数
+
 
 class Settings(BaseModel):
     """应用配置类"""
@@ -141,6 +150,14 @@ class Settings(BaseModel):
     ETF_AUTO_SWITCH: bool = ETF_AUTO_SWITCH
     ETF_RETRY_TIMES: int = ETF_RETRY_TIMES
     ETF_MIN_REQUEST_INTERVAL: float = ETF_MIN_REQUEST_INTERVAL
+    
+    # 动态代理IP配置
+    PROXY_ENABLED: bool = PROXY_ENABLED
+    PROXY_API_URL: str = PROXY_API_URL
+    PROXY_API_KEY: str = PROXY_API_KEY
+    PROXY_POOL_SIZE: int = PROXY_POOL_SIZE
+    PROXY_REFRESH_INTERVAL: int = PROXY_REFRESH_INTERVAL
+    PROXY_MAX_FAIL_COUNT: int = PROXY_MAX_FAIL_COUNT
     
     class Config:
         case_sensitive = True

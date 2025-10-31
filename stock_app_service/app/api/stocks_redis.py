@@ -38,8 +38,9 @@ async def get_stocks_list() -> Dict[str, Any]:
     Returns:
         所有股票清单及总数
     """
+    redis_client = None
     try:
-        # 获取Redis连接
+        # 获取Redis连接 - 每次请求都重新获取，确保在正确的事件循环中
         redis_client = await get_redis_client()
         
         # 获取股票代码数据
@@ -47,13 +48,10 @@ async def get_stocks_list() -> Dict[str, Any]:
         stock_codes_data = await redis_client.get(stock_codes_key)
         
         if not stock_codes_data:
-            await redis_client.close()
             raise HTTPException(status_code=500, detail="股票代码数据不可用")
         
         stock_codes = json.loads(stock_codes_data)
         total = len(stock_codes)
-        
-        await redis_client.close()
         
         logger.info(f"一次性返回所有股票数据，共 {total} 只股票")
         
@@ -85,11 +83,12 @@ async def search_stocks(
     Returns:
         匹配的股票列表
     """
+    redis_client = None
     try:
         # 限制返回数量
         limit = min(limit, 200)
         
-        # 获取Redis连接
+        # 获取Redis连接 - 每次请求都重新获取，确保在正确的事件循环中
         redis_client = await get_redis_client()
         
         # 获取股票代码数据
@@ -97,7 +96,6 @@ async def search_stocks(
         stock_codes_data = await redis_client.get(stock_codes_key)
         
         if not stock_codes_data:
-            await redis_client.close()
             raise HTTPException(status_code=500, detail="股票代码数据不可用")
         
         stock_codes = json.loads(stock_codes_data)
@@ -125,8 +123,6 @@ async def search_stocks(
             # 达到限制数量就停止
             if len(matched_stocks) >= limit:
                 break
-        
-        await redis_client.close()
         
         return {
             "keyword": keyword,
