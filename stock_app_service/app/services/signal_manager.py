@@ -18,7 +18,8 @@ class SignalManager:
     """买入信号管理器"""
     
     def __init__(self, batch_size=50):
-        self.redis_client = None
+        # ⚠️ 不保存redis_client实例变量，避免事件循环冲突
+        # 每次需要时都重新获取，确保在当前事件循环中创建
         self.batch_size = batch_size  # 批处理大小
         
         # 使用StockDataManager（纯异步IO模式，无需max_threads参数）
@@ -32,33 +33,10 @@ class SignalManager:
         self.buy_signals_key = "buy_signals"
         # 获取可用策略
         self.strategies = indicators.get_all_strategies()
-        
-    
-    async def _get_redis_client(self):
-        """获取Redis客户端 - 复用已有连接，避免事件循环冲突"""
-        try:
-            # 如果已有客户端且连接正常，直接返回
-            if self.redis_client:
-                try:
-                    # 简单的连接检查，避免复杂操作
-                    return self.redis_client
-                except Exception:
-                    # 连接有问题，需要重新获取
-                    self.redis_client = None
-            
-            # 获取新的客户端
-            self.redis_client = await get_redis_client()
-            return self.redis_client
-        except Exception as e:
-            logger.error(f"获取Redis客户端失败: {e}")
-            raise
     
     async def initialize(self):
         """初始化SignalManager"""
         try:
-            # 初始化Redis客户端
-            await self._get_redis_client()
-            
             # 初始化StockDataManager
             await self.stock_data_manager.initialize()
             
@@ -74,8 +52,6 @@ class SignalManager:
             # 关闭StockDataManager
             await self.stock_data_manager.close()
             
-            # 不直接关闭Redis连接，让管理器来处理
-            self.redis_client = None
             logger.info("SignalManager已关闭")
         except Exception as e:
             logger.error(f"SignalManager关闭失败: {e}")
@@ -94,7 +70,7 @@ class SignalManager:
             logger.info("开始初始化买入信号...")
             
             # 强制清空所有现有信号，重新计算最新数据
-            redis_client = await self._get_redis_client()
+            redis_client = await get_redis_client()
             existing_count = await redis_client.hlen(self.buy_signals_key)
             
             if existing_count > 0:
@@ -119,7 +95,7 @@ class SignalManager:
     async def get_buy_signals_count(self) -> int:
         """获取买入信号总数"""
         try:
-            redis_client = await self._get_redis_client()
+            redis_client = await get_redis_client()
             count = await redis_client.hlen(self.buy_signals_key)
             return count
         except Exception as e:
@@ -129,7 +105,7 @@ class SignalManager:
     async def check_buy_signals_status(self) -> Tuple[bool, int]:
         """检查买入信号状态"""
         try:
-            redis_client = await self._get_redis_client()
+            redis_client = await get_redis_client()
             signals_data = await redis_client.hgetall(self.buy_signals_key)
             
             if not signals_data:
@@ -170,7 +146,7 @@ class SignalManager:
         """获取买入信号列表"""
         try:
             # 从Redis获取所有买入信号
-            redis_client = await self._get_redis_client()
+            redis_client = await get_redis_client()
             signals_data = await redis_client.hgetall(self.buy_signals_key)
             
             if not signals_data:
@@ -255,12 +231,12 @@ class SignalManager:
             if not ts_code:
                 return False, 0
             
-            # 获取股票历史数据 - 使用实例变量避免重复获取客户端
-            if not self.redis_client:
-                self.redis_client = await get_redis_client()
+            # 每次都重新获取Redis客户端，避免事件循环冲突
+            # 不使用实例变量，因为可能在不同事件循环中运行
+            redis_client = await get_redis_client()
             
             kline_key = f"stock_trend:{ts_code}"
-            kline_data = await self.redis_client.get(kline_key)
+            kline_data = await redis_client.get(kline_key)
             
             if not kline_data:
                 logger.debug(f"    {ts_code} 没有K线数据")
@@ -310,8 +286,8 @@ class SignalManager:
                     
                     # 只保留最后一根K线的买入信号
                     if signal_index == last_index:
-                        # 存储信号逻辑（复用原有代码）
-                        await self._store_signal(stock, signal, df, signal_index, strategy_code, strategy_info, self.redis_client)
+                        # 存储信号逻辑（使用当前获取的客户端）
+                        await self._store_signal(stock, signal, df, signal_index, strategy_code, strategy_info, redis_client)
                         signal_count += 1
             
             return True, signal_count
@@ -569,9 +545,8 @@ class SignalManager:
             else:
                 logger.info(f"追加模式：不清空现有信号，新增{signal_type}信号")
             
-            # 初始化异步Redis客户端用于后续操作
-            self.redis_client = await get_redis_client()
-            redis_client = self.redis_client
+            # 获取异步Redis客户端用于后续操作（不保存为实例变量）
+            redis_client = await get_redis_client()
             
             # 强制重新计算所有买入信号（确保数据最新）
             logger.info("强制重新计算所有买入信号，确保数据最新...")
@@ -726,7 +701,7 @@ class SignalManager:
     async def get_signal_status(self) -> Dict[str, Any]:
         """获取信号状态"""
         try:
-            redis_client = await self._get_redis_client()
+            redis_client = await get_redis_client()
             total_signals = await redis_client.hlen(self.buy_signals_key)
             
             # 按策略统计
@@ -757,7 +732,7 @@ class SignalManager:
     async def clear_signals(self, strategy: Optional[str] = None) -> Dict[str, Any]:
         """清空信号"""
         try:
-            redis_client = await self._get_redis_client()
+            redis_client = await get_redis_client()
             if strategy:
                 # 清空特定策略的信号
                 signals_data = await redis_client.hgetall(self.buy_signals_key)
