@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // 简洁的头部（移除logo）
           Container(
-            height: 120,
+            height: 140,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -333,12 +333,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '职业交易员培养大师',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 20,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '职业交易员培养大师',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -354,18 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const SizedBox(height: 8),
                 // 主功能区域标题
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Text(
-                    '主要功能',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
+               
                 
                 // 遍历所有菜单项
                 ...List.generate(_menuItems.length, (index) {
