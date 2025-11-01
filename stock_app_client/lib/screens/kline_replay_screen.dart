@@ -262,10 +262,15 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         const SizedBox(width: 4),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 10, 
+                color: Colors.grey,
+                height: 1.2,
+              ),
             ),
             Text(
               value,
@@ -273,6 +278,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: color,
+                height: 1.2,
               ),
             ),
           ],
@@ -394,11 +400,16 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               color: Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 11,
+              height: 1.2,
             ),
           ),
           Text(
             date,
-            style: const TextStyle(color: Colors.white70, fontSize: 9),
+            style: const TextStyle(
+              color: Colors.white70, 
+              fontSize: 9,
+              height: 1.2,
+            ),
           ),
           const SizedBox(height: 4),
           _buildPriceRow('开', open),
@@ -411,13 +422,18 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             children: [
               Text(
                 '涨跌: ',
-                style: const TextStyle(color: Colors.white70, fontSize: 10),
+                style: const TextStyle(
+                  color: Colors.white70, 
+                  fontSize: 10,
+                  height: 1.2,
+                ),
               ),
               Text(
                 '${isRise ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
                 style: TextStyle(
                   color: changeColor,
                   fontSize: 10,
+                  height: 1.2,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -428,13 +444,18 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             children: [
               Text(
                 '量: ',
-                style: const TextStyle(color: Colors.white70, fontSize: 10),
+                style: const TextStyle(
+                  color: Colors.white70, 
+                  fontSize: 10,
+                  height: 1.2,
+                ),
               ),
               Text(
                 _formatVolume(volume),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
+                  height: 1.2,
                 ),
               ),
             ],
@@ -462,13 +483,18 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         children: [
           Text(
             '$label: ',
-            style: const TextStyle(color: Colors.white70, fontSize: 10),
+            style: const TextStyle(
+              color: Colors.white70, 
+              fontSize: 10,
+              height: 1.2,
+            ),
           ),
           Text(
             price.toStringAsFixed(2),
             style: TextStyle(
               color: Colors.white,
               fontSize: 10,
+              height: 1.2,
               fontWeight: bold ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -1130,12 +1156,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 child: Row(
                   children: [
                     // 交易按钮（紧凑版）
-                    if (_replayService.isReplayActive && !_replayService.isReplayFinished) ...[
-                      _buildCompactTradeButton('买入', Colors.red, true),
+                    if (_session != null && _replayService.isReplayActive && !_replayService.isReplayFinished) ...[
+                      _buildCompactTradeButton('买入', Colors.red, true, _canBuy()),
                       const SizedBox(width: 8),
-                      _buildCompactTradeButton('平仓', Colors.grey, false),
-                      const SizedBox(width: 8),
-                      _buildCompactTradeButton('卖出', Colors.green, false),
+                      _buildCompactTradeButton('卖出', Colors.green, false, _canSell()),
                       const SizedBox(width: 16),
                     ],
                     
@@ -1268,12 +1292,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   }
   
   /// 构建紧凑交易按钮
-  Widget _buildCompactTradeButton(String label, Color color, bool isBuy) {
+  Widget _buildCompactTradeButton(String label, Color color, bool isBuy, bool enabled) {
     return ElevatedButton(
-      onPressed: () => _executeTrade(isBuy ? 'buy' : 'sell'),
+      onPressed: enabled ? () => _executeTrade(isBuy ? 'buy' : 'sell') : null,
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.grey[700],
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         minimumSize: const Size(60, 32),
         shape: RoundedRectangleBorder(
@@ -1285,6 +1310,21 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
+  }
+  
+  /// 检查是否可以买入
+  bool _canBuy() {
+    if (_session == null) return false;
+    final currentCandle = _replayService.currentCandle;
+    if (currentCandle == null) return false;
+    final currentPrice = currentCandle['close'] as double;
+    return _session!.currentCapital >= currentPrice * 100; // 至少能买1手
+  }
+  
+  /// 检查是否可以卖出
+  bool _canSell() {
+    if (_session == null) return false;
+    return _session!.currentPosition > 0;
   }
 }
 

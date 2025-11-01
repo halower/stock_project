@@ -172,6 +172,7 @@ class _ReplayControlPanelState extends State<ReplayControlPanel> {
           label,
           style: TextStyle(
             fontSize: 10,
+            height: 1.2,
             color: isPrimary ? Theme.of(context).primaryColor : Colors.grey,
           ),
         ),
@@ -221,6 +222,7 @@ class _ReplayControlPanelState extends State<ReplayControlPanel> {
             _speedOptions[_selectedSpeedIndex]['label'] as String,
             style: const TextStyle(
               fontSize: 10,
+              height: 1.2,
               color: Colors.grey,
             ),
           ),
