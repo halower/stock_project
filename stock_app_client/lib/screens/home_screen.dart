@@ -63,40 +63,40 @@ class _HomeScreenState extends State<HomeScreen> {
     _menuItems = [
       MenuItem(
         title: '技术量化',
-        icon: Icons.storage,
+        icon: Icons.query_stats,
         screen: const StockScannerScreen(),
         actions: StockScannerScreen.buildActions,
         needsAppBar: true, // 需要HomeScreen提供AppBar
       ),
       const MenuItem(
         title: '消息量化',
-        icon: Icons.newspaper,
+        icon: Icons.article,
         screen: NewsAnalysisScreen(),
       ),
       const MenuItem(
         title: '交易记录',
-        icon: Icons.list_alt,
+        icon: Icons.receipt_long,
         screen: TradeRecordScreen(),
       ),
-      const MenuItem(
+       const MenuItem(
         title: '策略',
-        icon: Icons.auto_graph,
+        icon: Icons.psychology,
         screen: StrategyScreen(),
       ),
       const MenuItem(
-        title: '盘感练习',
-        icon: Icons.play_circle_outline,
+        title: 'K线回放',
+        icon: Icons.candlestick_chart,
         screen: EnhancedKLineReplayScreen(),
       ),
       const MenuItem(
         title: '概览',
-        icon: Icons.analytics,
+        icon: Icons.dashboard,
         screen: AnalysisScreen(),
       ),
       // 添加设置页面
       const MenuItem(
         title: '系统设置',
-        icon: Icons.settings,
+        icon: Icons.settings_suggest,
         screen: SettingsScreen(), // 使用设置页面
       ),
     ];
@@ -167,15 +167,15 @@ class _HomeScreenState extends State<HomeScreen> {
     // 检测屏幕方向
     final orientation = MediaQuery.of(context).orientation;
     final isLandscape = orientation == Orientation.landscape;
-    // 检查当前是否在盘感练习页面
-    final isKLineReplayScreen = _menuItems[_selectedIndex].title == '盘感练习';
+    // 检查当前是否在K线回放页面
+    final isKLineReplayScreen = _menuItems[_selectedIndex].title == 'K线回放';
 
     if (isMobile) {
-      // 移动设备使用底部导航栏（不包含盘感练习）
-      final bottomNavItems = _menuItems.where((item) => item.title != '盘感练习').toList();
+      // 移动设备使用底部导航栏（不包含K线回放）
+      final bottomNavItems = _menuItems.where((item) => item.title != 'K线回放').toList();
       final bottomNavIndex = _selectedIndex >= bottomNavItems.length 
           ? 0 
-          : (_menuItems[_selectedIndex].title == '盘感练习' 
+          : (_menuItems[_selectedIndex].title == 'K线回放' 
               ? 0 
               : bottomNavItems.indexWhere((item) => item.title == _menuItems[_selectedIndex].title));
       
@@ -335,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '职业交易员培养助手',
+                      '职业交易员培养大师',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 13,
@@ -372,39 +372,87 @@ class _HomeScreenState extends State<HomeScreen> {
                   final item = _menuItems[index];
                   final isSelected = _selectedIndex == index;
                   
+                  // 为不同功能定义不同的颜色主题
+                  Color getItemColor() {
+                    if (item.title == 'K线回放') return Colors.deepPurple;
+                    if (item.title == '技术量化') return Colors.blue;
+                    if (item.title == '消息量化') return Colors.orange;
+                    if (item.title == '交易记录') return Colors.green;
+                    if (item.title == '策略') return Colors.teal;
+                    if (item.title == '概览') return Colors.indigo;
+                    if (item.title == '系统设置') return Colors.grey;
+                    return Theme.of(context).primaryColor;
+                  }
+                  
+                  final itemColor = getItemColor();
+                  
                   return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: isSelected 
-                          ? Theme.of(context).primaryColor.withOpacity(0.1)
-                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: isSelected 
+                          ? LinearGradient(
+                              colors: [
+                                itemColor.withOpacity(0.15),
+                                itemColor.withOpacity(0.08),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: isSelected ? null : Colors.transparent,
                     ),
                     child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       leading: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? Theme.of(context).primaryColor
-                              : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(10),
+                          gradient: isSelected
+                              ? LinearGradient(
+                                  colors: [
+                                    itemColor.withOpacity(0.9),
+                                    itemColor,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: isSelected ? null : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: isSelected ? [
+                            BoxShadow(
+                              color: itemColor.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ] : null,
                         ),
                         child: Icon(
                           item.icon,
-                          color: isSelected ? Colors.white : Colors.grey.shade700,
-                          size: 22,
+                          color: isSelected ? Colors.white : Colors.grey.shade600,
+                          size: 24,
                         ),
                       ),
                       title: Text(
                         item.title,
                         style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: isSelected ? 15 : 14,
                           color: isSelected 
-                              ? Theme.of(context).primaryColor 
+                              ? itemColor.withOpacity(0.9)
                               : Colors.black87,
+                          letterSpacing: 0.3,
                         ),
                       ),
-                      // 移除所有菜单项的箭头
+                      // 添加选中指示器
+                      trailing: isSelected ? Container(
+                        width: 4,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: itemColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ) : null,
                       onTap: () {
                         setState(() {
                           _selectedIndex = index;
