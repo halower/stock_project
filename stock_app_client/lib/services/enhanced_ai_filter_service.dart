@@ -14,12 +14,14 @@ class EnhancedAIFilterService {
   /// [stockName] 股票名称
   /// [klineData] K线数据 [{date, open, high, low, close, volume}, ...]
   /// [filterCriteria] 可选的筛选条件（用户自然语言输入）
+  /// [industry] 所属行业
   /// 返回: {signal, reason, stop_loss, take_profit, confidence, technical_analysis}
   Future<Map<String, dynamic>?> analyzeStock({
     required String stockCode,
     required String stockName,
     required List<Map<String, dynamic>> klineData,
     String? filterCriteria,
+    String? industry,
   }) async {
     try {
       if (klineData.length < 60) {
@@ -98,11 +100,12 @@ class EnhancedAIFilterService {
       final recentKlines = klineData.sublist(startIndex);
       final klineText = _buildKlineDataText(recentKlines);
       
-      // 调用AI分析（传入筛选条件）
+      // 调用AI分析（传入筛选条件和行业信息）
       final result = await _callAIAnalysis(
         filterCriteria: filterCriteria,
         stockCode: stockCode,
         stockName: stockName,
+        industry: industry,
         currentPrice: currentPrice,
         klineText: klineText,
         technicalText: technicalText,
@@ -244,6 +247,7 @@ class EnhancedAIFilterService {
     String? filterCriteria,
     required String stockCode,
     required String stockName,
+    String? industry,
     required double currentPrice,
     required String klineText,
     required String technicalText,
@@ -266,11 +270,12 @@ class EnhancedAIFilterService {
       throw Exception('AI配置未设置或不完整');
     }
     
-    // 构建优化的提示词（包含筛选条件）
+    // 构建优化的提示词（包含筛选条件和行业信息）
     final prompt = _buildPrompt(
       filterCriteria: filterCriteria,
       stockCode: stockCode,
       stockName: stockName,
+      industry: industry,
       currentPrice: currentPrice,
       klineText: klineText,
       technicalText: technicalText,
@@ -326,6 +331,7 @@ class EnhancedAIFilterService {
     String? filterCriteria,
     required String stockCode,
     required String stockName,
+    String? industry,
     required double currentPrice,
     required String klineText,
     required String technicalText,
@@ -371,7 +377,7 @@ $filterCriteria
 【股票信息】
 代码: $stockCode
 名称: $stockName
-当前价格: ¥${currentPrice.toStringAsFixed(2)}
+${industry != null && industry.isNotEmpty ? '所属行业: $industry\n' : ''}当前价格: ¥${currentPrice.toStringAsFixed(2)}
 
 $klineText
 

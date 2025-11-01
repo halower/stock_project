@@ -295,12 +295,13 @@ class AIStockFilterService {
         };
       }).toList();
       
-      // 使用 EnhancedAIFilterService 进行完整的技术分析（包含筛选条件）
+      // 使用 EnhancedAIFilterService 进行完整的技术分析（包含筛选条件和行业信息）
       final analysisResult = await _enhancedAIService.analyzeStock(
         stockCode: stock.code,
         stockName: stock.name,
         klineData: klineData,
         filterCriteria: filterCriteria,  // 传入用户的筛选条件
+        industry: stock.industry,  // 传入行业信息
       );
       
       // 如果分析失败，跳过该股票
@@ -312,9 +313,9 @@ class AIStockFilterService {
       // 获取信号类型
       final signal = analysisResult['signal'] as String?;
       
-      // 只保留"买入"和"观望"信号的股票
-      if (signal != '买入' && signal != '观望') {
-        debugPrint('股票 ${stock.code} ${stock.name} 信号为 $signal，不符合筛选条件');
+      // 只保留"买入"信号的股票（不再保留观望）
+      if (signal != '买入') {
+        debugPrint('股票 ${stock.code} ${stock.name} 信号为 $signal，跳过（只保留买入信号）');
         return null;
       }
       

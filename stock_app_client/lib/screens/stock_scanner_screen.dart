@@ -66,6 +66,20 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    // 清理AI筛选状态，避免切换页面后进度条仍然显示
+    try {
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      if (apiProvider.isAIFiltering) {
+        apiProvider.clearAIFilterResult();
+      }
+    } catch (e) {
+      debugPrint('清理AI筛选状态失败: $e');
+    }
+    super.dispose();
+  }
+
   // 初始化策略并确保它们正确加载
   Future<void> _initializeStrategies() async {
     try {

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_filter_usage.dart';
-import 'auth_service.dart';
 
 class AIFilterService {
   static const String _aiFilterUsageKey = 'ai_filter_usage';
@@ -40,12 +39,11 @@ class AIFilterService {
   }
   
   // 检查是否可以使用AI筛选功能
+  // 注意：因为用户使用自己的模型配置，所以不再限制次数
   static Future<bool> canUseAIFilter() async {
     try {
-      final isAdmin = await AuthService.isAdmin();
-      final usage = await loadUsage();
-      
-      return usage.canUseToday(isAdmin);
+      // 所有用户都可以使用（因为使用自己的模型配置）
+      return true;
     } catch (e) {
       debugPrint('检查AI筛选使用权限出错: $e');
       return false;
@@ -65,27 +63,20 @@ class AIFilterService {
   }
   
   // 获取剩余使用次数
+  // 注意：因为用户使用自己的模型配置，所以不再限制次数
   static Future<int> getRemainingCount() async {
     try {
-      final isAdmin = await AuthService.isAdmin();
-      final usage = await loadUsage();
-      
-      return usage.getRemainingCount(isAdmin);
+      // 返回无限次数
+      return 999999;
     } catch (e) {
       debugPrint('获取AI筛选剩余次数出错: $e');
-      return 0;
+      return 999999;
     }
   }
   
   // 获取格式化的剩余使用次数文本
   static Future<String> getRemainingCountText() async {
-    final count = await getRemainingCount();
-    final isAdmin = await AuthService.isAdmin();
-    
-    if (isAdmin) {
-      return '管理员不限次数';
-    } else {
-      return '今日剩余: $count 次';
-    }
+    // 所有用户都不限次数（使用自己的模型配置）
+    return '不限次数（使用您的模型配置）';
   }
 } 
