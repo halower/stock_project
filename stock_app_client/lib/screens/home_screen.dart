@@ -335,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '职业交易培养助手',
+                      '职业交易员培养助手',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 13,
@@ -486,7 +486,7 @@ class _HomeScreenState extends State<HomeScreen> {
             trailing: count > 0 ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+                color: Colors.red,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(

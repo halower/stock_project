@@ -89,9 +89,25 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         ),
         title: Text(_selectedStockName ?? '专业K线回放训练'),
         actions: [
-          // 随机选股按钮（训练中也可用）
-          IconButton(
-            icon: const Icon(Icons.shuffle),
+          // 随机选股按钮 - 使用更直观的图标
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.orange.shade400, Colors.deepOrange.shade500],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.orange.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.autorenew, color: Colors.white, size: 22),
             onPressed: () async {
               // 如果正在训练，直接结束并显示报告
               if (_session != null) {
@@ -104,27 +120,55 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 _startTraining();
               }
             },
-            tooltip: '随机选股',
+              tooltip: '换一只股票',
           ),
-          // 技术指标设置 - 使用更明显的图标和样式
+          ),
+          // 技术指标设置 - 使用更直观的图标
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue, width: 1.5),
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade400, Colors.blue.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.insights, color: Colors.blue),
+              icon: const Icon(Icons.timeline, color: Colors.white, size: 22),
               onPressed: _showIndicatorSettings,
               tooltip: '技术指标',
             ),
           ),
-          // 训练设置
-          IconButton(
-            icon: const Icon(Icons.settings),
+          // 训练设置 - 使用更精致的图标
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.grey.shade600, Colors.grey.shade800],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.tune, color: Colors.white, size: 22),
             onPressed: _showTrainingSettings,
             tooltip: '训练设置',
+            ),
           ),
         ],
       ),
@@ -1000,19 +1044,30 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade400, Colors.blue.shade600],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.insights, color: Colors.blue, size: 20),
+                      child: const Icon(Icons.timeline, color: Colors.white, size: 24),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     const Text(
                       '技术指标', 
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -1060,49 +1115,17 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                     ),
                     child: Row(
                       children: [
-                        // 图标
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: indicator.enabled 
-                                ? Colors.blue.withOpacity(0.15) 
-                                : Colors.grey.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.show_chart,
-                            color: indicator.enabled ? Colors.blue : Colors.grey.shade500,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // 文本信息
+                        // 文本信息（去掉图标，只保留指标名称）
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                    indicator.name,
-                    style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.w500,
-                      color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
-                                  height: 1.3,
-                                  letterSpacing: 0.2,
-                    ),
-                  ),
-                              const SizedBox(height: 2),
-                              Text(
-                    indicator.type,
-                    style: TextStyle(
-                      fontSize: 11,
-                                  color: indicator.enabled ? Colors.blue.shade500 : Colors.grey.shade600,
-                                  height: 1.2,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            indicator.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.w500,
+                              color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
+                              height: 1.3,
+                              letterSpacing: 0.3,
+                            ),
                           ),
                         ),
                         // 复选框
@@ -1328,18 +1351,27 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     Color? color,
   }) {
     return Container(
-      width: 28,
-      height: 28,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: color ?? Colors.white.withOpacity(0.3),
-          width: 1,
+        gradient: LinearGradient(
+          colors: color != null 
+              ? [color.withOpacity(0.8), color]
+              : [Colors.grey.shade700, Colors.grey.shade900],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: (color ?? Colors.grey).withOpacity(0.4),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: IconButton(
-        icon: Icon(icon, color: color ?? Colors.white, size: 14),
+        icon: Icon(icon, color: Colors.white, size: 18),
         onPressed: onPressed,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
