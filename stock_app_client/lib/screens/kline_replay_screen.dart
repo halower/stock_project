@@ -239,14 +239,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  // 初始资金
-                  _buildInfoItem(
-                    '初始',
-                    '¥${(_session!.initialCapital / 10000).toStringAsFixed(1)}万',
-                    Icons.account_balance_wallet,
-                  ),
-                  const SizedBox(width: 12),
-                  
                   // 当前资金
                   _buildInfoItem(
                     '当前',
@@ -899,7 +891,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                     _buildTVReportRow('股票', '${_session!.stockName}'),
                     _buildTVReportRow('时长', '${_session!.durationMinutes}分钟'),
                     const Divider(height: 20),
-                    _buildTVReportRow('初始', '¥${(_session!.initialCapital / 10000).toStringAsFixed(1)}万'),
                     _buildTVReportRow('最终', '¥${(_session!.currentCapital / 10000).toStringAsFixed(2)}万'),
                     const Divider(height: 20),
                     _buildTVReportRow('交易', '${_session!.totalTrades}次'),
