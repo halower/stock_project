@@ -91,6 +91,9 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         actions: [
           // 随机选股按钮 - 使用更直观的图标
           Container(
+            margin: const EdgeInsets.only(right: 8),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.orange.shade400, Colors.deepOrange.shade500],
@@ -107,25 +110,28 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.autorenew, color: Colors.white, size: 22),
-            onPressed: () async {
-              // 如果正在训练，直接结束并显示报告
-              if (_session != null) {
-                await _endTraining();
-              }
-              
-              // 加载新股票并开始训练
-              await _loadRandomStock();
-              if (_selectedStockCode != null) {
-                _startTraining();
-              }
-            },
+              icon: const Icon(Icons.autorenew, color: Colors.white, size: 20),
+              padding: EdgeInsets.zero,
+              onPressed: () async {
+                // 如果正在训练，直接结束并显示报告
+                if (_session != null) {
+                  await _endTraining();
+                }
+                
+                // 加载新股票并开始训练
+                await _loadRandomStock();
+                if (_selectedStockCode != null) {
+                  _startTraining();
+                }
+              },
               tooltip: '换一只股票',
-          ),
+            ),
           ),
           // 技术指标设置 - 使用更直观的图标
           Container(
             margin: const EdgeInsets.only(right: 8),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.blue.shade400, Colors.blue.shade600],
@@ -142,13 +148,16 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.timeline, color: Colors.white, size: 22),
+              icon: const Icon(Icons.timeline, color: Colors.white, size: 20),
+              padding: EdgeInsets.zero,
               onPressed: _showIndicatorSettings,
               tooltip: '技术指标',
             ),
           ),
           // 训练设置 - 使用更精致的图标
           Container(
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.grey.shade600, Colors.grey.shade800],
@@ -165,9 +174,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.tune, color: Colors.white, size: 22),
-            onPressed: _showTrainingSettings,
-            tooltip: '训练设置',
+              icon: const Icon(Icons.tune, color: Colors.white, size: 20),
+              padding: EdgeInsets.zero,
+              onPressed: _showTrainingSettings,
+              tooltip: '训练设置',
             ),
           ),
         ],
@@ -1128,23 +1138,39 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                             ),
                           ),
                         ),
-                        // 复选框
+                        // 精致的复选框
                         Container(
-                          width: 24,
-                          height: 24,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
-                            color: indicator.enabled ? Colors.blue : Colors.transparent,
-                            borderRadius: BorderRadius.circular(6),
+                            gradient: indicator.enabled
+                                ? LinearGradient(
+                                    colors: [Colors.blue.shade400, Colors.blue.shade600],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            color: indicator.enabled ? null : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                    color: indicator.enabled ? Colors.blue : Colors.grey.shade400,
+                              color: indicator.enabled ? Colors.blue.shade600 : Colors.grey.shade300,
                               width: 2,
                             ),
+                            boxShadow: indicator.enabled
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.blue.withOpacity(0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: indicator.enabled
                               ? const Icon(
-                                  Icons.check,
+                                  Icons.check_rounded,
                                   color: Colors.white,
-                                  size: 16,
+                                  size: 18,
                                 )
                               : null,
                         ),
