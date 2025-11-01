@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icons.receipt_long,
         screen: TradeRecordScreen(),
       ),
-       const MenuItem(
+      const MenuItem(
         title: '策略',
         icon: Icons.psychology,
         screen: StrategyScreen(),

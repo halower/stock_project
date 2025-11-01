@@ -134,26 +134,26 @@ class TechnicalIndicator {
   static List<TechnicalIndicator> getDefaultIndicators() {
     return [
       TechnicalIndicator(
-        name: 'MA5',
-        type: 'MA',
-        params: {'period': 5, 'color': 'white'},
-        enabled: true,
+        name: 'EMA5',
+        type: 'EMA',
+        params: {'period': 5, 'color': 'cyan'},
+        enabled: false,  // 默认关闭
       ),
       TechnicalIndicator(
-        name: 'MA10',
-        type: 'MA',
+        name: 'EMA10',
+        type: 'EMA',
         params: {'period': 10, 'color': 'yellow'},
-        enabled: true,
+        enabled: false,  // 默认关闭
       ),
       TechnicalIndicator(
-        name: 'MA20',
-        type: 'MA',
+        name: 'EMA20',
+        type: 'EMA',
         params: {'period': 20, 'color': 'purple'},
-        enabled: true,
+        enabled: true,  // 默认启用
       ),
       TechnicalIndicator(
-        name: 'MA60',
-        type: 'MA',
+        name: 'EMA60',
+        type: 'EMA',
         params: {'period': 60, 'color': 'green'},
         enabled: false,
       ),

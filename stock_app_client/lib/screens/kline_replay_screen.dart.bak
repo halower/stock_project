@@ -1369,29 +1369,24 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   
   /// 显示技术指标设置（精致版）
   void _showIndicatorSettings() {
-    // 分离主图指标和附图指标
-    final mainIndicators = _indicators.where((i) => ['EMA', 'BOLL'].contains(i.type)).toList();
-    final subIndicators = _indicators.where((i) => ['MACD', 'RSI', 'KDJ'].contains(i.type)).toList();
-    
     showDialog(
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
           children: [
                 // 标题
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
+                decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [Colors.blue.shade400, Colors.blue.shade600],
                           begin: Alignment.topLeft,
@@ -1410,8 +1405,8 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                     ),
                     const SizedBox(width: 16),
                     const Text(
-                      '技术指标设置', 
-                      style: TextStyle(
+                      '技术指标', 
+                    style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -1419,233 +1414,132 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                
-                // 主图指标
-                Text(
-                  '主图指标',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...mainIndicators.map((indicator) {
-                  final index = _indicators.indexOf(indicator);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.pop(context);
-                          setState(() {
-                            _indicators[index] = TechnicalIndicator(
-                              name: indicator.name,
-                              type: indicator.type,
-                              params: indicator.params,
-                              enabled: !indicator.enabled,
-                            );
-                          });
-                          Future.delayed(const Duration(milliseconds: 100), () {
-                            _showIndicatorSettings();
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: indicator.enabled 
-                      ? Colors.blue.withOpacity(0.08) 
-                                : Colors.grey.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                              color: indicator.enabled 
-                                  ? Colors.blue.withOpacity(0.3) 
-                                  : Colors.grey.withOpacity(0.2),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                    indicator.name,
-                    style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.w500,
-                      color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  gradient: indicator.enabled
-                                      ? LinearGradient(
-                                          colors: [Colors.blue.shade400, Colors.blue.shade600],
-                                        )
-                                      : null,
-                                  color: indicator.enabled ? null : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: indicator.enabled ? Colors.blue.shade600 : Colors.grey.shade300,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: indicator.enabled
-                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-                
-                const SizedBox(height: 24),
-                
-                // 附图指标
-                Text(
-                  '附图指标（单选）',
-                    style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...subIndicators.map((indicator) {
-                  final isSelected = _subChartIndicator == indicator.type && indicator.enabled;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.pop(context);
+                const SizedBox(height: 16),
+                // 内容
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320, maxHeight: 400),
+                  child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: _indicators.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final indicator = _indicators[index];
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    // 先关闭对话框
+                    Navigator.pop(context);
+                    // 更新指标状态
                     setState(() {
-                            // 如果当前已选中，则取消选中
-                            if (isSelected) {
-                              _subChartIndicator = null;
-                              final index = _indicators.indexOf(indicator);
                       _indicators[index] = TechnicalIndicator(
                         name: indicator.name,
                         type: indicator.type,
                         params: indicator.params,
-                                enabled: false,
-                              );
-                            } else {
-                              // 取消其他附图指标的选中状态
-                              for (int i = 0; i < _indicators.length; i++) {
-                                if (['MACD', 'RSI', 'KDJ'].contains(_indicators[i].type)) {
-                                  _indicators[i] = TechnicalIndicator(
-                                    name: _indicators[i].name,
-                                    type: _indicators[i].type,
-                                    params: _indicators[i].params,
-                                    enabled: false,
-                                  );
-                                }
-                              }
-                              // 选中当前指标
-                              _subChartIndicator = indicator.type;
-                              final index = _indicators.indexOf(indicator);
-                              _indicators[index] = TechnicalIndicator(
-                                name: indicator.name,
-                                type: indicator.type,
-                                params: indicator.params,
-                                enabled: true,
-                              );
-                            }
-                          });
-                          Future.delayed(const Duration(milliseconds: 100), () {
-                    _showIndicatorSettings();
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected 
-                                ? Colors.purple.withOpacity(0.08) 
-                                : Colors.grey.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected 
-                                  ? Colors.purple.withOpacity(0.3) 
-                                  : Colors.grey.withOpacity(0.2),
-                              width: 1.5,
+                        enabled: !indicator.enabled,
+                      );
+                    });
+                    // 延迟一下再打开，确保状态已更新
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      _showIndicatorSettings();
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: indicator.enabled 
+                          ? Colors.blue.withOpacity(0.06) 
+                          : Colors.grey.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                        color: indicator.enabled 
+                            ? Colors.blue.withOpacity(0.25) 
+                            : Colors.grey.withOpacity(0.15),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // 文本信息（去掉图标，只保留指标名称）
+                        Expanded(
+                          child: Text(
+                    indicator.name,
+                    style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.w500,
+                      color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
+                              height: 1.3,
+                              letterSpacing: 0.3,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  indicator.name,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                    color: isSelected ? Colors.purple.shade700 : Colors.black87,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  gradient: isSelected
-                                      ? LinearGradient(
-                                          colors: [Colors.purple.shade400, Colors.purple.shade600],
-                                        )
-                                      : null,
-                                  color: isSelected ? null : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isSelected ? Colors.purple.shade600 : Colors.grey.shade300,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: isSelected
-                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
-                                    : null,
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-                
-                const SizedBox(height: 20),
-                
-                // 完成按钮
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      '完成', 
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
+                        // 精致的复选框
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            gradient: indicator.enabled
+                                ? LinearGradient(
+                                    colors: [Colors.blue.shade400, Colors.blue.shade600],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            color: indicator.enabled ? null : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: indicator.enabled ? Colors.blue.shade600 : Colors.grey.shade300,
+                              width: 2,
+                            ),
+                            boxShadow: indicator.enabled
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.blue.withOpacity(0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: indicator.enabled
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                    size: 18,
+                                )
+                              : null,
+                        ),
+                      ],
                     ),
                   ),
                 ),
+              );
+            },
+          ),
+        ),
+              const SizedBox(height: 16),
+              // 按钮
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    '完成', 
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
               ],
             ),
           ),
@@ -1653,7 +1547,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       ),
     );
   }
-
   
   /// 显示消息
   void _showMessage(String message) {

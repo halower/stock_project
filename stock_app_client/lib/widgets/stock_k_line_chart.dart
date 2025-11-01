@@ -9,6 +9,7 @@ class StockKLineChart extends StatelessWidget {
   final bool showVolume;
   final List<TechnicalIndicator>? indicators; // 技术指标列表
   final List<ReplayTrade>? trades; // 交易记录列表
+  final String? subChartIndicator; // 附图指标类型 (MACD/RSI/KDJ)
   
   const StockKLineChart({
     super.key, 
@@ -16,6 +17,7 @@ class StockKLineChart extends StatelessWidget {
     this.showVolume = true,
     this.indicators,
     this.trades,
+    this.subChartIndicator,
   });
 
   @override
@@ -36,11 +38,14 @@ class StockKLineChart extends StatelessWidget {
     // 计算技术指标
     final indicatorData = _calculateIndicators(candleData);
     
+    // 计算附图指标数据
+    final subChartData = _calculateSubChartIndicator(candleData);
+    
     return Column(
       children: [
         // 真正的K线蜡烛图 + 技术指标
         Expanded(
-          flex: 3,
+          flex: 4, // 增加K线图的比例
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: LayoutBuilder(
@@ -89,6 +94,10 @@ class StockKLineChart extends StatelessWidget {
         // 成交量图表
         if (showVolume && candleData.any((data) => data.volume > 0)) 
           _buildVolumeChart(candleData),
+        
+        // 附图指标（MACD/RSI/KDJ）
+        if (subChartData != null)
+          _buildSubChart(candleData, subChartData, context),
       ],
     );
   }
@@ -101,22 +110,35 @@ class StockKLineChart extends StatelessWidget {
     return date;
   }
 
-  // 构建成交量图表
+  // 构建成交量图表 - 优化版
   Widget _buildVolumeChart(List<CandleData> candleData) {
     // 计算最大成交量用于Y轴缩放
     final maxVolume = candleData.map((e) => e.volume).reduce((a, b) => a > b ? a : b) * 1.1;
     
     if (maxVolume <= 0) {
-      return const SizedBox(height: 100, child: Center(child: Text('无成交量数据')));
+      return const SizedBox(height: 80, child: Center(child: Text('无成交量数据', style: TextStyle(fontSize: 10, color: Colors.grey))));
+    }
+    
+    // 根据数据量动态计算柱状图宽度
+    final dataCount = candleData.length;
+    double barWidth;
+    if (dataCount <= 30) {
+      barWidth = 8.0;
+    } else if (dataCount <= 60) {
+      barWidth = 5.0;
+    } else if (dataCount <= 90) {
+      barWidth = 3.5;
+    } else {
+      barWidth = 2.5;
     }
     
     return SizedBox(
-      height: 100,
+      height: 80, // 减小高度，让K线图更大
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 4.0),
         child: BarChart(
           BarChartData(
-            alignment: BarChartAlignment.spaceAround,
+            alignment: BarChartAlignment.spaceEvenly,
             maxY: maxVolume,
             minY: 0,
             barTouchData: BarTouchData(enabled: false),
@@ -129,21 +151,25 @@ class StockKLineChart extends StatelessWidget {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 40,
+                  interval: maxVolume / 2, // 只显示2个刻度
                   getTitlesWidget: (value, meta) {
-                    if (value >= 1000000) {
+                    // 只在最大值和中间值显示
+                    if (value == 0) return const SizedBox.shrink();
+                    
+                    if (value >= 100000000) {
                       return Text(
-                        '${(value / 1000000).toStringAsFixed(1)}M',
-                        style: const TextStyle(fontSize: 10),
+                        '${(value / 100000000).toStringAsFixed(1)}亿',
+                        style: const TextStyle(fontSize: 9, color: Colors.grey),
                       );
-                    } else if (value >= 1000) {
+                    } else if (value >= 10000) {
                       return Text(
-                        '${(value / 1000).toStringAsFixed(1)}K',
-                        style: const TextStyle(fontSize: 10),
+                        '${(value / 10000).toStringAsFixed(0)}万',
+                        style: const TextStyle(fontSize: 9, color: Colors.grey),
                       );
                     }
                     return Text(
                       value.toStringAsFixed(0),
-                      style: const TextStyle(fontSize: 10),
+                      style: const TextStyle(fontSize: 9, color: Colors.grey),
                     );
                   },
                 ),
@@ -164,14 +190,25 @@ class StockKLineChart extends StatelessWidget {
                   BarChartRodData(
                     toY: candleData[i].volume,
                     color: candleData[i].close >= candleData[i].open
-                        ? Colors.red
-                        : Colors.green,
-                    width: 6,
+                        ? Colors.red.withOpacity(0.7)
+                        : Colors.green.withOpacity(0.7),
+                    width: barWidth,
+                    borderRadius: BorderRadius.circular(barWidth / 4),
                   ),
                 ],
               ),
             ),
-            gridData: const FlGridData(show: false),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: maxVolume / 2,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey.withOpacity(0.1),
+                  strokeWidth: 1,
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -326,25 +363,43 @@ class StockKLineChart extends StatelessWidget {
     Map<String, dynamic> result = {};
     
     if (indicators == null || indicators!.isEmpty) {
+      debugPrint('📊 指标列表为空');
       return result;
     }
+    
+    debugPrint('📊 开始计算指标，共 ${indicators!.length} 个');
     
     final closes = candleData.map((c) => c.close).toList();
     // final highs = candleData.map((c) => c.high).toList();
     // final lows = candleData.map((c) => c.low).toList();
     
     for (var indicator in indicators!) {
+      debugPrint('📊 指标: ${indicator.name}, 类型: ${indicator.type}, 启用: ${indicator.enabled}');
       if (!indicator.enabled) continue;
       
       switch (indicator.type) {
         case 'MA':
           final period = indicator.params['period'] as int;
           final ma = TechnicalIndicatorCalculator.calculateMA(closes, period);
-          result['MA$period'] = {
+          final key = 'MA$period';
+          result[key] = {
             'data': ma.values,
             'color': _getColorFromString(indicator.params['color'] as String),
             'name': indicator.name,
           };
+          debugPrint('✅ 添加MA指标: $key, 数据点数: ${ma.values.length}');
+          break;
+          
+        case 'EMA':
+          final period = indicator.params['period'] as int;
+          final ema = TechnicalIndicatorCalculator.calculateEMA(closes, period);
+          final key = 'EMA$period';
+          result[key] = {
+            'data': ema,
+            'color': _getColorFromString(indicator.params['color'] as String),
+            'name': indicator.name,
+          };
+          debugPrint('✅ 添加EMA指标: $key, 数据点数: ${ema.length}');
           break;
           
         case 'MACD':
@@ -394,9 +449,84 @@ class StockKLineChart extends StatelessWidget {
         return Colors.blue;
       case 'orange':
         return Colors.orange;
+      case 'cyan':
+        return Colors.cyan;
+      case 'red':
+        return Colors.red;
       default:
         return Colors.white;
     }
+  }
+  
+  // 计算附图指标数据
+  Map<String, dynamic>? _calculateSubChartIndicator(List<CandleData> candleData) {
+    if (subChartIndicator == null || indicators == null) return null;
+    
+    final closes = candleData.map((c) => c.close).toList();
+    final highs = candleData.map((c) => c.high).toList();
+    final lows = candleData.map((c) => c.low).toList();
+    
+    // 查找对应的指标配置
+    final indicator = indicators!.firstWhere(
+      (i) => i.type == subChartIndicator && i.enabled,
+      orElse: () => TechnicalIndicator(name: '', type: '', params: {}, enabled: false),
+    );
+    
+    if (!indicator.enabled) return null;
+    
+    switch (subChartIndicator) {
+      case 'MACD':
+        final macdResult = TechnicalIndicatorCalculator.calculateMACD(closes);
+        return {
+          'type': 'MACD',
+          'dif': macdResult.dif,
+          'dea': macdResult.dea,
+          'macd': macdResult.macd,
+        };
+        
+      case 'RSI':
+        final period = indicator.params['period'] as int? ?? 14;
+        final rsi = TechnicalIndicatorCalculator.calculateRSI(closes, period: period);
+        return {
+          'type': 'RSI',
+          'values': rsi,
+          'period': period,
+        };
+        
+      case 'KDJ':
+        final kdjResult = TechnicalIndicatorCalculator.calculateKDJ(highs, lows, closes);
+        return {
+          'type': 'KDJ',
+          'k': kdjResult.k,
+          'd': kdjResult.d,
+          'j': kdjResult.j,
+        };
+        
+      default:
+        return null;
+    }
+  }
+  
+  // 构建附图
+  Widget _buildSubChart(List<CandleData> candleData, Map<String, dynamic> data, BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.all(8.0),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return CustomPaint(
+            size: Size(constraints.maxWidth, constraints.maxHeight),
+            painter: SubChartPainter(
+              candleData: candleData,
+              indicatorData: data,
+              isDark: isDark,
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -582,29 +712,36 @@ class CandlestickChartPainter extends CustomPainter {
   
   // 绘制技术指标
   void _drawIndicators(Canvas canvas, Size size) {
-    if (indicators.isEmpty) return;
+    if (indicators.isEmpty) {
+      debugPrint('📊 绘制指标: 指标数据为空');
+      return;
+    }
+    
+    debugPrint('📊 开始绘制指标，共 ${indicators.length} 个: ${indicators.keys.join(", ")}');
     
     final chartWidth = size.width;
     // final chartHeight = size.height;
     final candleSpacing = chartWidth / candleData.length;
     
-    // 绘制MA均线
+    // 绘制均线指标
     indicators.forEach((key, value) {
-      if (key.startsWith('MA')) {
+      if (key.startsWith('MA') || key.startsWith('EMA')) {
         final data = value['data'] as List<double>;
         final color = value['color'] as Color;
+        debugPrint('📊 绘制均线: $key, 颜色: $color, 数据点: ${data.length}');
         _drawMALine(canvas, size, data, color, candleSpacing);
       } else if (key == 'BOLL') {
         // 绘制布林带
         final upper = value['upper'] as List<double>;
         final middle = value['middle'] as List<double>;
         final lower = value['lower'] as List<double>;
+        debugPrint('📊 绘制BOLL带');
         _drawBOLL(canvas, size, upper, middle, lower, candleSpacing);
       }
     });
   }
   
-  // 绘制MA均线
+  // 绘制均线（MA/EMA）
   void _drawMALine(Canvas canvas, Size size, List<double> data, Color color, double candleSpacing) {
     final path = Path();
     bool isFirst = true;
@@ -807,5 +944,211 @@ class CandlestickChartPainter extends CustomPainter {
         oldDelegate.isDark != isDark ||
         oldDelegate.indicators != indicators ||
         oldDelegate.trades != trades;
+  }
+}
+
+// 附图绘制器（用于MACD/RSI/KDJ）
+class SubChartPainter extends CustomPainter {
+  final List<CandleData> candleData;
+  final Map<String, dynamic> indicatorData;
+  final bool isDark;
+  
+  SubChartPainter({
+    required this.candleData,
+    required this.indicatorData,
+    required this.isDark,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (candleData.isEmpty) return;
+    
+    final type = indicatorData['type'] as String;
+    
+    switch (type) {
+      case 'MACD':
+        _drawMACD(canvas, size);
+        break;
+      case 'RSI':
+        _drawRSI(canvas, size);
+        break;
+      case 'KDJ':
+        _drawKDJ(canvas, size);
+        break;
+    }
+  }
+  
+  // 绘制MACD
+  void _drawMACD(Canvas canvas, Size size) {
+    final dif = indicatorData['dif'] as List<double>;
+    final dea = indicatorData['dea'] as List<double>;
+    final macd = indicatorData['macd'] as List<double>;
+    
+    // 计算最大最小值
+    double minVal = double.infinity;
+    double maxVal = double.negativeInfinity;
+    
+    for (int i = 0; i < candleData.length; i++) {
+      if (!dif[i].isNaN) {
+        minVal = minVal < dif[i] ? minVal : dif[i];
+        maxVal = maxVal > dif[i] ? maxVal : dif[i];
+      }
+      if (!dea[i].isNaN) {
+        minVal = minVal < dea[i] ? minVal : dea[i];
+        maxVal = maxVal > dea[i] ? maxVal : dea[i];
+      }
+      if (!macd[i].isNaN) {
+        minVal = minVal < macd[i] ? minVal : macd[i];
+        maxVal = maxVal > macd[i] ? maxVal : macd[i];
+      }
+    }
+    
+    if (minVal == double.infinity) return;
+    
+    final range = maxVal - minVal;
+    if (range == 0) return;
+    
+    final candleSpacing = size.width / candleData.length;
+    
+    // 绘制零轴
+    final zeroY = size.height * (1 - (0 - minVal) / range);
+    final zeroPaint = Paint()
+      ..color = (isDark ? Colors.white : Colors.black).withOpacity(0.2)
+      ..strokeWidth = 0.5;
+    canvas.drawLine(Offset(0, zeroY), Offset(size.width, zeroY), zeroPaint);
+    
+    // 绘制MACD柱状图
+    for (int i = 0; i < candleData.length; i++) {
+      if (macd[i].isNaN) continue;
+      
+      final x = i * candleSpacing + candleSpacing / 2;
+      final y = size.height * (1 - (macd[i] - minVal) / range);
+      final color = macd[i] >= 0 ? Colors.red : Colors.green;
+      
+      final barPaint = Paint()
+        ..color = color.withOpacity(0.6)
+        ..strokeWidth = candleSpacing * 0.6
+        ..strokeCap = StrokeCap.round;
+      
+      canvas.drawLine(Offset(x, zeroY), Offset(x, y), barPaint);
+    }
+    
+    // 绘制DIF线
+    _drawLine(canvas, size, dif, minVal, range, Colors.yellow, candleSpacing);
+    
+    // 绘制DEA线
+    _drawLine(canvas, size, dea, minVal, range, Colors.purple, candleSpacing);
+  }
+  
+  // 绘制RSI
+  void _drawRSI(Canvas canvas, Size size) {
+    final values = indicatorData['values'] as List<double>;
+    
+    // RSI范围固定为0-100
+    final minVal = 0.0;
+    final maxVal = 100.0;
+    final range = maxVal - minVal;
+    final candleSpacing = size.width / candleData.length;
+    
+    // 绘制参考线（30, 50, 70）
+    final linePaint = Paint()
+      ..color = (isDark ? Colors.white : Colors.black).withOpacity(0.1)
+      ..strokeWidth = 0.5;
+    
+    for (final level in [30.0, 50.0, 70.0]) {
+      final y = size.height * (1 - (level - minVal) / range);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
+    }
+    
+    // 绘制RSI线
+    _drawLine(canvas, size, values, minVal, range, Colors.purple, candleSpacing);
+  }
+  
+  // 绘制KDJ
+  void _drawKDJ(Canvas canvas, Size size) {
+    final k = indicatorData['k'] as List<double>;
+    final d = indicatorData['d'] as List<double>;
+    final j = indicatorData['j'] as List<double>;
+    
+    // 计算最大最小值
+    double minVal = 0.0;
+    double maxVal = 100.0;
+    
+    for (int i = 0; i < candleData.length; i++) {
+      if (!k[i].isNaN) {
+        minVal = minVal < k[i] ? minVal : k[i];
+        maxVal = maxVal > k[i] ? maxVal : k[i];
+      }
+      if (!d[i].isNaN) {
+        minVal = minVal < d[i] ? minVal : d[i];
+        maxVal = maxVal > d[i] ? maxVal : d[i];
+      }
+      if (!j[i].isNaN) {
+        minVal = minVal < j[i] ? minVal : j[i];
+        maxVal = maxVal > j[i] ? maxVal : j[i];
+      }
+    }
+    
+    final range = maxVal - minVal;
+    if (range == 0) return;
+    
+    final candleSpacing = size.width / candleData.length;
+    
+    // 绘制参考线
+    final linePaint = Paint()
+      ..color = (isDark ? Colors.white : Colors.black).withOpacity(0.1)
+      ..strokeWidth = 0.5;
+    
+    for (final level in [20.0, 50.0, 80.0]) {
+      if (level >= minVal && level <= maxVal) {
+        final y = size.height * (1 - (level - minVal) / range);
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
+      }
+    }
+    
+    // 绘制K线
+    _drawLine(canvas, size, k, minVal, range, Colors.yellow, candleSpacing);
+    
+    // 绘制D线
+    _drawLine(canvas, size, d, minVal, range, Colors.purple, candleSpacing);
+    
+    // 绘制J线
+    _drawLine(canvas, size, j, minVal, range, Colors.cyan, candleSpacing);
+  }
+  
+  // 通用线条绘制方法
+  void _drawLine(Canvas canvas, Size size, List<double> data, double minVal, double range, Color color, double candleSpacing) {
+    final path = Path();
+    bool isFirst = true;
+    
+    for (int i = 0; i < data.length && i < candleData.length; i++) {
+      if (data[i].isNaN) continue;
+      
+      final x = i * candleSpacing + candleSpacing / 2;
+      final y = size.height * (1 - (data[i] - minVal) / range);
+      
+      if (isFirst) {
+        path.moveTo(x, y);
+        isFirst = false;
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    
+    final paint = Paint()
+      ..color = color.withOpacity(0.8)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+    
+    canvas.drawPath(path, paint);
+  }
+  
+  @override
+  bool shouldRepaint(SubChartPainter oldDelegate) {
+    return oldDelegate.candleData != candleData ||
+        oldDelegate.indicatorData != indicatorData ||
+        oldDelegate.isDark != isDark;
   }
 }

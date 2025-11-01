@@ -178,14 +178,14 @@ class WatchlistItem {
     if (duration.inDays > 0) {
       final hours = duration.inHours % 24;
       if (hours > 0) {
-        return '${duration.inDays}天${hours}小时';
+        return '${duration.inDays}天$hours小时';
       } else {
         return '${duration.inDays}天';
       }
     } else if (duration.inHours > 0) {
       final minutes = duration.inMinutes % 60;
       if (minutes > 0) {
-        return '${duration.inHours}小时${minutes}分钟';
+        return '${duration.inHours}小时$minutes分钟';
       } else {
         return '${duration.inHours}小时';
       }
