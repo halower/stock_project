@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:stock_app/services/watchlist_service.dart';
 import 'dart:async';
 import '../services/providers/trade_provider.dart';
 import '../services/providers/strategy_provider.dart';
 import '../services/providers/stock_provider.dart';
 import '../services/auth_service.dart';
-import '../services/watchlist_service.dart';
 import 'trade_record_screen.dart';
 import 'stock_scanner_screen.dart';
 import 'strategy_screen.dart';
@@ -15,11 +15,14 @@ import 'login_screen.dart';
 import 'news_analysis_screen.dart';
 import 'feedback_screen.dart';
 import 'watchlist_screen.dart';
+import 'kline_replay_screen.dart';
 
 class MenuItem {
   final String title;
   final IconData icon;
   final Widget screen;
+  final List<Widget> Function(BuildContext)? actions; // 页面的action按钮
+  final bool needsAppBar; // 是否需要HomeScreen提供AppBar
   final List<MenuItem>? subMenus;
   final bool isExpanded;
 
@@ -27,6 +30,8 @@ class MenuItem {
     required this.title,
     required this.icon,
     required this.screen,
+    this.actions,
+    this.needsAppBar = false, // 默认不需要
     this.subMenus,
     this.isExpanded = false,
   });
@@ -43,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _isMenuExpanded = false;
   Timer? _authCheckTimer;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // 定义菜单项，使用结构化方式便于扩展
   late List<MenuItem> _menuItems;
@@ -50,12 +56,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 初始化菜单项
+    
+    // 不自动打开侧边栏，让用户主动点击菜单按钮
+    
+    // 初始化菜单项（将盘感练习加入侧边栏）
     _menuItems = [
-      const MenuItem(
+      MenuItem(
         title: '技术量化',
         icon: Icons.storage,
-        screen: StockScannerScreen(),
+        screen: const StockScannerScreen(),
+        actions: StockScannerScreen.buildActions,
+        needsAppBar: true, // 需要HomeScreen提供AppBar
       ),
       const MenuItem(
         title: '消息量化',
@@ -71,6 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
         title: '策略',
         icon: Icons.auto_graph,
         screen: StrategyScreen(),
+      ),
+      const MenuItem(
+        title: '盘感练习',
+        icon: Icons.play_circle_outline,
+        screen: EnhancedKLineReplayScreen(),
       ),
       const MenuItem(
         title: '概览',
@@ -150,24 +166,49 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
     if (isMobile) {
-      // 移动设备使用底部导航栏
+      // 移动设备使用底部导航栏（不包含盘感练习）
+      final bottomNavItems = _menuItems.where((item) => item.title != '盘感练习').toList();
+      final bottomNavIndex = _selectedIndex >= bottomNavItems.length 
+          ? 0 
+          : (_menuItems[_selectedIndex].title == '盘感练习' 
+              ? 0 
+              : bottomNavItems.indexWhere((item) => item.title == _menuItems[_selectedIndex].title));
+      
       return Scaffold(
-        body: _menuItems[_selectedIndex].screen,
+        key: _scaffoldKey,
+        appBar: _menuItems[_selectedIndex].needsAppBar
+            ? AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    _scaffoldKey.currentState?.openDrawer();
+                  },
+                ),
+                title: Text(_menuItems[_selectedIndex].title),
+                actions: _menuItems[_selectedIndex].actions?.call(context),
+              )
+            : null,
+        body: Builder(
+          builder: (context) {
+            // 为子页面提供访问drawer的能力
+            return _menuItems[_selectedIndex].screen;
+          },
+        ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: _selectedIndex,
+          selectedIndex: bottomNavIndex.clamp(0, bottomNavItems.length - 1),
           onDestinationSelected: (int index) {
             setState(() {
-              _selectedIndex = index;
+              _selectedIndex = _menuItems.indexWhere((item) => item.title == bottomNavItems[index].title);
             });
           },
-          destinations: _menuItems
+          destinations: bottomNavItems
               .map((item) => NavigationDestination(
                     icon: Icon(item.icon),
                     label: item.title,
                   ))
               .toList(),
         ),
-        // 添加抽屉菜单，用于显示更多选项
+        // 使用美化的侧边栏导航
         drawer: _buildDrawer(),
       );
     } else {
@@ -241,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 右侧内容区域
+            // 右侧内容区域（移除顶部标题栏）
             Expanded(
               child: _menuItems[_selectedIndex].screen,
             ),
@@ -251,179 +292,245 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // 构建抽屉菜单
+  // 构建美化的侧边栏导航
   Widget _buildDrawer() {
     return Drawer(
       child: Column(
         children: [
-          // 抽屉菜单头部
-          DrawerHeader(
+          // 简洁的头部（移除logo）
+          Container(
+            height: 120,
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
-            ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.bar_chart,
-                    color: Colors.white,
-                    size: 50,
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    '交易系统',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor,
+                  Theme.of(context).primaryColor.withOpacity(0.8),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: SafeArea(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      '交易系统',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Trading System',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
 
-          // 抽屉菜单项
+          // 主导航菜单
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+                const SizedBox(height: 8),
+                // 主功能区域标题
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Text(
+                    '主要功能',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                
+                // 遍历所有菜单项
+                ...List.generate(_menuItems.length, (index) {
+                  final item = _menuItems[index];
+                  final isSelected = _selectedIndex == index;
+                  
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: isSelected 
+                          ? Theme.of(context).primaryColor.withOpacity(0.1)
+                          : Colors.transparent,
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Theme.of(context).primaryColor
+                              : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          item.icon,
+                          color: isSelected ? Colors.white : Colors.grey.shade700,
+                          size: 22,
+                        ),
+                      ),
+                      title: Text(
+                        item.title,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected 
+                              ? Theme.of(context).primaryColor 
+                              : Colors.black87,
+                        ),
+                      ),
+                      // 移除所有菜单项的箭头
+                      onTap: () {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                        Navigator.pop(context); // 关闭侧边栏
+                      },
+                    ),
+                  );
+                }),
+                
+                const SizedBox(height: 16),
+                const Divider(),
+
                 // 快速操作区域
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Text(
                     '快速操作',
                     style: TextStyle(
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey,
+                      color: Colors.grey.shade600,
+                      letterSpacing: 1.2,
                     ),
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.add_circle_outline),
-                  title: const Text('添加交易计划'),
+                
+                // 我的备选池带数量徽标
+                _buildWatchlistTile(),
+                
+                _buildQuickActionTile(
+                  icon: Icons.feedback,
+                  title: '问题反馈',
                   onTap: () {
-                    // 跳转到添加交易计划页面的逻辑
-                    Navigator.pop(context); // 关闭抽屉
-                    // 这里添加导航到添加交易计划页面的代码
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.search),
-                  title: const Text('搜索股票'),
-                  onTap: () {
-                    // 跳转到搜索股票页面的逻辑
-                    Navigator.pop(context); // 关闭抽屉
-                    // 这里添加导航到搜索股票页面的代码
-                  },
-                ),
-                // 我的备选池 - 添加实时数量显示
-                ValueListenableBuilder<int>(
-                  valueListenable: WatchlistService.watchlistChangeNotifier,
-                  builder: (context, changeCount, child) {
-                    return FutureBuilder<int>(
-                      future: WatchlistService.getWatchlistCount(),
-                      builder: (context, snapshot) {
-                        final count = snapshot.data ?? 0;
-                        return ListTile(
-                          leading: const Icon(Icons.star),
-                          title: const Text('我的备选池'),
-                          trailing: count > 0
-                              ? Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 20,
-                                    minHeight: 20,
-                                  ),
-                                  child: Text(
-                                    count > 99 ? '99+' : count.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                )
-                              : null,
-                          onTap: () {
-                            Navigator.pop(context); // 关闭抽屉
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const WatchlistScreen()),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-
-                const Divider(),
-
-                // 系统设置区域
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    '系统设置',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.settings),
-                  title: const Text('个人设置'),
-                  onTap: () {
-                    // 跳转到个人设置页面的逻辑
-                    Navigator.pop(context); // 关闭抽屉
-                    // 这里添加导航到个人设置页面的代码
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.sync),
-                  title: const Text('数据同步'),
-                  onTap: () {
-                    // 跳转到数据同步页面的逻辑
-                    Navigator.pop(context); // 关闭抽屉
-                    // 这里添加导航到数据同步页面的代码
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.feedback),
-                  title: const Text('问题反馈'),
-                  onTap: () {
-                    // 关闭抽屉并跳转到反馈页面
                     Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const FeedbackScreen()),
+                        builder: (context) => const FeedbackScreen(),
+                      ),
                     );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('关于'),
-                  onTap: () {
-                    // 跳转到关于页面的逻辑
-                    Navigator.pop(context); // 关闭抽屉
-                    // 这里添加导航到关于页面的代码
                   },
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+  
+  // 构建我的备选池带数量徽标
+  Widget _buildWatchlistTile() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: FutureBuilder<int>(
+        future: WatchlistService.getWatchlistCount(),
+        builder: (context, snapshot) {
+          final count = snapshot.data ?? 0;
+          return ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.star,
+                color: Colors.grey.shade700,
+                size: 22,
+              ),
+            ),
+            title: const Text(
+              '我的备选池',
+              style: TextStyle(
+                color: Colors.black87,
+              ),
+            ),
+            trailing: count > 0 ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                count.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ) : null,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WatchlistScreen(),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // 构建快速操作项
+  Widget _buildQuickActionTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.grey.shade700,
+            size: 22,
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black87,
+          ),
+        ),
+        onTap: onTap,
       ),
     );
   }

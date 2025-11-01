@@ -16,6 +16,77 @@ class StockScannerScreen extends StatefulWidget {
 
   @override
   State<StockScannerScreen> createState() => _StockScannerScreenState();
+
+  // 静态方法：提供AppBar的actions
+  static List<Widget> buildActions(BuildContext context) {
+    return [
+      // 备选池按钮
+      Padding(
+        padding: const EdgeInsets.only(bottom: 4.0),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 4.0),
+          child: ValueListenableBuilder<int>(
+            valueListenable: WatchlistService.watchlistChangeNotifier,
+            builder: (context, changeCount, child) {
+              return FutureBuilder<int>(
+                future: WatchlistService.getWatchlistCount(),
+                builder: (context, snapshot) {
+                  final count = snapshot.data ?? 0;
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.bookmark_border),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const WatchlistScreen()),
+                          );
+                        },
+                        tooltip: '我的备选池',
+                      ),
+                      if (count > 0)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              count > 99 ? '99+' : count.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+      // AI筛选按钮
+      Padding(
+        padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 4.0),
+          child: const AIFilterPanel(),
+        ),
+      ),
+    ];
+  }
 }
 
 class _StockScannerScreenState extends State<StockScannerScreen> {
@@ -182,78 +253,9 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('技术面量化分析'),
-        actions: [
-          // 备选池按钮 - 使用ValueListenableBuilder监听状态变化，与AI图标保持一致的高度
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4.0),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 4.0),
-              child: ValueListenableBuilder<int>(
-                valueListenable: WatchlistService.watchlistChangeNotifier,
-                builder: (context, changeCount, child) {
-                  return FutureBuilder<int>(
-                    future: WatchlistService.getWatchlistCount(),
-                    builder: (context, snapshot) {
-                      final count = snapshot.data ?? 0;
-                      return Stack(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.bookmark_border),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const WatchlistScreen()),
-                              );
-                            },
-                            tooltip: '我的备选池',
-                          ),
-                          if (count > 0)
-                            Positioned(
-                              right: 6,
-                              top: 6,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Text(
-                                  count > 99 ? '99+' : count.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-          // 将AI筛选图标放到右上角，并增加底部边距
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 4.0),
-              child: const AIFilterPanel(),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
+    // 不使用Scaffold，直接返回body内容
+    // AppBar和actions由HomeScreen提供
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 合规性提醒横幅
@@ -576,7 +578,6 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
             child: _buildStockList(),
           ),
         ],
-      ),
     );
   }
   

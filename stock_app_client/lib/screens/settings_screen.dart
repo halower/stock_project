@@ -474,6 +474,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF0F1419) : const Color(0xFFF5F7FA),
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) {
+            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
+            if (parentScaffold != null && parentScaffold.hasDrawer) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  parentScaffold.openDrawer();
+                },
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
         title: Row(
           children: [
             Container(

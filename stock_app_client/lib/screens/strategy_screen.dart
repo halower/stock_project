@@ -56,6 +56,20 @@ class _StrategyScreenState extends State<StrategyScreen> with SingleTickerProvid
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) {
+            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
+            if (parentScaffold != null && parentScaffold.hasDrawer) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  parentScaffold.openDrawer();
+                },
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
         title: Row(
           children: [
             Container(

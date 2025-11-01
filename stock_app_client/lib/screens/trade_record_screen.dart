@@ -35,6 +35,20 @@ class _TradeRecordScreenState extends State<TradeRecordScreen> with SingleTicker
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF000000) : const Color(0xFFF8F9FA),
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) {
+            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
+            if (parentScaffold != null && parentScaffold.hasDrawer) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  parentScaffold.openDrawer();
+                },
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
         title: const Text(
           '交易记录',
           style: TextStyle(

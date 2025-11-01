@@ -419,7 +419,7 @@ $filterSection【交易指导原则】
 - 观望信号用于技术面不明确或震荡整理的情况${filterCriteria != null && filterCriteria.isNotEmpty ? '，或部分符合筛选条件，或行业不完全匹配' : ''}
 - ${filterCriteria != null && filterCriteria.isNotEmpty ? '如果用户筛选条件明确提到行业（如"半导体"、"新能源"等），而该股票行业不匹配，必须给出观望或卖出信号\n- ' : ''}止损价应设在关键支撑位下方
 - 目标价应基于阻力位或技术测算
-- 置信度基于多个指标的一致性${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件的匹配度（包括行业匹配）' : ''}
+ - 置信度基于多个指标的一致性${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件的匹配度（包括行业匹配）' : ''}
 - 理由要简洁明了，50-100字，突出核心逻辑${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件匹配情况（如果行业不匹配，必须在理由中说明）' : ''}
 - **所有分析必须基于最近几天（标记【最新】）的数据，而不是30天前的旧数据！**
 

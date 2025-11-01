@@ -179,6 +179,20 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) {
+            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
+            if (parentScaffold != null && parentScaffold.hasDrawer) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  parentScaffold.openDrawer();
+                },
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
         title: const Text('消息面量化分析'),
         actions: [
           IconButton(
