@@ -116,15 +116,26 @@ class TechnicalIndicatorCalculator {
     }
     
     // 计算DEA（信号线）- DIF的EMA
-    final dea = calculateEMA(dif.where((v) => !v.isNaN).toList(), signalPeriod);
+    final validDif = dif.where((v) => !v.isNaN).toList();
+    final dea = calculateEMA(validDif, signalPeriod);
     
-    // 补齐DEA长度
+    // 补齐DEA长度，确保与prices长度一致
     List<double> deaFull = [];
     int nanCount = dif.where((v) => v.isNaN).length;
     for (int i = 0; i < nanCount; i++) {
       deaFull.add(double.nan);
     }
     deaFull.addAll(dea);
+    
+    // 如果deaFull长度不足，补充NaN
+    while (deaFull.length < prices.length) {
+      deaFull.add(double.nan);
+    }
+    
+    // 如果deaFull长度超过，截断
+    if (deaFull.length > prices.length) {
+      deaFull = deaFull.sublist(0, prices.length);
+    }
     
     // 计算MACD柱状图
     List<double> macd = [];

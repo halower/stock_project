@@ -139,24 +139,14 @@ class TechnicalIndicator {
         params: {'period': 5, 'color': 'cyan'},
         enabled: false,  // 默认关闭
       ),
-      TechnicalIndicator(
-        name: 'EMA10',
-        type: 'EMA',
-        params: {'period': 10, 'color': 'yellow'},
-        enabled: false,  // 默认关闭
-      ),
+
       TechnicalIndicator(
         name: 'EMA20',
         type: 'EMA',
         params: {'period': 20, 'color': 'purple'},
         enabled: true,  // 默认启用
       ),
-      TechnicalIndicator(
-        name: 'EMA60',
-        type: 'EMA',
-        params: {'period': 60, 'color': 'green'},
-        enabled: false,
-      ),
+
       TechnicalIndicator(
         name: 'MACD',
         type: 'MACD',

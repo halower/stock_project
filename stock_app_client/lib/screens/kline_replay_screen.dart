@@ -1556,12 +1556,14 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                               // 选中当前指标
                               _subChartIndicator = indicator.type;
                               final index = _indicators.indexOf(indicator);
-                              _indicators[index] = TechnicalIndicator(
-                                name: indicator.name,
-                                type: indicator.type,
-                                params: indicator.params,
-                                enabled: true,
-                              );
+                              if (index != -1) {
+                                _indicators[index] = TechnicalIndicator(
+                                  name: indicator.name,
+                                  type: indicator.type,
+                                  params: indicator.params,
+                                  enabled: true,
+                                );
+                              }
                             }
                           });
                           Future.delayed(const Duration(milliseconds: 100), () {

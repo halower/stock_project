@@ -466,11 +466,47 @@ class StockKLineChart extends StatelessWidget {
     final highs = candleData.map((c) => c.high).toList();
     final lows = candleData.map((c) => c.low).toList();
     
-    // 查找对应的指标配置
-    final indicator = indicators!.firstWhere(
-      (i) => i.type == subChartIndicator && i.enabled,
-      orElse: () => TechnicalIndicator(name: '', type: '', params: {}, enabled: false),
-    );
+    // 查找对应的指标配置 - 修复逻辑
+    TechnicalIndicator? indicator;
+    for (var i in indicators!) {
+      if (i.type == subChartIndicator) {
+        indicator = i;
+        break;
+      }
+    }
+    
+    // 如果没找到对应的指标配置，使用默认参数
+    if (indicator == null) {
+      // 为MACD、RSI、KDJ提供默认参数
+      switch (subChartIndicator) {
+        case 'MACD':
+          indicator = TechnicalIndicator(
+            name: 'MACD',
+            type: 'MACD',
+            params: {'fast': 12, 'slow': 26, 'signal': 9},
+            enabled: true,
+          );
+          break;
+        case 'RSI':
+          indicator = TechnicalIndicator(
+            name: 'RSI',
+            type: 'RSI',
+            params: {'period': 14},
+            enabled: true,
+          );
+          break;
+        case 'KDJ':
+          indicator = TechnicalIndicator(
+            name: 'KDJ',
+            type: 'KDJ',
+            params: {'n': 9, 'k': 3, 'd': 3},
+            enabled: true,
+          );
+          break;
+        default:
+          return null;
+      }
+    }
     
     if (!indicator.enabled) return null;
     
@@ -494,7 +530,7 @@ class StockKLineChart extends StatelessWidget {
         };
         
       case 'KDJ':
-        final kdjResult = TechnicalIndicatorCalculator.calculateKDJ(highs, lows, closes);
+        final kdjResult = TechnicalIndicatorCalculator.calculateKDJ(closes, highs, lows);
         return {
           'type': 'KDJ',
           'k': kdjResult.k,
@@ -984,20 +1020,25 @@ class SubChartPainter extends CustomPainter {
     final dea = indicatorData['dea'] as List<double>;
     final macd = indicatorData['macd'] as List<double>;
     
+    // 确保数据长度一致
+    final dataLength = [dif.length, dea.length, macd.length, candleData.length].reduce((a, b) => a < b ? a : b);
+    
+    if (dataLength == 0) return;
+    
     // 计算最大最小值
     double minVal = double.infinity;
     double maxVal = double.negativeInfinity;
     
-    for (int i = 0; i < candleData.length; i++) {
-      if (!dif[i].isNaN) {
+    for (int i = 0; i < dataLength; i++) {
+      if (i < dif.length && !dif[i].isNaN) {
         minVal = minVal < dif[i] ? minVal : dif[i];
         maxVal = maxVal > dif[i] ? maxVal : dif[i];
       }
-      if (!dea[i].isNaN) {
+      if (i < dea.length && !dea[i].isNaN) {
         minVal = minVal < dea[i] ? minVal : dea[i];
         maxVal = maxVal > dea[i] ? maxVal : dea[i];
       }
-      if (!macd[i].isNaN) {
+      if (i < macd.length && !macd[i].isNaN) {
         minVal = minVal < macd[i] ? minVal : macd[i];
         maxVal = maxVal > macd[i] ? maxVal : macd[i];
       }
@@ -1018,8 +1059,8 @@ class SubChartPainter extends CustomPainter {
     canvas.drawLine(Offset(0, zeroY), Offset(size.width, zeroY), zeroPaint);
     
     // 绘制MACD柱状图
-    for (int i = 0; i < candleData.length; i++) {
-      if (macd[i].isNaN) continue;
+    for (int i = 0; i < dataLength; i++) {
+      if (i >= macd.length || macd[i].isNaN) continue;
       
       final x = i * candleSpacing + candleSpacing / 2;
       final y = size.height * (1 - (macd[i] - minVal) / range);
@@ -1070,20 +1111,25 @@ class SubChartPainter extends CustomPainter {
     final d = indicatorData['d'] as List<double>;
     final j = indicatorData['j'] as List<double>;
     
+    // 确保数据长度一致
+    final dataLength = [k.length, d.length, j.length, candleData.length].reduce((a, b) => a < b ? a : b);
+    
+    if (dataLength == 0) return;
+    
     // 计算最大最小值
     double minVal = 0.0;
     double maxVal = 100.0;
     
-    for (int i = 0; i < candleData.length; i++) {
-      if (!k[i].isNaN) {
+    for (int i = 0; i < dataLength; i++) {
+      if (i < k.length && !k[i].isNaN) {
         minVal = minVal < k[i] ? minVal : k[i];
         maxVal = maxVal > k[i] ? maxVal : k[i];
       }
-      if (!d[i].isNaN) {
+      if (i < d.length && !d[i].isNaN) {
         minVal = minVal < d[i] ? minVal : d[i];
         maxVal = maxVal > d[i] ? maxVal : d[i];
       }
-      if (!j[i].isNaN) {
+      if (i < j.length && !j[i].isNaN) {
         minVal = minVal < j[i] ? minVal : j[i];
         maxVal = maxVal > j[i] ? maxVal : j[i];
       }
@@ -1118,11 +1164,16 @@ class SubChartPainter extends CustomPainter {
   
   // 通用线条绘制方法
   void _drawLine(Canvas canvas, Size size, List<double> data, double minVal, double range, Color color, double candleSpacing) {
+    if (data.isEmpty || candleData.isEmpty) return;
+    
     final path = Path();
     bool isFirst = true;
     
-    for (int i = 0; i < data.length && i < candleData.length; i++) {
-      if (data[i].isNaN) continue;
+    // 使用较小的长度来避免越界
+    final maxLength = data.length < candleData.length ? data.length : candleData.length;
+    
+    for (int i = 0; i < maxLength; i++) {
+      if (i >= data.length || data[i].isNaN) continue;
       
       final x = i * candleSpacing + candleSpacing / 2;
       final y = size.height * (1 - (data[i] - minVal) / range);
