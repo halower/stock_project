@@ -250,25 +250,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               ),
             ),
           ),
-          
-          // 结束训练按钮
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: ElevatedButton.icon(
-              onPressed: _endTraining,
-              icon: const Icon(Icons.stop_circle, size: 18),
-              label: const Text('结束', style: TextStyle(fontSize: 12)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                minimumSize: const Size(60, 36),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -880,8 +861,12 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         _startTraining();
       }
     } else if (result == 'end') {
-      // 结束：不做任何操作，保持当前状态
-      // 用户可以手动选择新股票或退出页面
+      // 结束：停止定时器，清空会话，保持K线显示
+      _autoPlayTimer?.cancel();
+      _autoPlayTimer = null;
+      setState(() {
+        _session = null; // 清空训练会话
+      });
     }
   }
   
@@ -954,57 +939,54 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     );
   }
   
-  /// 显示技术指标设置
+  /// 显示技术指标设置（紧凑版）
   void _showIndicatorSettings() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.insights, color: Colors.blue, size: 24),
-            ),
-            const SizedBox(width: 12),
-            const Text('技术指标设置'),
+            const Icon(Icons.insights, color: Colors.blue, size: 20),
+            const SizedBox(width: 8),
+            const Text('技术指标', style: TextStyle(fontSize: 16)),
           ],
         ),
         content: SizedBox(
-          width: double.maxFinite,
+          width: 280,
           child: ListView.builder(
             shrinkWrap: true,
             itemCount: _indicators.length,
             itemBuilder: (context, index) {
               final indicator = _indicators[index];
               return Container(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: 6),
                 decoration: BoxDecoration(
                   color: indicator.enabled 
-                      ? Colors.blue.withOpacity(0.1) 
-                      : Colors.grey.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
+                      ? Colors.blue.withOpacity(0.08) 
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: indicator.enabled ? Colors.blue : Colors.grey.shade300,
-                    width: indicator.enabled ? 2 : 1,
+                    color: indicator.enabled ? Colors.blue.withOpacity(0.3) : Colors.grey.shade300,
+                    width: 1,
                   ),
                 ),
                 child: CheckboxListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                   title: Text(
                     indicator.name,
                     style: TextStyle(
-                      fontWeight: indicator.enabled ? FontWeight.bold : FontWeight.normal,
-                      color: indicator.enabled ? Colors.blue : Colors.black87,
+                      fontSize: 13,
+                      fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.normal,
+                      color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
                     ),
                   ),
                   subtitle: Text(
                     indicator.type,
                     style: TextStyle(
-                      fontSize: 12,
-                      color: indicator.enabled ? Colors.blue.shade700 : Colors.grey,
+                      fontSize: 11,
+                      color: indicator.enabled ? Colors.blue.shade600 : Colors.grey.shade600,
                     ),
                   ),
                   value: indicator.enabled,
@@ -1021,19 +1003,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                     Navigator.pop(context);
                     _showIndicatorSettings();
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: indicator.enabled 
-                          ? Colors.blue.withOpacity(0.2) 
-                          : Colors.grey.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.show_chart,
-                      color: indicator.enabled ? Colors.blue : Colors.grey,
-                      size: 20,
-                    ),
+                  secondary: Icon(
+                    Icons.show_chart,
+                    color: indicator.enabled ? Colors.blue : Colors.grey.shade400,
+                    size: 18,
                   ),
                 ),
               );
@@ -1043,7 +1016,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text('关闭', style: TextStyle(fontSize: 13)),
           ),
         ],
       ),
