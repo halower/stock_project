@@ -139,7 +139,12 @@ class TechnicalIndicator {
         params: {'period': 5, 'color': 'cyan'},
         enabled: false,  // 默认关闭
       ),
-
+      TechnicalIndicator(
+        name: 'EMA10',
+        type: 'EMA',
+        params: {'period': 10, 'color': 'yellow'},
+        enabled: false,  // 默认关闭
+      ),
       TechnicalIndicator(
         name: 'EMA20',
         type: 'EMA',

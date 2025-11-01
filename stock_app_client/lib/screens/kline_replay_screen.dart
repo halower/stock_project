@@ -104,7 +104,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.orange.withOpacity(0.3),
+                  color: Colors.orange.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -142,7 +142,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.3),
+                  color: Colors.blue.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -155,27 +155,27 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               tooltip: '技术指标',
             ),
           ),
-          // 训练设置 - 使用更精致的图标
+          // 训练设置 - 使用人民币符号和比特币金色
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.grey.shade600, Colors.grey.shade800],
+                colors: [Color.from(alpha: 1, red: 0.941, green: 0.561, blue: 0.286), Color(0xFFFFB800)], // 比特币金色渐变
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Color(0xFFFFD700).withValues(alpha: 0.4), // 金色阴影
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.attach_money, color: Colors.white, size: 20),
+              icon: const Icon(Icons.currency_yuan, color: Colors.white, size: 20), // 人民币符号
               padding: EdgeInsets.zero,
             onPressed: _showTrainingSettings,
             tooltip: '训练设置',
@@ -225,7 +225,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         gradient: LinearGradient(
           colors: [
             Colors.blue.shade50,
-            Colors.blue.shade100.withOpacity(0.3),
+            Colors.blue.shade100.withValues(alpha: 0.3),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -233,13 +233,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.08),
+            color: Colors.blue.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
         border: Border.all(
-          color: Colors.blue.withOpacity(0.2),
+          color: Colors.blue.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -308,13 +308,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.12),
+            color: color.withValues(alpha: 0.12),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -325,7 +325,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
+                colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -435,13 +435,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
             ],
             border: Border.all(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
@@ -503,8 +503,8 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.black.withOpacity(0.75),
-            Colors.black.withOpacity(0.65),
+            Colors.black.withValues(alpha: 0.75),
+            Colors.black.withValues(alpha: 0.65),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -512,13 +512,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -552,9 +552,9 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
           // 涨跌幅
           Row(
             children: [
-              Text(
+              const Text(
                 '涨跌: ',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70, 
                   fontSize: 10,
                   height: 1.2,
@@ -574,9 +574,9 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
           // 成交量
           Row(
             children: [
-              Text(
+              const Text(
                 '量: ',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70, 
                   fontSize: 10,
                   height: 1.2,
@@ -652,8 +652,8 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            plColor.withOpacity(0.9),
-            plColor.withOpacity(0.75),
+            plColor.withValues(alpha: 0.9),
+            plColor.withValues(alpha: 0.75),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -661,13 +661,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: plColor.withOpacity(0.4),
+            color: plColor.withValues(alpha: 0.4),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -675,10 +675,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.inventory_2, color: Colors.white, size: 14),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Text(
             '持仓',
             style: TextStyle(
@@ -712,12 +712,12 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               '${unrealizedPL >= 0 ? '+' : ''}¥${unrealizedPL.toStringAsFixed(0)}',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
                 height: 1.2,
@@ -751,7 +751,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -3),
           ),
@@ -780,7 +780,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 boxShadow: canBuy
                     ? [
                         BoxShadow(
-                          color: Colors.red.withOpacity(0.3),
+                          color: Colors.red.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -822,7 +822,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 boxShadow: canSell
                     ? [
                         BoxShadow(
-                          color: Colors.green.withOpacity(0.3),
+                          color: Colors.green.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -860,7 +860,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.orange.withOpacity(0.3),
+                    color: Colors.orange.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -1065,7 +1065,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: (isProfitable ? Colors.red : Colors.green).withOpacity(0.3),
+                      color: (isProfitable ? Colors.red : Colors.green).withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -1099,7 +1099,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -1127,12 +1127,12 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                         gradient: LinearGradient(
                           colors: [
                             Colors.grey.shade50,
-                            Colors.grey.shade100.withOpacity(0.5),
+                            Colors.grey.shade100.withValues(alpha: 0.5),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.grey.withValues(alpha: 0.2),
                           width: 1,
                         ),
                 ),
@@ -1194,7 +1194,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.blue.withOpacity(0.3),
+                                  color: Colors.blue.withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -1244,51 +1244,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     }
   }
   
-  /// 构建报告卡片项
-  Widget _buildReportCard(String label, String value, IconData icon, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 22, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-  
   /// 构建紧凑报告行
   Widget _buildCompactReportRow(String label, String value, IconData icon, Color color) {
     return Row(
@@ -1296,7 +1251,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 18, color: color),
@@ -1367,7 +1322,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     );
   }
   
-  /// 显示技术指标设置（精致版）
+  /// 显示技术指标设置（精致紧凑版）
   void _showIndicatorSettings() {
     // 分离主图指标和附图指标
     final mainIndicators = _indicators.where((i) => ['EMA', 'BOLL'].contains(i.type)).toList();
@@ -1377,275 +1332,371 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-                // 标题
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade400, Colors.blue.shade600],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+              children: [
+                // 顶部标题栏 - 紧凑设计
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade400, Colors.blue.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                        child: const Icon(Icons.timeline, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          '技术指标', 
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 内容区域
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 主图指标标题
+                      Row(
+                        children: [
+                          Container(
+                            width: 3,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.blue.shade400, Colors.blue.shade600],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '主图指标',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade800,
+                            ),
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.timeline, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    const Text(
-                      '技术指标设置', 
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // 主图指标
-                Text(
-                  '主图指标',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...mainIndicators.map((indicator) {
-                  final index = _indicators.indexOf(indicator);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.pop(context);
-                          setState(() {
-                            _indicators[index] = TechnicalIndicator(
-                              name: indicator.name,
-                              type: indicator.type,
-                              params: indicator.params,
-                              enabled: !indicator.enabled,
-                            );
-                          });
-                          Future.delayed(const Duration(milliseconds: 100), () {
-                            _showIndicatorSettings();
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: indicator.enabled 
-                      ? Colors.blue.withOpacity(0.08) 
-                                : Colors.grey.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                              color: indicator.enabled 
-                                  ? Colors.blue.withOpacity(0.3) 
-                                  : Colors.grey.withOpacity(0.2),
-                              width: 1.5,
+                      const SizedBox(height: 10),
+                      
+                      // 主图指标列表 - 紧凑卡片
+                      ...mainIndicators.map((indicator) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () {
+                                Navigator.pop(context);
+                                setState(() {
+                                  // 按名称查找并更新指标
+                                  final index = _indicators.indexWhere((i) => i.name == indicator.name);
+                                  if (index != -1) {
+                                    _indicators[index] = TechnicalIndicator(
+                                      name: indicator.name,
+                                      type: indicator.type,
+                                      params: indicator.params,
+                                      enabled: !indicator.enabled,
+                                    );
+                                  }
+                                });
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  _showIndicatorSettings();
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: indicator.enabled 
+                                      ? Colors.blue.withValues(alpha: 0.06) 
+                                      : Colors.grey.withValues(alpha: 0.02),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: indicator.enabled 
+                                        ? Colors.blue.withValues(alpha: 0.25) 
+                                        : Colors.grey.withValues(alpha: 0.15),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // 指标图标
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        gradient: indicator.enabled
+                                            ? LinearGradient(
+                                                colors: [Colors.blue.shade300, Colors.blue.shade500],
+                                              )
+                                            : null,
+                                        color: indicator.enabled ? null : Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(
+                                        Icons.show_chart,
+                                        color: indicator.enabled ? Colors.white : Colors.grey.shade500,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        indicator.name,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.w500,
+                                          color: indicator.enabled ? Colors.blue.shade700 : Colors.grey.shade700,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    // 勾选框
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        gradient: indicator.enabled
+                                            ? LinearGradient(
+                                                colors: [Colors.blue.shade400, Colors.blue.shade600],
+                                              )
+                                            : null,
+                                        color: indicator.enabled ? null : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: indicator.enabled ? Colors.blue.shade600 : Colors.grey.shade300,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: indicator.enabled
+                                          ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                          : null,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                    indicator.name,
-                    style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.w500,
-                      color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
-                                    height: 1.3,
-                                  ),
-                                ),
+                        );
+                      }).toList(),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // 附图指标标题
+                      Row(
+                        children: [
+                          Container(
+                            width: 3,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.purple.shade400, Colors.purple.shade600],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
                               ),
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  gradient: indicator.enabled
-                                      ? LinearGradient(
-                                          colors: [Colors.blue.shade400, Colors.blue.shade600],
-                                        )
-                                      : null,
-                                  color: indicator.enabled ? null : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: indicator.enabled ? Colors.blue.shade600 : Colors.grey.shade300,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: indicator.enabled
-                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-                
-                const SizedBox(height: 24),
-                
-                // 附图指标
-                Text(
-                  '附图指标（单选）',
-                    style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...subIndicators.map((indicator) {
-                  final isSelected = _subChartIndicator == indicator.type && indicator.enabled;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.pop(context);
-                    setState(() {
-                            // 如果当前已选中，则取消选中
-                            if (isSelected) {
-                              _subChartIndicator = null;
-                              final index = _indicators.indexOf(indicator);
-                      _indicators[index] = TechnicalIndicator(
-                        name: indicator.name,
-                        type: indicator.type,
-                        params: indicator.params,
-                                enabled: false,
-                              );
-                            } else {
-                              // 取消其他附图指标的选中状态
-                              for (int i = 0; i < _indicators.length; i++) {
-                                if (['MACD', 'RSI', 'KDJ'].contains(_indicators[i].type)) {
-                                  _indicators[i] = TechnicalIndicator(
-                                    name: _indicators[i].name,
-                                    type: _indicators[i].type,
-                                    params: _indicators[i].params,
-                                    enabled: false,
-                                  );
-                                }
-                              }
-                              // 选中当前指标
-                              _subChartIndicator = indicator.type;
-                              final index = _indicators.indexOf(indicator);
-                              if (index != -1) {
-                                _indicators[index] = TechnicalIndicator(
-                                  name: indicator.name,
-                                  type: indicator.type,
-                                  params: indicator.params,
-                                  enabled: true,
-                                );
-                              }
-                            }
-                          });
-                          Future.delayed(const Duration(milliseconds: 100), () {
-                    _showIndicatorSettings();
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected 
-                                ? Colors.purple.withOpacity(0.08) 
-                                : Colors.grey.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected 
-                                  ? Colors.purple.withOpacity(0.3) 
-                                  : Colors.grey.withOpacity(0.2),
-                              width: 1.5,
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  indicator.name,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                    color: isSelected ? Colors.purple.shade700 : Colors.black87,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  gradient: isSelected
-                                      ? LinearGradient(
-                                          colors: [Colors.purple.shade400, Colors.purple.shade600],
-                                        )
-                                      : null,
-                                  color: isSelected ? null : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isSelected ? Colors.purple.shade600 : Colors.grey.shade300,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: isSelected
-                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
-                                    : null,
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          Text(
+                            '附图指标',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade800,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '单选',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.purple.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  );
-                }).toList(),
-                
-                const SizedBox(height: 20),
-                
-                // 完成按钮
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      '完成', 
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                      const SizedBox(height: 10),
+                      
+                      // 附图指标列表 - 紧凑卡片
+                      ...subIndicators.map((indicator) {
+                        final isSelected = _subChartIndicator == indicator.type && indicator.enabled;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () {
+                                Navigator.pop(context);
+                                setState(() {
+                                  // 如果当前已选中，则取消选中
+                                  if (isSelected) {
+                                    _subChartIndicator = null;
+                                    // 按名称查找并更新指标
+                                    final index = _indicators.indexWhere((i) => i.name == indicator.name);
+                                    if (index != -1) {
+                                      _indicators[index] = TechnicalIndicator(
+                                        name: indicator.name,
+                                        type: indicator.type,
+                                        params: indicator.params,
+                                        enabled: false,
+                                      );
+                                    }
+                                  } else {
+                                    // 取消其他附图指标的选中状态
+                                    for (int i = 0; i < _indicators.length; i++) {
+                                      if (['MACD', 'RSI', 'KDJ'].contains(_indicators[i].type)) {
+                                        _indicators[i] = TechnicalIndicator(
+                                          name: _indicators[i].name,
+                                          type: _indicators[i].type,
+                                          params: _indicators[i].params,
+                                          enabled: false,
+                                        );
+                                      }
+                                    }
+                                    // 选中当前指标 - 按名称查找
+                                    _subChartIndicator = indicator.type;
+                                    final index = _indicators.indexWhere((i) => i.name == indicator.name);
+                                    if (index != -1) {
+                                      _indicators[index] = TechnicalIndicator(
+                                        name: indicator.name,
+                                        type: indicator.type,
+                                        params: indicator.params,
+                                        enabled: true,
+                                      );
+                                    }
+                                  }
+                                });
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  _showIndicatorSettings();
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isSelected 
+                                      ? Colors.purple.withValues(alpha: 0.06) 
+                                      : Colors.grey.withValues(alpha: 0.02),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isSelected 
+                                        ? Colors.purple.withValues(alpha: 0.25) 
+                                        : Colors.grey.withValues(alpha: 0.15),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // 指标图标
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        gradient: isSelected
+                                            ? LinearGradient(
+                                                colors: [Colors.purple.shade300, Colors.purple.shade500],
+                                              )
+                                            : null,
+                                        color: isSelected ? null : Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(
+                                        Icons.bar_chart,
+                                        color: isSelected ? Colors.white : Colors.grey.shade500,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        indicator.name,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                          color: isSelected ? Colors.purple.shade700 : Colors.grey.shade700,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    // 单选框
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        gradient: isSelected
+                                            ? LinearGradient(
+                                                colors: [Colors.purple.shade400, Colors.purple.shade600],
+                                              )
+                                            : null,
+                                        color: isSelected ? null : Colors.transparent,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isSelected ? Colors.purple.shade600 : Colors.grey.shade300,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: isSelected
+                                          ? const Icon(Icons.circle, color: Colors.white, size: 10)
+                                          : null,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
                   ),
                 ),
               ],
@@ -1736,7 +1787,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               
                 // 底部超紧凑控制栏
               Container(
-                  color: Colors.black.withOpacity(0.9),
+                  color: Colors.black.withValues(alpha: 0.9),
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   height: 50, // 固定高度，避免溢出
                 child: Row(
@@ -1827,7 +1878,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: color != null 
-              ? [color.withOpacity(0.8), color]
+              ? [color.withValues(alpha: 0.8), color]
               : [Colors.grey.shade700, Colors.grey.shade900],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -1835,7 +1886,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: (color ?? Colors.grey).withOpacity(0.4),
+            color: (color ?? Colors.grey).withValues(alpha: 0.4),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -1890,7 +1941,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
@@ -1942,7 +1993,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.8),
+        color: Colors.blue.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
@@ -1978,10 +2029,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
+        color: Colors.black.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: Colors.blue.withOpacity(0.3),
+          color: Colors.blue.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
