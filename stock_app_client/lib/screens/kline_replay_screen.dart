@@ -174,7 +174,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.tune, color: Colors.white, size: 20),
+              icon: const Icon(Icons.attach_money, color: Colors.white, size: 20),
               padding: EdgeInsets.zero,
               onPressed: _showTrainingSettings,
               tooltip: '训练设置',
