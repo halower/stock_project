@@ -466,7 +466,7 @@ class StockKLineChart extends StatelessWidget {
     final highs = candleData.map((c) => c.high).toList();
     final lows = candleData.map((c) => c.low).toList();
     
-    // 查找对应的指标配置 - 修复逻辑
+    // 通过指标名称查找对应的指标配置（更安全的方式）
     TechnicalIndicator? indicator;
     for (var i in indicators!) {
       if (i.type == subChartIndicator) {
