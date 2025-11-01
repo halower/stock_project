@@ -559,23 +559,8 @@ class _AIFilterPanelState extends State<AIFilterPanel> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              _remainingCounts,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: _canUseAIFilter 
-                    ? Colors.white 
-                    : Colors.yellow,
-              ),
-            ),
-          ),
+          // 移除无意义的次数提示
+          const SizedBox.shrink(),
         ],
       ),
     );

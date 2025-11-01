@@ -303,6 +303,8 @@ class EnhancedAIFilterService {
           ],
           'temperature': 0.7,
           'max_tokens': 1000,
+          'stream': false,  // 关闭流式输出，加快响应速度
+          'reasoning_effort': 'low',  // 降低推理强度，加快响应速度（适用于o1系列模型）
         }),
       );
       
@@ -348,10 +350,16 @@ class EnhancedAIFilterService {
 【用户筛选条件】
 $filterCriteria
 
-注意：在技术分析的基础上，请特别关注该股票是否符合用户的筛选条件。
-如果技术面良好且符合筛选条件，给出买入信号；
-如果技术面一般或不完全符合筛选条件，给出观望信号；
-如果技术面较差或明显不符合筛选条件，给出卖出信号。
+⚠️ **重要提示**：
+- 请仔细检查该股票是否符合用户的筛选条件
+- 如果筛选条件中提到了行业要求，请务必对比【股票信息】中的"所属行业"字段
+- 如果筛选条件中提到了特定行业（如"半导体"、"新能源"等），而该股票不属于该行业，则应给出"观望"或"卖出"信号
+- 技术面分析和筛选条件匹配度同等重要
+
+评判标准：
+- 技术面良好 + 完全符合筛选条件（包括行业匹配） → 买入信号
+- 技术面一般 或 部分符合筛选条件 或 行业不完全匹配 → 观望信号
+- 技术面较差 或 明显不符合筛选条件 或 行业完全不匹配 → 卖出信号
 
 '''
         : '';
@@ -377,7 +385,7 @@ $filterCriteria
 【股票信息】
 代码: $stockCode
 名称: $stockName
-${industry != null && industry.isNotEmpty ? '所属行业: $industry\n' : ''}当前价格: ¥${currentPrice.toStringAsFixed(2)}
+${industry != null && industry.isNotEmpty ? '🏢 所属行业: $industry ⬅️ 如果用户筛选条件中提到行业，请务必检查此字段是否匹配！\n' : ''}当前价格: ¥${currentPrice.toStringAsFixed(2)}
 
 $klineText
 
@@ -407,12 +415,12 @@ $filterSection【交易指导原则】
 - **不要分析30天前的旧数据，那些对短线交易没有意义！**
 
 基于以上分析${filterCriteria != null && filterCriteria.isNotEmpty ? '和用户筛选条件' : ''}，请给出明确的交易信号。注意：
-- 买入信号必须有明确的技术支撑${filterCriteria != null && filterCriteria.isNotEmpty ? '且符合筛选条件' : ''}
-- 观望信号用于技术面不明确或震荡整理的情况${filterCriteria != null && filterCriteria.isNotEmpty ? '，或部分符合筛选条件' : ''}
-- 止损价应设在关键支撑位下方
+- 买入信号必须有明确的技术支撑${filterCriteria != null && filterCriteria.isNotEmpty ? '且完全符合筛选条件（特别是行业要求）' : ''}
+- 观望信号用于技术面不明确或震荡整理的情况${filterCriteria != null && filterCriteria.isNotEmpty ? '，或部分符合筛选条件，或行业不完全匹配' : ''}
+- ${filterCriteria != null && filterCriteria.isNotEmpty ? '如果用户筛选条件明确提到行业（如"半导体"、"新能源"等），而该股票行业不匹配，必须给出观望或卖出信号\n- ' : ''}止损价应设在关键支撑位下方
 - 目标价应基于阻力位或技术测算
-- 置信度基于多个指标的一致性${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件的匹配度' : ''}
-- 理由要简洁明了，50-100字，突出核心逻辑${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件匹配情况' : ''}
+- 置信度基于多个指标的一致性${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件的匹配度（包括行业匹配）' : ''}
+- 理由要简洁明了，50-100字，突出核心逻辑${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件匹配情况（如果行业不匹配，必须在理由中说明）' : ''}
 - **所有分析必须基于最近几天（标记【最新】）的数据，而不是30天前的旧数据！**
 
 请用以下JSON格式回复（只返回JSON，不要有其他文字）：
