@@ -164,6 +164,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     // 判断是否为移动设备
     final bool isMobile = MediaQuery.of(context).size.width < 600;
+    // 检测屏幕方向
+    final orientation = MediaQuery.of(context).orientation;
+    final isLandscape = orientation == Orientation.landscape;
+    // 检查当前是否在盘感练习页面
+    final isKLineReplayScreen = _menuItems[_selectedIndex].title == '盘感练习';
 
     if (isMobile) {
       // 移动设备使用底部导航栏（不包含盘感练习）
@@ -173,6 +178,11 @@ class _HomeScreenState extends State<HomeScreen> {
           : (_menuItems[_selectedIndex].title == '盘感练习' 
               ? 0 
               : bottomNavItems.indexWhere((item) => item.title == _menuItems[_selectedIndex].title));
+      
+      // 如果是横屏且在盘感练习页面，返回全屏布局
+      if (isLandscape && isKLineReplayScreen) {
+        return _menuItems[_selectedIndex].screen;
+      }
       
       return Scaffold(
         key: _scaffoldKey,
@@ -235,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Theme.of(context).primaryColor.withOpacity(0.1),
                       child: _isMenuExpanded
                           ? Text(
-                              '交易系统',
+                              '交易大陆',
                               style: Theme.of(context).textTheme.titleLarge,
                             )
                           : const Icon(Icons.bar_chart, size: 30),
@@ -316,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      '交易系统',
+                      '交易大陆',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -325,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Trading System',
+                      '职业交易培养助手',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 13,

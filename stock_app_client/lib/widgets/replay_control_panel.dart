@@ -76,7 +76,7 @@ class _ReplayControlPanelState extends State<ReplayControlPanel> {
                 children: [
                   Text(
                     '$current',
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12, height: 1.2),
                   ),
                   Expanded(
                     child: total > 30 ? Slider(
@@ -94,7 +94,7 @@ class _ReplayControlPanelState extends State<ReplayControlPanel> {
                   ),
                   Text(
                     '$total',
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12, height: 1.2),
                   ),
                 ],
               );

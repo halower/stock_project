@@ -624,23 +624,18 @@ class CandlestickChartPainter extends CustomPainter {
     }
     
     final paint = Paint()
-      ..color = color.withOpacity(0.8)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
+      ..color = color.withOpacity(0.7)
+      ..strokeWidth = 0.8  // 从1.5改为0.8，更细腻
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round  // 添加圆角端点
+      ..isAntiAlias = true;  // 启用抗锯齿
     
     canvas.drawPath(path, paint);
   }
   
   // 绘制布林带
   void _drawBOLL(Canvas canvas, Size size, List<double> upper, List<double> middle, List<double> lower, double candleSpacing) {
-    // 绘制上轨
-    _drawMALine(canvas, size, upper, Colors.pink.withOpacity(0.5), candleSpacing);
-    // 绘制中轨
-    _drawMALine(canvas, size, middle, Colors.yellow.withOpacity(0.5), candleSpacing);
-    // 绘制下轨
-    _drawMALine(canvas, size, lower, Colors.pink.withOpacity(0.5), candleSpacing);
-    
-    // 填充上下轨之间的区域
+    // 先绘制填充区域（作为背景）
     final path = Path();
     bool isFirst = true;
     
@@ -670,11 +665,46 @@ class CandlestickChartPainter extends CustomPainter {
     
     path.close();
     
+    // 填充区域使用更淡的颜色
     final fillPaint = Paint()
-      ..color = Colors.pink.withOpacity(0.1)
+      ..color = Colors.purple.withOpacity(0.05)
       ..style = PaintingStyle.fill;
     
     canvas.drawPath(path, fillPaint);
+    
+    // 然后绘制线条（更细腻）
+    _drawBOLLLine(canvas, size, upper, Colors.purple.withOpacity(0.4), candleSpacing);
+    _drawBOLLLine(canvas, size, middle, Colors.orange.withOpacity(0.5), candleSpacing);
+    _drawBOLLLine(canvas, size, lower, Colors.purple.withOpacity(0.4), candleSpacing);
+  }
+  
+  // 绘制布林带线条（专用方法，更细）
+  void _drawBOLLLine(Canvas canvas, Size size, List<double> data, Color color, double candleSpacing) {
+    final path = Path();
+    bool isFirst = true;
+    
+    for (int i = 0; i < data.length && i < candleData.length; i++) {
+      if (data[i].isNaN) continue;
+      
+      final x = i * candleSpacing + candleSpacing / 2;
+      final y = _priceToY(data[i], size.height);
+      
+      if (isFirst) {
+        path.moveTo(x, y);
+        isFirst = false;
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 0.6  // 布林带线条更细
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+    
+    canvas.drawPath(path, paint);
   }
   
   // 绘制交易标记

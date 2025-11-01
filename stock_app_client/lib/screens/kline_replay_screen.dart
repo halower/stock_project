@@ -26,7 +26,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   Timer? _autoPlayTimer;
-  bool _isLandscape = false;
   
   // 训练会话
   ReplayTrainingSession? _session;
@@ -48,13 +47,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   void dispose() {
     _autoPlayTimer?.cancel();
     _replayService.dispose();
-    // 恢复竖屏
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
   
@@ -70,8 +62,12 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     
+    // 自动检测屏幕方向
+    final orientation = MediaQuery.of(context).orientation;
+    final isLandscape = orientation == Orientation.landscape;
+    
     // 横屏模式使用全屏布局
-    if (_isLandscape) {
+    if (isLandscape) {
       return _buildLandscapeLayout(themeProvider);
     }
     
@@ -110,12 +106,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             },
             tooltip: '随机选股',
           ),
-          // 横屏/竖屏切换
-          IconButton(
-            icon: Icon(_isLandscape ? Icons.screen_lock_portrait : Icons.screen_lock_landscape),
-            onPressed: _toggleOrientation,
-            tooltip: _isLandscape ? '竖屏' : '横屏',
-          ),
           // 技术指标设置 - 使用更明显的图标和样式
           Container(
             margin: const EdgeInsets.only(right: 8),
@@ -140,8 +130,8 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       ),
       body: Column(
         children: [
-          // 训练信息栏
-          if (_session != null && !_isLandscape) _buildTrainingInfoBar(),
+          // 训练信息栏（竖屏时显示）
+          if (_session != null) _buildTrainingInfoBar(),
           
           // K线图表区域
           Expanded(
@@ -290,11 +280,16 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   /// 构建图表区域
   Widget _buildChartArea(ThemeProvider themeProvider) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Container(
+        color: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        child: const Center(child: CircularProgressIndicator()),
+      );
     }
     
     if (_errorMessage != null) {
-      return Center(
+      return Container(
+        color: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -310,12 +305,15 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               child: const Text('重新选择'),
             ),
           ],
+          ),
         ),
       );
     }
     
     if (_selectedStockCode == null) {
-      return Center(
+      return Container(
+        color: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -326,6 +324,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ],
+          ),
         ),
       );
     }
@@ -334,10 +333,15 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       stream: _replayService.visibleDataStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('暂无数据'));
+          return Container(
+            color: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+            child: const Center(child: Text('暂无数据')),
+          );
         }
         
-        return Stack(
+        return Container(
+          color: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          child: Stack(
           children: [
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -364,6 +368,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 child: _buildPositionInfo(),
               ),
           ],
+          ),
         );
       },
     );
@@ -524,28 +529,38 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             '持仓',
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 11,
+              height: 1.2,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '${_session!.currentPosition}股',
-            style: const TextStyle(color: Colors.white, fontSize: 10),
+            style: const TextStyle(
+              color: Colors.white, 
+              fontSize: 10,
+              height: 1.2,
+            ),
           ),
           Text(
             '¥${_session!.positionCost?.toStringAsFixed(2)}',
-            style: const TextStyle(color: Colors.white, fontSize: 10),
+            style: const TextStyle(
+              color: Colors.white, 
+              fontSize: 10,
+              height: 1.2,
+            ),
           ),
           Text(
             '${unrealizedPL >= 0 ? '+' : ''}${unrealizedPL.toStringAsFixed(0)}',
             style: TextStyle(
               color: unrealizedPL >= 0 ? Colors.yellow : Colors.orange,
               fontSize: 10,
+              height: 1.2,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -775,6 +790,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: SingleChildScrollView(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
           padding: const EdgeInsets.all(24),
@@ -874,6 +890,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 ],
               ),
             ],
+            ),
           ),
         ),
       ),
@@ -965,89 +982,183 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     );
   }
   
-  /// 显示技术指标设置（紧凑版）
+  /// 显示技术指标设置（精致版）
   void _showIndicatorSettings() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        title: Row(
-          children: [
-            const Icon(Icons.insights, color: Colors.blue, size: 20),
-            const SizedBox(width: 8),
-            const Text('技术指标', style: TextStyle(fontSize: 16)),
-          ],
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
-        content: SizedBox(
-          width: 280,
-          child: ListView.builder(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+          children: [
+                // 标题
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.insights, color: Colors.blue, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      '技术指标', 
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // 内容
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320, maxHeight: 400),
+                  child: ListView.separated(
             shrinkWrap: true,
             itemCount: _indicators.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final indicator = _indicators[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                decoration: BoxDecoration(
-                  color: indicator.enabled 
-                      ? Colors.blue.withOpacity(0.08) 
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: indicator.enabled ? Colors.blue.withOpacity(0.3) : Colors.grey.shade300,
-                    width: 1,
-                  ),
-                ),
-                child: CheckboxListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                  title: Text(
-                    indicator.name,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.normal,
-                      color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
-                    ),
-                  ),
-                  subtitle: Text(
-                    indicator.type,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: indicator.enabled ? Colors.blue.shade600 : Colors.grey.shade600,
-                    ),
-                  ),
-                  value: indicator.enabled,
-                  activeColor: Colors.blue,
-                  onChanged: (value) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
                     setState(() {
                       _indicators[index] = TechnicalIndicator(
                         name: indicator.name,
                         type: indicator.type,
                         params: indicator.params,
-                        enabled: value ?? false,
+                        enabled: !indicator.enabled,
                       );
                     });
                     Navigator.pop(context);
                     _showIndicatorSettings();
                   },
-                  secondary: Icon(
-                    Icons.show_chart,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: indicator.enabled 
+                          ? Colors.blue.withOpacity(0.06) 
+                          : Colors.grey.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                        color: indicator.enabled 
+                            ? Colors.blue.withOpacity(0.25) 
+                            : Colors.grey.withOpacity(0.15),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // 图标
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: indicator.enabled 
+                                ? Colors.blue.withOpacity(0.15) 
+                                : Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.show_chart,
+                            color: indicator.enabled ? Colors.blue : Colors.grey.shade500,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // 文本信息
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                    indicator.name,
+                    style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: indicator.enabled ? FontWeight.w600 : FontWeight.w500,
+                      color: indicator.enabled ? Colors.blue.shade700 : Colors.black87,
+                                  height: 1.3,
+                                  letterSpacing: 0.2,
+                    ),
+                  ),
+                              const SizedBox(height: 2),
+                              Text(
+                    indicator.type,
+                    style: TextStyle(
+                      fontSize: 11,
+                                  color: indicator.enabled ? Colors.blue.shade500 : Colors.grey.shade600,
+                                  height: 1.2,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // 复选框
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: indicator.enabled ? Colors.blue : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
                     color: indicator.enabled ? Colors.blue : Colors.grey.shade400,
-                    size: 18,
+                              width: 2,
+                            ),
+                          ),
+                          child: indicator.enabled
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 16,
+                                )
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
             },
           ),
         ),
-        actions: [
-          TextButton(
+              const SizedBox(height: 16),
+              // 按钮
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    '完成', 
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+              ],
             ),
-            child: const Text('关闭', style: TextStyle(fontSize: 13)),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1114,32 +1225,12 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     }
   }
   
-  /// 切换横屏/竖屏
-  void _toggleOrientation() {
-    setState(() {
-      _isLandscape = !_isLandscape;
-    });
-    
-    if (_isLandscape) {
-      // 切换到横屏
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else {
-      // 切换到竖屏
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    }
-  }
-  
   /// 构建横屏布局（类似TradingView）
   Widget _buildLandscapeLayout(ThemeProvider themeProvider) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+      backgroundColor: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      body: SafeArea(
+        child: Stack(
         children: [
           // 全屏K线图
           Column(
@@ -1149,33 +1240,24 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 child: _buildChartArea(themeProvider),
               ),
               
-              // 底部控制栏
+                // 底部超紧凑控制栏
               Container(
-                color: Colors.black.withOpacity(0.8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  color: Colors.black.withOpacity(0.9),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  height: 50, // 固定高度，避免溢出
                 child: Row(
                   children: [
-                    // 交易按钮（紧凑版）
+                      // 交易按钮（超紧凑版）
                     if (_session != null && _replayService.isReplayActive && !_replayService.isReplayFinished) ...[
-                      _buildCompactTradeButton('买入', Colors.red, true, _canBuy()),
+                        _buildMiniTradeButton('买', Colors.red, true, _canBuy()),
+                        const SizedBox(width: 4),
+                        _buildMiniTradeButton('卖', Colors.green, false, _canSell()),
                       const SizedBox(width: 8),
-                      _buildCompactTradeButton('卖出', Colors.green, false, _canSell()),
-                      const SizedBox(width: 16),
                     ],
                     
-                    // 回放控制（紧凑版）
+                      // 回放控制（超紧凑版）
                     Expanded(
-                      child: ReplayControlPanel(
-                        replayService: _replayService,
-                        onPlayPause: _togglePlayPause,
-                        onNext: _nextCandle,
-                        onPrevious: _previousCandle,
-                        onSpeedChange: (int speed) => _changeSpeed(speed.toDouble()),
-                        onReset: _resetReplay,
-                        onSeek: (int index) {
-                          setState(() {}); // 通知UI更新
-                        },
-                      ),
+                        child: _buildCompactReplayControls(),
                     ),
                   ],
                 ),
@@ -1183,12 +1265,20 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             ],
           ),
           
-          // 左上角：股票信息和当前价格
+            // 左上角：股票信息和当前价格（缩小版）
           if (_replayService.currentCandle != null)
             Positioned(
               top: 8,
               left: 8,
-              child: _buildCurrentPriceInfo(_replayService.currentCandle!),
+                child: _buildCompactPriceInfo(_replayService.currentCandle!),
+              ),
+            
+            // 左下角：训练信息（浮动显示）
+            if (_session != null)
+              Positioned(
+                bottom: 55,
+                left: 8,
+                child: _buildFloatingTrainingInfo(),
             ),
           
           // 右上角：持仓信息
@@ -1196,118 +1286,22 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             Positioned(
               top: 8,
               right: 8,
-              child: _buildPositionInfo(),
+                child: _buildCompactPositionInfo(),
             ),
           
-          // 右上角工具栏
+            // 右上角：只保留结束按钮（横屏简化操作）
+            if (_session != null)
           Positioned(
             top: 8,
-            right: _session != null && _session!.currentPosition > 0 ? 120 : 8,
-            child: Row(
-              children: [
-                // 随机选股
-                _buildFloatingButton(
-                  icon: Icons.shuffle,
-                  tooltip: '随机选股',
-                  onPressed: () async {
-                    // 如果正在训练，直接结束并显示报告
-                    if (_session != null) {
-                      await _endTraining();
-                    }
-                    
-                    // 加载新股票并开始训练
-                    await _loadRandomStock();
-                    if (_selectedStockCode != null) {
-                      _startTraining();
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-                // 竖屏切换
-                _buildFloatingButton(
-                  icon: Icons.screen_lock_portrait,
-                  tooltip: '竖屏',
-                  onPressed: _toggleOrientation,
-                ),
-                const SizedBox(width: 8),
-                // 技术指标
-                _buildFloatingButton(
-                  icon: Icons.insights,
-                  tooltip: '技术指标',
-                  onPressed: _showIndicatorSettings,
-                  color: Colors.blue,
-                ),
-                const SizedBox(width: 8),
-                // 训练设置
-                _buildFloatingButton(
-                  icon: Icons.settings,
-                  tooltip: '训练设置',
-                  onPressed: _showTrainingSettings,
-                ),
-                if (_session != null) ...[
-                  const SizedBox(width: 8),
-                  // 结束训练
-                  _buildFloatingButton(
-                    icon: Icons.stop_circle,
-                    tooltip: '结束训练',
+                right: _session!.currentPosition > 0 ? 100 : 8,
+                child: _buildMiniFloatingButton(
+                  icon: Icons.close,
                     onPressed: _endTraining,
                     color: Colors.red,
-                  ),
-                ],
-              ],
             ),
           ),
         ],
-      ),
-    );
-  }
-  
-  /// 构建浮动按钮
-  Widget _buildFloatingButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-    Color? color,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color ?? Colors.white.withOpacity(0.3),
-          width: 1,
         ),
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: color ?? Colors.white, size: 20),
-        onPressed: onPressed,
-        tooltip: tooltip,
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(
-          minWidth: 36,
-          minHeight: 36,
-        ),
-      ),
-    );
-  }
-  
-  /// 构建紧凑交易按钮
-  Widget _buildCompactTradeButton(String label, Color color, bool isBuy, bool enabled) {
-    return ElevatedButton(
-      onPressed: enabled ? () => _executeTrade(isBuy ? 'buy' : 'sell') : null,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: Colors.grey[700],
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        minimumSize: const Size(60, 32),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-        ),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -1325,6 +1319,307 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   bool _canSell() {
     if (_session == null) return false;
     return _session!.currentPosition > 0;
+  }
+  
+  /// 构建超小浮动按钮（横屏专用）
+  Widget _buildMiniFloatingButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    Color? color,
+  }) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: color ?? Colors.white.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: color ?? Colors.white, size: 14),
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+      ),
+    );
+  }
+  
+  /// 构建超小交易按钮（横屏专用）
+  Widget _buildMiniTradeButton(String label, Color color, bool isBuy, bool enabled) {
+    return SizedBox(
+      width: 40,
+      height: 36,
+      child: ElevatedButton(
+      onPressed: enabled ? () => _executeTrade(isBuy ? 'buy' : 'sell') : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.grey[700],
+          padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+      child: Text(
+        label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            height: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 构建紧凑价格信息（横屏专用）
+  Widget _buildCompactPriceInfo(Map<String, dynamic> currentCandle) {
+    final close = currentCandle['close'] ?? 0.0;
+    final open = currentCandle['open'] ?? 0.0;
+    final change = close - open;
+    final changePercent = open > 0 ? (change / open) * 100 : 0.0;
+    final isRise = change >= 0;
+    final changeColor = isRise ? Colors.red : Colors.green;
+    
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$_selectedStockName',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+              height: 1.2,
+            ),
+          ),
+          Text(
+            '${close.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: changeColor,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              height: 1.2,
+            ),
+          ),
+          Text(
+            '${isRise ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
+            style: TextStyle(
+              color: changeColor,
+              fontSize: 9,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 构建紧凑持仓信息（横屏专用）
+  Widget _buildCompactPositionInfo() {
+    if (_session == null || _session!.currentPosition == 0) {
+      return const SizedBox.shrink();
+    }
+    
+    final currentPrice = _replayService.currentCandle?['close'] ?? 0.0;
+    final positionValue = currentPrice * _session!.currentPosition;
+    final costValue = (_session!.positionCost ?? 0) * _session!.currentPosition;
+    final unrealizedPL = positionValue - costValue;
+    
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '持仓 ${_session!.currentPosition}股',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              height: 1.2,
+            ),
+          ),
+          Text(
+            '${unrealizedPL >= 0 ? '+' : ''}${unrealizedPL.toStringAsFixed(0)}',
+            style: TextStyle(
+              color: unrealizedPL >= 0 ? Colors.yellow : Colors.orange,
+              fontSize: 10,
+              height: 1.2,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 构建浮动训练信息（横屏专用）
+  Widget _buildFloatingTrainingInfo() {
+    if (_session == null) return const SizedBox.shrink();
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Colors.blue.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildMiniInfoItem(
+            '资金',
+            '${(_session!.currentCapital / 10000).toStringAsFixed(1)}万',
+            _session!.currentCapital >= _session!.initialCapital ? Colors.red : Colors.green,
+          ),
+          const SizedBox(width: 8),
+          _buildMiniInfoItem(
+            '盈亏',
+            '${_session!.profitLossRate >= 0 ? '+' : ''}${_session!.profitLossRate.toStringAsFixed(1)}%',
+            _session!.profitLossRate >= 0 ? Colors.red : Colors.green,
+          ),
+          const SizedBox(width: 8),
+          _buildMiniInfoItem(
+            '胜率',
+            '${_session!.winRate.toStringAsFixed(0)}%',
+            _session!.winRate >= 50 ? Colors.orange : Colors.grey,
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 构建超小信息项
+  Widget _buildMiniInfoItem(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 8,
+            color: Colors.grey,
+            height: 1.2,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: color,
+            height: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  /// 构建紧凑回放控制（横屏专用）
+  Widget _buildCompactReplayControls() {
+    return StreamBuilder<int>(
+      stream: _replayService.currentIndexStream,
+      builder: (context, snapshot) {
+        final current = snapshot.data ?? 30;
+        final total = _replayService.totalCandles;
+        
+        return Row(
+          children: [
+            // 重置
+            IconButton(
+              icon: const Icon(Icons.replay, size: 16),
+              onPressed: _resetReplay,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              color: Colors.white70,
+            ),
+            // 上一根
+            IconButton(
+              icon: const Icon(Icons.skip_previous, size: 18),
+              onPressed: _previousCandle,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              color: Colors.white,
+            ),
+            // 播放/暂停
+            IconButton(
+              icon: Icon(
+                _replayService.isPlaying ? Icons.pause : Icons.play_arrow,
+                size: 24,
+              ),
+              onPressed: _togglePlayPause,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              color: Colors.blue,
+            ),
+            // 下一根
+            IconButton(
+              icon: const Icon(Icons.skip_next, size: 18),
+              onPressed: _nextCandle,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              color: Colors.white,
+            ),
+            // 进度条
+            Expanded(
+              child: total > 30 ? Slider(
+                value: current.toDouble().clamp(30.0, total.toDouble() - 1),
+                min: 30.0,
+                max: total > 30 ? total.toDouble() - 1 : 31.0,
+                onChanged: (value) {
+                  _replayService.seekTo(value.toInt());
+                  setState(() {});
+                },
+                activeColor: Colors.blue,
+              ) : const SizedBox.shrink(),
+            ),
+            // 当前进度
+            Text(
+              '$current/$total',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 速度选择
+            PopupMenuButton<int>(
+              initialValue: 1000,
+              onSelected: (speed) => _changeSpeed(speed.toDouble()),
+              icon: const Icon(Icons.speed, size: 16, color: Colors.white70),
+              padding: EdgeInsets.zero,
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 3333, child: Text('0.3x')),
+                const PopupMenuItem(value: 2000, child: Text('0.5x')),
+                const PopupMenuItem(value: 1000, child: Text('1x')),
+                const PopupMenuItem(value: 500, child: Text('2x')),
+                const PopupMenuItem(value: 250, child: Text('4x')),
+              ],
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
