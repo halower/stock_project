@@ -1155,33 +1155,9 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               
                     const SizedBox(height: 20),
               
-                    // 操作按钮 - 精致设计
+                    // 操作按钮 - 精致设计（继续训练在左，结束在右）
               Row(
                 children: [
-                  Expanded(
-                          child: Container(
-                            height: 50,
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 2,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context, 'end'),
-                      style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.grey.shade700,
-                                padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                              child: const Text('结束', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                           child: Container(
                             height: 50,
@@ -1212,6 +1188,30 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                         ),
                       ),
                               child: const Text('继续训练', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, 'end'),
+                      style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey.shade700,
+                                padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                              child: const Text('结束', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                             ),
                     ),
                   ),
@@ -1834,16 +1834,29 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 child: _buildCompactPositionInfo(),
             ),
           
-            // 右上角：只保留结束按钮（横屏简化操作）
+            // 右上角按钮组
             if (_session != null)
           Positioned(
             top: 8,
                 right: _session!.currentPosition > 0 ? 100 : 8,
-                child: _buildMiniFloatingButton(
-                  icon: Icons.close,
-                    onPressed: _endTraining,
-                    color: Colors.red,
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 技术指标按钮
+                    _buildMiniFloatingButton(
+                      icon: Icons.timeline,
+                      onPressed: _showIndicatorSettings,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(width: 8),
+                    // 结束按钮
+                    _buildMiniFloatingButton(
+                      icon: Icons.close,
+                      onPressed: _endTraining,
+                      color: Colors.red,
+                    ),
+                  ],
+                ),
           ),
         ],
         ),

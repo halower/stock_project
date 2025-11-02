@@ -238,8 +238,20 @@ class StockKLineChart extends StatelessWidget {
       var historyList = data['data'];
       if (historyList is List) {
         debugPrint('历史数据条数: ${historyList.length}');
-        // 如果数据太多，只取最近60条
-        final limitedList = historyList.length > 60 ? historyList.sublist(historyList.length - 60) : historyList;
+        // 根据数据量动态调整显示条数，让K线更紧凑
+        final int displayCount;
+        if (historyList.length > 120) {
+          displayCount = 120; // 最多显示120条，让K线更密集
+        } else if (historyList.length > 90) {
+          displayCount = 90;
+        } else if (historyList.length > 60) {
+          displayCount = 60;
+        } else {
+          displayCount = historyList.length;
+        }
+        final limitedList = historyList.length > displayCount 
+            ? historyList.sublist(historyList.length - displayCount) 
+            : historyList;
         debugPrint('使用的历史数据条数: ${limitedList.length}');
         
         for (var item in limitedList) {
@@ -252,7 +264,18 @@ class StockKLineChart extends StatelessWidget {
     // 处理直接传入历史数据数组的情况
     else if (data is List) {
       debugPrint('直接传入历史数据数组');
-      final limitedList = data.length > 60 ? data.sublist(data.length - 60) : data;
+      // 根据数据量动态调整显示条数
+      final int displayCount;
+      if (data.length > 120) {
+        displayCount = 120;
+      } else if (data.length > 90) {
+        displayCount = 90;
+      } else if (data.length > 60) {
+        displayCount = 60;
+      } else {
+        displayCount = data.length;
+      }
+      final limitedList = data.length > displayCount ? data.sublist(data.length - displayCount) : data;
       for (var item in limitedList) {
         if (item is Map<String, dynamic>) {
           historyData.add(item);
@@ -609,8 +632,9 @@ class CandlestickChartPainter extends CustomPainter {
     
     final double chartWidth = size.width;
     final double chartHeight = size.height;
-    final double candleWidth = chartWidth / candleData.length * 0.7;
+    // 优化K线宽度：根据数据量动态调整，让K线更紧凑
     final double candleSpacing = chartWidth / candleData.length;
+    final double candleWidth = (candleSpacing * 0.8).clamp(1.5, 12.0); // 限制最小1.5px，最大12px
     
     // 绘制网格线
     _drawGrid(canvas, size);

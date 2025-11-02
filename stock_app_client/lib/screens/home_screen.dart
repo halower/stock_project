@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
         screen: TradeRecordScreen(),
       ),
       const MenuItem(
-        title: '策略',
+        title: '交易策略',
         icon: Icons.psychology,
         screen: StrategyScreen(),
       ),
@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
         screen: EnhancedKLineReplayScreen(),
       ),
       const MenuItem(
-        title: '概览',
+        title: '交易概览',
         icon: Icons.dashboard,
         screen: AnalysisScreen(),
       ),
