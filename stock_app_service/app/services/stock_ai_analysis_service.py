@@ -319,10 +319,15 @@ class StockAIAnalysisService:
                 
                 return {'data': []}
             
-            logger.info(f"找到股票信息: ts_code={ts_code}, name={stock_info.get('name')}")
+            logger.info(f"找到股票信息: ts_code={ts_code}, name={stock_info.get('name')}, market={stock_info.get('market')}")
             
-            # 从Redis获取股票走势数据
-            trend_key = f"stock_trend:{ts_code}"
+            # 从Redis获取股票走势数据（根据market字段判断是ETF还是股票）
+            market = stock_info.get('market', '')
+            if market == 'ETF':
+                trend_key = f"etf_trend:{ts_code}"
+            else:
+                trend_key = f"stock_trend:{ts_code}"
+            
             trend_data = await redis_client.get(trend_key)
             
             if trend_data:

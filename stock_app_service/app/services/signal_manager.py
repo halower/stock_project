@@ -235,7 +235,13 @@ class SignalManager:
             # 不使用实例变量，因为可能在不同事件循环中运行
             redis_client = await get_redis_client()
             
-            kline_key = f"stock_trend:{ts_code}"
+            # 根据market字段判断是ETF还是股票，使用不同的Redis key
+            market = stock.get('market', '')
+            if market == 'ETF':
+                kline_key = f"etf_trend:{ts_code}"
+            else:
+                kline_key = f"stock_trend:{ts_code}"
+            
             kline_data = await redis_client.get(kline_key)
             
             if not kline_data:

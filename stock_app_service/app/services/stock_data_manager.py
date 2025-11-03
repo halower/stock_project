@@ -373,10 +373,10 @@ class StockDataManager:
                     await pipe.execute()
                     logger.info(f"已从 stock_list 删除 {len(etf_keys_to_delete)} 个旧 ETF")
                 
-                # 2. 删除 ETF K线数据
+                # 2. 删除 ETF K线数据（ETF使用etf_trend:前缀）
                 deleted_kline_count = 0
                 for key in etf_keys_to_delete:
-                    kline_key = f"stock_trend:{key}"
+                    kline_key = f"etf_trend:{key}"
                     if await self.redis_client.delete(kline_key):
                         deleted_kline_count += 1
                 
@@ -704,7 +704,12 @@ class StockDataManager:
                 'source': source
             }
             
-            key = f"stock_trend:{ts_code}"
+            # 根据source判断是否为ETF，使用不同的Redis key
+            if source == 'tushare_fund':
+                key = f"etf_trend:{ts_code}"
+            else:
+                key = f"stock_trend:{ts_code}"
+            
             await self.redis_client.set(key, json.dumps(trend_data, default=str))
             return True
             
@@ -974,7 +979,13 @@ class StockDataManager:
             
             for stock in all_stocks:
                 ts_code = stock['ts_code']
-                key = f"stock_trend:{ts_code}"
+                market = stock.get('market', '')
+                
+                # 根据market字段判断使用哪个Redis key
+                if market == 'ETF':
+                    key = f"etf_trend:{ts_code}"
+                else:
+                    key = f"stock_trend:{ts_code}"
                 
                 # 检查Redis中是否存在该股票的数据
                 exists = await self.redis_client.exists(key)
