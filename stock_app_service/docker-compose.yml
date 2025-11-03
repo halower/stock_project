@@ -32,8 +32,8 @@ services:
       # 动态代理IP配置（可选）
       - PROXY_ENABLED=true
       - PROXY_API_URL=https://share.proxy.qg.net/get
-      - PROXY_API_KEY=8E0IORZ1
-      - PROXY_AUTH_PASSWORD=87E6DD6C8983
+      - PROXY_API_KEY=6UQLVX04
+      - PROXY_AUTH_PASSWORD=5193952E9A1C
       - PROXY_POOL_SIZE=1
       - PROXY_REFRESH_INTERVAL=300
       - PROXY_MAX_FAIL_COUNT=3

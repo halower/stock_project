@@ -75,14 +75,21 @@ async def get_stock_news(
         logger.info(f"使用akshare获取股票 {symbol} 的新闻资讯数据")
         
         try:
-            # 使用asyncio在线程池中执行阻塞的akshare调用
+            # 使用asyncio在线程池中执行阻塞的akshare调用，并设置超时
             import asyncio
             import concurrent.futures
             
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                # 在线程池中执行阻塞调用
-                news_df = await loop.run_in_executor(executor, ak.stock_news_em, symbol)
+                # 在线程池中执行阻塞调用，设置30秒超时避免长时间阻塞
+                try:
+                    news_df = await asyncio.wait_for(
+                        loop.run_in_executor(executor, ak.stock_news_em, symbol),
+                        timeout=30.0  # 30秒超时
+                    )
+                except asyncio.TimeoutError:
+                    logger.error(f"获取股票 {symbol} 的新闻数据超时（30秒）")
+                    return []
             
             # 转换为字典列表
             news_data = news_df.to_dict('records')

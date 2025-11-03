@@ -275,13 +275,20 @@ async def get_market_news_analysis(request: AnalysisRequest):
             )
         
         # 如果需要强制刷新或没有缓存，执行AI分析
-        # 这里使用同步处理，但不会阻塞其他请求，因为FastAPI使用异步工作模式
-        analysis_result = get_news_sentiment_analysis(
-            force_refresh=request.force_refresh,
-            ai_model_name=request.ai_model_name,
-            ai_endpoint=request.ai_endpoint,
-            ai_api_key=request.ai_api_key
-        )
+        # 使用线程池异步执行，避免阻塞事件循环
+        import asyncio
+        import concurrent.futures
+        
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            analysis_result = await loop.run_in_executor(
+                executor,
+                get_news_sentiment_analysis,
+                request.force_refresh,
+                request.ai_model_name,
+                request.ai_endpoint,
+                request.ai_api_key
+            )
         
         if "error" in analysis_result:
             return NewsAnalysisResponse(

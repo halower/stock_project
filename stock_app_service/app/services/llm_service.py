@@ -101,7 +101,7 @@ def get_completion_with_custom_params(
                 endpoint,
                 headers=headers,
                 json=payload,
-                timeout=120  # 较长的超时时间，因为LLM处理可能需要较长时间
+                timeout=60  # 优化超时时间为60秒，避免长时间阻塞
             )
             
             # 检查响应状态码
@@ -208,7 +208,7 @@ def get_chat_completion(
             endpoint,
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=60  # 优化超时时间为60秒
         )
         
         # 检查响应状态码
