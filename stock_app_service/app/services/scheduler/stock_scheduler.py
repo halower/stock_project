@@ -12,7 +12,7 @@ import asyncio
 import threading
 import traceback
 from datetime import datetime, time, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -25,7 +25,6 @@ from app.services.stock.stock_data_manager import StockDataManager
 # from app.core.thread_pool import global_thread_pool
 from app.services.signal.signal_manager import signal_manager
 from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
-import akshare as ak
 import pandas as pd
 import json
 
@@ -140,9 +139,9 @@ def _init_etf_only():
                         logger.error("ETF 清单初始化失败")
                         return False
                     
-                    # 2. 获取 ETF 列表（从 CSV，已过滤 LOF）
-                    from app.services.etf.etf_manager import etf_manager
-                    etf_list = etf_manager.get_etf_list(enrich=False, use_csv=True)
+                    # 2. 获取 ETF 列表（从配置文件）
+                    from app.core.etf_config import get_etf_list
+                    etf_list = get_etf_list()
                     
                     if not etf_list:
                         logger.error("无法获取 ETF 列表")
@@ -199,153 +198,242 @@ def _init_etf_only():
     except Exception as e:
         logger.error(f"启动 ETF 初始化失败: {e}")
 
-def init_stock_system(mode: str = "tasks_only"):
+def init_stock_system(mode: str = "all"):
     """初始化股票系统数据
     
     Args:
         mode: 初始化模式
-            - "skip": 跳过初始化，启动时什么都不执行，等待手动触发
-            - "tasks_only": 仅执行任务，不获取历史K线数据，只执行信号计算、新闻获取等任务
-            - "full_init": 完整初始化，清空所有数据（股票+ETF）重新获取
-            - "etf_only": 仅初始化ETF，只获取和更新ETF数据
-            
-        注意：为了向后兼容，仍然支持旧模式名称（none, only_tasks, clear_all）
+            - "all": 初始化所有数据（股票+ETF） + 新闻 + 信号计算 → 进入计划任务（默认）
+            - "stock_only": 仅初始化股票 + 新闻 + 信号计算 → 进入计划任务
+            - "etf_only": 仅初始化ETF + 新闻 + 信号计算 → 进入计划任务
+            - "tasks_only": 不初始化数据，但执行新闻 + 信号计算 → 进入计划任务
+            - "signals_only": 不获取数据和新闻，仅计算信号（股票+ETF） → 进入计划任务
+            - "none": 什么都不做，直接进入计划任务监听
     """
     start_time = datetime.now()
     
-    # 向后兼容：映射旧模式名称
-    mode_mapping = {
-        "none": "skip",
-        "only_tasks": "tasks_only",
-        "clear_all": "full_init"
-    }
-    if mode in mode_mapping:
-        old_mode = mode
-        mode = mode_mapping[mode]
-        logger.info(f"检测到旧模式名称 '{old_mode}'，自动映射为新模式 '{mode}'")
+    logger.info("=" * 70)
+    logger.info(f"🚀 初始化模式: {mode}")
+    logger.info("=" * 70)
     
     try:
-        if mode == "skip":
-            logger.info("用户选择【skip】模式 - 启动时什么都不执行")
+        # 模式1: none - 什么都不做
+        if mode == "none":
+            logger.info("📋 【none】模式 - 什么都不做，直接进入计划任务监听")
+            logger.info("=" * 70)
             execution_time = (datetime.now() - start_time).total_seconds()
-            add_stock_job_log('init_system', 'success', 'skip模式: 不执行任何初始化', 0, execution_time)
+            add_stock_job_log('init_system', 'success', 'none模式: 直接进入计划任务', 0, execution_time)
             return
         
-        # 特殊模式：仅初始化 ETF
-        if mode == "etf_only":
-            logger.info("用户选择【etf_only】模式 - 仅初始化 ETF 数据")
-            _init_etf_only()
-            execution_time = (datetime.now() - start_time).total_seconds()
-            add_stock_job_log('init_system', 'success', 'etf_only模式: 仅初始化ETF', 0, execution_time)
-            return
-        
-        # tasks_only 和 full_init 模式都需要继续执行，只是在K线数据处理上有区别
-        if mode == "tasks_only":
-            logger.info("用户选择【tasks_only】模式 - 跳过K线数据获取，其他计划任务正常执行")
-        
-        # 初始化 ETF 清单（所有模式都需要，确保 stock_list 包含 ETF）
-        logger.info("📥 初始化 ETF 清单...")
-        try:
-            def init_etf_list_sync():
-                """同步方式初始化 ETF 清单"""
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+        # 模式2: signals_only - 不获取数据和新闻，仅计算信号
+        if mode == "signals_only":
+            logger.info("📋 【signals_only】模式 - 不获取数据和新闻，仅计算信号（股票+ETF）")
+            logger.info("")
+            
+            # 后台任务：仅信号计算
+            def run_signals_only():
                 try:
-                    async def _init():
-                        from app.services.stock.stock_data_manager import StockDataManager
-                        sdm = StockDataManager()
-                        await sdm.initialize()
-                        success = await sdm.initialize_etf_list(clear_existing=False)
-                        await sdm.close()
-                        return success
-                    return loop.run_until_complete(_init())
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    async def execute_signals():
+                        try:
+                            logger.info("📊 开始计算买入信号（股票+ETF）...")
+                            await _calculate_signals_async(etf_only=False, stock_only=False, clear_existing=True)
+                            logger.info("✅ 买入信号计算完成")
+                            
+                            logger.info("")
+                            logger.info("=" * 70)
+                            logger.info("✅ 【signals_only】模式完成，进入计划任务监听")
+                            logger.info("   - 信号: 股票+ETF")
+                            logger.info("=" * 70)
+                        except Exception as e:
+                            logger.error(f"信号计算失败: {e}")
+                            import traceback
+                            logger.error(traceback.format_exc())
+                    
+                    loop.run_until_complete(execute_signals())
+                except Exception as e:
+                    logger.error(f"signals_only模式执行失败: {e}")
                 finally:
-                    loop.close()
+                    try:
+                        loop.close()
+                    except Exception:
+                        pass
             
-            etf_init_success = init_etf_list_sync()
-            if etf_init_success:
-                logger.info("✅ ETF 清单初始化成功")
-            else:
-                logger.warning("⚠️ ETF 清单初始化失败，信号计算可能不包含 ETF")
-        except Exception as e:
-            logger.error(f"ETF 清单初始化异常: {e}")
-        
-        # 其他模式需要获取股票列表（优先使用缓存，网络请求作为备选）
-        logger.info("📥 正在获取股票列表...")
-        
-        # 首先尝试从缓存获取
-        stock_codes = redis_cache.get_cache(STOCK_KEYS['stock_codes'])
-        
-        if not stock_codes or len(stock_codes) < 100:
-            logger.warning(" 缓存中无股票数据或数据不完整，尝试从网络刷新...")
-            refresh_result = refresh_stock_list()
-            if refresh_result.get('success'):
-                stock_codes = redis_cache.get_cache(STOCK_KEYS['stock_codes'])
-                logger.info(f" 成功从网络刷新股票列表: {len(stock_codes)}只")
-            else:
-                logger.error(" 自动刷新股票列表失败，无法继续初始化")
-                error_msg = refresh_result.get('error', '未知错误')
-                add_stock_job_log('init_system', 'failed', f'刷新股票列表失败: {error_msg}')
-                return
-        else:
-            logger.info(f" 使用缓存中的股票列表: {len(stock_codes)}只")
-
-        if not stock_codes:
-            logger.error(" 无法获取股票列表，初始化中断")
-            add_stock_job_log('init_system', 'failed', '无法获取股票列表')
+            # 启动后台任务
+            task_thread = threading.Thread(target=run_signals_only, daemon=True)
+            task_thread.start()
+            
+            execution_time = (datetime.now() - start_time).total_seconds()
+            logger.info("")
+            logger.info("=" * 70)
+            logger.info("✅ 【signals_only】模式启动完成，信号计算正在后台执行")
+            logger.info(f"   - 耗时: {execution_time:.2f}秒")
+            logger.info("=" * 70)
+            
+            add_stock_job_log('init_system', 'success', 'signals_only模式: 仅计算信号', 0, execution_time)
             return
         
-        # K线数据处理：tasks_only 跳过，full_init 执行
-        if mode == "full_init":
-            logger.info("用户选择【full_init】模式 - 清空所有数据（股票+ETF）重新获取")
-            
-            # 清空所有历史数据
-            logger.info("正在清空所有股票历史数据...")
+        # 步骤1: 初始化股票和ETF清单
+        logger.info("")
+        logger.info("📥 步骤1: 初始化股票和ETF清单...")
+        
+        stock_count = 0
+        etf_count = 0
+        
+        # 初始化股票列表
+        if mode in ["all", "stock_only", "tasks_only"]:
+            stock_codes = redis_cache.get_cache(STOCK_KEYS['stock_codes'])
+            if not stock_codes or len(stock_codes) < 100:
+                logger.info("   正在从Tushare获取股票列表...")
+                refresh_result = refresh_stock_list()
+                if refresh_result.get('success'):
+                    stock_codes = redis_cache.get_cache(STOCK_KEYS['stock_codes'])
+                else:
+                    logger.error("   ❌ 获取股票列表失败")
+                    add_stock_job_log('init_system', 'failed', '获取股票列表失败')
+                    return
+            # 统计纯股票数量（排除ETF）
+            stock_count = sum(1 for s in stock_codes if s.get('market') != 'ETF')
+        
+        # 初始化ETF列表
+        if mode in ["all", "etf_only", "tasks_only"]:
+            try:
+                def init_etf_list_sync():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        async def _init():
+                            from app.services.stock.stock_data_manager import StockDataManager
+                            sdm = StockDataManager()
+                            await sdm.initialize()
+                            # 根据模式决定是否清空旧ETF数据
+                            # etf_only模式: 清空旧数据(True) - 只保留121个精选ETF
+                            # all/tasks_only模式: 不清空(False) - 追加到现有数据
+                            clear_etf = (mode == "etf_only")
+                            success = await sdm.initialize_etf_list(clear_existing=clear_etf)
+                            await sdm.close()
+                            return success
+                        return loop.run_until_complete(_init())
+                    finally:
+                        loop.close()
+                
+                logger.info("   正在初始化ETF清单...")
+                etf_init_success = init_etf_list_sync()
+                if etf_init_success:
+                    # 重新获取完整列表（包含股票+ETF）
+                    all_codes = redis_cache.get_cache(STOCK_KEYS['stock_codes'])
+                    if all_codes:
+                        etf_count = sum(1 for s in all_codes if s.get('market') == 'ETF')
+                        stock_count = sum(1 for s in all_codes if s.get('market') != 'ETF')
+                        stock_codes = all_codes  # 更新为完整列表
+            except Exception as e:
+                logger.error(f"   ❌ ETF清单初始化失败: {e}")
+        
+        # 显示初始化统计
+        logger.info("✅ 清单初始化完成:")
+        if mode == "all":
+            logger.info(f"   - 股票: {stock_count} 只")
+            logger.info(f"   - ETF: {etf_count} 只")
+            logger.info(f"   - 总计: {stock_count + etf_count} 只")
+        elif mode == "stock_only":
+            logger.info(f"   - 股票: {stock_count} 只")
+            logger.info(f"   - ETF: 跳过")
+        elif mode == "etf_only":
+            logger.info(f"   - 股票: 跳过")
+            logger.info(f"   - ETF: {etf_count} 只")
+        elif mode == "tasks_only":
+            logger.info(f"   - 使用已有数据: 股票{stock_count}只 + ETF{etf_count}只")
+        elif mode == "signals_only":
+            logger.info(f"   - 跳过数据初始化，仅计算信号")
+        
+        # 根据模式筛选要处理的数据
+        if mode == "stock_only":
+            stock_codes = [s for s in stock_codes if s.get('market') != 'ETF']
+            logger.info(f"📋 【stock_only】模式 - 仅初始化股票: {len(stock_codes)}只")
+        elif mode == "etf_only":
+            stock_codes = [s for s in stock_codes if s.get('market') == 'ETF']
+            logger.info(f"📋 【etf_only】模式 - 仅初始化ETF: {len(stock_codes)}只")
+        elif mode == "all":
+            logger.info(f"📋 【all】模式 - 初始化所有数据: 股票{stock_count}只 + ETF{etf_count}只")
+        elif mode == "tasks_only":
+            logger.info(f"📋 【tasks_only】模式 - 不获取历史数据，仅执行新闻+信号计算")
+            stock_codes = []  # tasks_only不需要获取K线
+        
+        # 步骤2: 清空历史数据（仅all/stock_only/etf_only模式）
+        if mode in ["all", "stock_only", "etf_only"] and stock_codes:
+            logger.info("")
+            logger.info("📥 步骤2: 清空历史数据...")
             cleared_count = 0
             for stock in stock_codes:
                 ts_code = stock.get('ts_code')
                 if ts_code:
-                    # 使用两种键格式确保完全清空
-                    key1 = STOCK_KEYS['stock_kline'].format(ts_code)  # 旧格式
-                    key2 = f"stock_trend:{ts_code}"  # 新格式
-                    
-                    # 删除两种可能的键
+                    key1 = STOCK_KEYS['stock_kline'].format(ts_code)
+                    key2 = f"stock_trend:{ts_code}"
                     if redis_cache.redis_client.delete(key1):
                         cleared_count += 1
-                    if redis_cache.redis_client.delete(key2):
-                        logger.debug(f"额外清空新格式键: {key2}")
-                    
-            logger.info(f"已清空 {cleared_count} 只股票的K线数据")
+                    redis_cache.redis_client.delete(key2)
+            logger.info(f"✅ 已清空 {cleared_count} 只标的K线数据")
             
             # 清空信号数据
             redis_cache.redis_client.delete(STOCK_KEYS['strategy_signals'])
-            logger.info("已清空策略信号数据")
+            logger.info("✅ 已清空策略信号数据")
         
-        # 统一的后台任务处理函数
+        # 步骤3: 后台任务（K线数据 + 新闻 + 信号计算）
         def run_background_tasks():
-            """运行后台任务：K线数据获取（可选）+ 信号计算等其他任务"""
+            """运行后台任务"""
             try:
-                # 创建独立的事件循环用于后台任务
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 
                 async def execute_tasks():
                     try:
-                        # 根据模式决定是否获取K线数据
-                        if mode == "full_init":
-                            logger.info("开始重新获取所有股票和 ETF 历史数据...")
+                        # 步骤3: 获取历史数据（all/stock_only/etf_only模式）
+                        if mode in ["all", "stock_only", "etf_only"] and stock_codes:
+                            logger.info("")
+                            logger.info(f"📥 步骤3: 获取历史数据 (共{len(stock_codes)}只)...")
                             await _fetch_all_kline_data(stock_codes)
-                            logger.info("K线数据获取完成")
-                        elif mode == "tasks_only":
-                            logger.info("tasks_only模式：跳过K线数据获取")
+                            logger.info("✅ K线数据获取完成")
                         
-                        # 所有模式都执行信号计算等其他任务
-                        logger.info("开始计算买入信号（股票+ETF）...")
-                        await _calculate_signals_async()
-                        logger.info("买入信号计算完成")
+                        # 步骤4: 新闻获取（所有非none模式）
+                        logger.info("")
+                        logger.info("📥 步骤4: 获取新闻资讯...")
+                        # 新闻获取在其他地方自动触发，这里只记录
+                        logger.info("✅ 新闻获取已在后台进行")
+                        
+                        # 步骤5: 计算买入信号（所有非none模式）
+                        logger.info("")
+                        logger.info("📥 步骤5: 计算买入信号...")
+                        
+                        # 根据模式决定计算哪些信号
+                        if mode == "etf_only":
+                            await _calculate_signals_async(etf_only=True, stock_only=False, clear_existing=True)
+                        elif mode == "stock_only":
+                            await _calculate_signals_async(etf_only=False, stock_only=True, clear_existing=True)
+                        else:  # all 或 tasks_only
+                            await _calculate_signals_async(etf_only=False, stock_only=False, clear_existing=True)
+                        
+                        logger.info("✅ 买入信号计算完成")
+                        
+                        # 完成后输出总结
+                        logger.info("")
+                        logger.info("=" * 70)
+                        logger.info(f"✅ 【{mode}】模式初始化完成，进入计划任务监听")
+                        if mode == "all":
+                            logger.info(f"   - 已初始化: 股票{stock_count}只 + ETF{etf_count}只")
+                        elif mode == "stock_only":
+                            logger.info(f"   - 已初始化: 股票{len(stock_codes)}只")
+                        elif mode == "etf_only":
+                            logger.info(f"   - 已初始化: ETF{len(stock_codes)}只")
+                        elif mode == "tasks_only":
+                            logger.info("   - 已执行: 新闻获取 + 信号计算")
+                        logger.info("=" * 70)
                         
                     except Exception as e:
                         logger.error(f"后台任务执行失败: {e}")
+                        import traceback
+                        logger.error(traceback.format_exc())
                 
                 loop.run_until_complete(execute_tasks())
             except Exception as e:
@@ -361,12 +449,21 @@ def init_stock_system(mode: str = "tasks_only"):
         task_thread.start()
         
         execution_time = (datetime.now() - start_time).total_seconds()
-        if mode == "full_init":
-            logger.info(f"full_init模式启动完成，K线数据获取和信号计算正在后台执行，耗时 {execution_time:.2f}秒")
-            add_stock_job_log('init_system', 'success', f'full_init模式启动: {len(stock_codes)}只股票+ETF', len(stock_codes), execution_time)
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info(f"✅ 【{mode}】模式启动完成，后台任务执行中")
+        if mode == "all":
+            logger.info(f"   - 初始化范围: 股票{stock_count}只 + ETF{etf_count}只")
+        elif mode == "stock_only":
+            logger.info(f"   - 初始化范围: 股票{len(stock_codes)}只")
+        elif mode == "etf_only":
+            logger.info(f"   - 初始化范围: ETF{len(stock_codes)}只")
         elif mode == "tasks_only":
-            logger.info(f"tasks_only模式启动完成，信号计算等任务正在后台执行，耗时 {execution_time:.2f}秒")
-            add_stock_job_log('init_system', 'success', f'tasks_only模式启动: {len(stock_codes)}只股票+ETF', len(stock_codes), execution_time)
+            logger.info("   - 初始化范围: 仅新闻+信号计算")
+        logger.info(f"   - 耗时: {execution_time:.2f}秒")
+        logger.info("=" * 70)
+        
+        add_stock_job_log('init_system', 'success', f'{mode}模式启动', stock_count + etf_count if mode == "all" else len(stock_codes), execution_time)
             
         
     except Exception as e:
@@ -635,9 +732,17 @@ async def _calculate_signals_async(etf_only: bool = False, stock_only: bool = Fa
     finally:
         if local_signal_manager:
             try:
+                # 安全关闭：捕获所有异常，避免事件循环冲突
                 await local_signal_manager.close()
+            except RuntimeError as e:
+                # 忽略事件循环相关错误（常见于多线程环境）
+                if "different loop" in str(e) or "Event loop" in str(e):
+                    logger.debug(f"SignalManager关闭时的事件循环警告（可忽略）: {e}")
+                else:
+                    logger.warning(f"SignalManager关闭时出现运行时错误: {e}")
             except Exception as e:
-                logger.error(f"SignalManager关闭失败: {e}")
+                # 其他异常记录为警告而非错误
+                logger.warning(f"SignalManager关闭时出现异常（已忽略）: {e}")
 
 # 已删除calculate_final_strategy_signals函数，因为实时更新已延长到15:20
 # 在K线全量更新和实时更新时会自动触发买入信号计算
@@ -732,27 +837,44 @@ def update_realtime_stock_data(force_update=False, is_closing_update=False, auto
             'is_closing_data': is_closing_update
         }, ttl=1800)  # 30分钟过期
         
-        # 新增：将实时数据合并到K线数据的最后一根K线
-        logger.info("开始将股票实时数据合并到K线数据...")
-        updated_kline_count = _merge_realtime_to_kline_data(realtime_data, is_closing_update=is_closing_update)
-        logger.info(f"✅ 已更新 {updated_kline_count} 只股票的K线数据")
+        # 步骤1: 将股票实时数据合并到K线
+        logger.info("📊 步骤1/3: 更新股票实时数据到K线...")
+        stock_success, stock_failed = _merge_realtime_to_kline_data(realtime_data, is_closing_update=is_closing_update)
+        logger.info(f"   ✅ 股票更新完成: 成功 {stock_success} 只, 失败 {stock_failed} 只")
         
-        # 同时更新ETF实时数据
-        logger.info("📊 开始更新ETF实时数据...")
-        etf_updated_count = _update_etf_realtime_internal(force_update=True)
-        logger.info(f"✅ 已更新 {etf_updated_count} 只ETF的K线数据")
+        # 步骤2: 立即更新ETF实时数据
+        logger.info("📊 步骤2/3: 更新ETF实时数据到K线...")
+        etf_success, etf_failed = _update_etf_realtime_internal(force_update=True)
+        logger.info(f"   ✅ ETF更新完成: 成功 {etf_success} 只, 失败 {etf_failed} 只")
         
-        execution_time = (datetime.now() - start_time).total_seconds()
-        logger.info(f"🎉 实时数据更新完成: 股票 {len(realtime_data)}只，ETF {etf_updated_count}只，K线更新: {updated_kline_count + etf_updated_count}只，耗时 {execution_time:.2f}秒")
+        # 步骤3: 根据配置决定是否触发信号计算
+        # 读取配置：默认关闭自动触发
+        from app.core.config import REALTIME_AUTO_CALCULATE_SIGNALS
+        should_calculate = REALTIME_AUTO_CALCULATE_SIGNALS if not auto_calculate_signals else auto_calculate_signals
         
-        add_stock_job_log('update_realtime', 'success', f'实时数据更新完成: 股票{len(realtime_data)}只+ETF{etf_updated_count}只，K线更新: {updated_kline_count + etf_updated_count}只', len(realtime_data) + etf_updated_count, execution_time)
-        
-        # 根据参数决定是否触发信号重新计算（股票+ETF一起计算）
-        if auto_calculate_signals:
-            logger.info("🔄 实时数据更新完成，自动触发买入信号重新计算（股票+ETF）...")
+        if should_calculate:
+            logger.info("📊 步骤3/3: 触发买入信号计算（股票+ETF）...")
             _trigger_signal_recalculation_async()
+            signal_status = "✅ 信号计算已触发"
         else:
-            logger.info("实时数据更新完成，跳过信号计算（未启用auto_calculate_signals）")
+            logger.info("📊 步骤3/3: 跳过信号计算（配置: REALTIME_AUTO_CALCULATE_SIGNALS=false）")
+            signal_status = "⏭️ 信号计算已跳过"
+        
+        total_success = stock_success + etf_success
+        total_failed = stock_failed + etf_failed
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        logger.info("=" * 70)
+        logger.info("🎉 实时数据更新完成")
+        logger.info(f"   📈 股票: 成功 {stock_success} 只, 失败 {stock_failed} 只")
+        logger.info(f"   📊 ETF:  成功 {etf_success} 只, 失败 {etf_failed} 只")
+        logger.info(f"   📋 总计: 成功 {total_success} 只, 失败 {total_failed} 只")
+        logger.info(f"   🔔 信号: {signal_status}")
+        logger.info(f"   ⏱️  耗时: {execution_time:.2f}秒")
+        logger.info("=" * 70)
+        
+        summary_msg = f'股票{stock_success}/{stock_success+stock_failed}只, ETF{etf_success}/{etf_success+etf_failed}只'
+        add_stock_job_log('update_realtime', 'success', summary_msg, total_success, execution_time)
         
     except Exception as e:
         execution_time = (datetime.now() - start_time).total_seconds()
@@ -760,29 +882,23 @@ def update_realtime_stock_data(force_update=False, is_closing_update=False, auto
         logger.error(f" {error_msg}")
         add_stock_job_log('update_realtime', 'failed', error_msg, 0, execution_time)
 
-def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=False) -> int:
+def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=False) -> Tuple[int, int]:
     """将实时数据合并到K线数据的最后一根K线
     
     修复BUG: 确保字段格式统一，避免历史数据和实时数据字段冲突
+    确保成交量准确更新
     
     Args:
         realtime_data: 实时数据列表
         is_closing_update: 是否为收盘后更新，收盘后更新会强制更新价格
     
     Returns:
-        更新的股票数量
+        Tuple[成功数量, 失败数量]
     """
     updated_count = 0
-    skipped_no_kline = 0  # 统计没有K线数据的股票数
+    failed_count = 0  # 统计失败的股票数
     today_str = datetime.now().strftime('%Y-%m-%d')
     today_trade_date = datetime.now().strftime('%Y%m%d')
-    
-    # 诊断日志：记录实时数据格式
-    if realtime_data:
-        logger.info(f"📊 开始合并实时数据，共 {len(realtime_data)} 只股票")
-        sample = realtime_data[0] if realtime_data else {}
-        logger.info(f"📝 实时数据示例字段: {list(sample.keys())[:10]}")
-        logger.info(f"📝 示例股票代码: {sample.get('code', 'N/A')}")
     
     try:
         for index, stock_data in enumerate(realtime_data):
@@ -790,8 +906,6 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                 stock_code = stock_data.get('code')
                 
                 if not stock_code:
-                    if index < 5:  # 只记录前5个
-                        logger.warning(f"⚠️  实时数据缺少code字段: {stock_data}")
                     continue
                 
                 # 构造ts_code
@@ -807,10 +921,7 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                 kline_data = redis_cache.get_cache(kline_key)
                 
                 if not kline_data:
-                    skipped_no_kline += 1
-                    # 调试：记录前5个没有K线数据的股票
-                    if skipped_no_kline <= 5:
-                        logger.debug(f"❌ 股票 {ts_code} (代码:{stock_code}) 没有K线数据，Redis键: {kline_key}")
+                    failed_count += 1
                     continue
                 
                 # 解析K线数据，处理不同的存储格式
@@ -900,10 +1011,6 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                     # 如果实时成交量为0，尝试从其他字段获取
                     current_volume = stock_data.get('vol', 0)
                 
-                # 调试日志：记录成交量数据
-                if current_volume > 0:
-                    logger.debug(f"{ts_code} 实时成交量: {current_volume} (原始值), 转换后: {current_volume / 100} 手")
-                
                 # 确保成交量数据有效
                 if current_volume is None or current_volume < 0:
                     current_volume = 0
@@ -944,13 +1051,8 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                     else:
                         final_volume = existing_volume  # 保持原有成交量
                     
-                    # 记录成交量更新情况
-                    if current_volume > 0 and final_volume != existing_volume:
-                        logger.debug(f"{ts_code} 成交量更新: {existing_volume} -> {final_volume} 手")
-                    
                     # 如果是收盘后更新，强制更新价格和其他数据
                     if is_closing_update:
-                        logger.debug(f" 收盘后更新 {ts_code} 的价格数据: {stock_data['price']}")
                         # 更新最后一根K线，但严格保持tushare字段格式
                         last_kline.update({
                             'ts_code': ts_code,  # 确保有ts_code
@@ -997,13 +1099,7 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                         if field in last_kline:
                             del last_kline[field]
                     
-                    if is_closing_update:
-                        logger.debug(f"收盘后更新 {ts_code} 最后一根K线: 收盘价 {stock_data['price']}, 成交量: {final_volume}手")
-                    else:
-                        logger.debug(f"更新 {ts_code} 最后一根K线: 收盘价 {stock_data['price']}, 成交量: {final_volume}手, 保持tushare格式")
-                
                 # 最终验证：确保所有数据都有统一的字段格式
-                logger.debug(f"{ts_code} 字段格式验证...")
                 for i, kline in enumerate(kline_list):
                     # 确保每条记录都有必要的tushare字段
                     required_fields = ['ts_code', 'trade_date', 'open', 'high', 'low', 'close', 
@@ -1056,22 +1152,23 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                 updated_count += 1
                 
             except Exception as e:
-                if updated_count < 5:  # 只记录前5个错误详情
+                failed_count += 1
+                if failed_count < 5:  # 只记录前5个错误详情
                     logger.error(f"处理股票 {stock_data.get('code', 'unknown')} 的实时数据失败: {str(e)}")
                 continue
         
-        # 汇总日志
-        logger.info(f"📊 合并结果: 成功更新 {updated_count} 只，跳过（无K线数据）{skipped_no_kline} 只")
-        if skipped_no_kline > 0:
-            logger.warning(f"⚠️  有 {skipped_no_kline} 只股票没有K线数据，请检查历史数据是否已初始化")
-            logger.info(f"💡 建议: 调用 /api/stocks/scheduler/trigger (task_type=clear_refetch) 初始化K线数据")
+        # 简洁日志
+        if failed_count > 0:
+            logger.warning(f"⚠️  有 {failed_count} 只股票更新失败（可能无K线数据）")
+            if failed_count > updated_count * 0.5:  # 失败超过50%才提示
+                logger.info(f"💡 建议: 调用 /api/stocks/scheduler/trigger?task_type=clear_refetch 初始化K线数据")
                 
-        return updated_count
+        return updated_count, failed_count
         
     except Exception as e:
         logger.error(f"合并实时数据到K线数据失败: {str(e)}")
         logger.exception(e)  # 打印完整堆栈
-        return 0
+        return 0, len(realtime_data) if realtime_data else 0
 
 def _trigger_signal_recalculation_async():
     """异步触发买入信号重新计算（非阻塞，防重复执行）"""
@@ -1116,9 +1213,17 @@ def _trigger_signal_recalculation_async():
                     finally:
                         if local_signal_manager:
                             try:
+                                # 安全关闭：捕获所有异常，避免事件循环冲突
                                 await local_signal_manager.close()
+                            except RuntimeError as e:
+                                # 忽略事件循环相关错误（常见于多线程环境）
+                                if "different loop" in str(e) or "Event loop" in str(e):
+                                    logger.debug(f"SignalManager关闭时的事件循环警告（可忽略）: {e}")
+                                else:
+                                    logger.warning(f"SignalManager关闭时出现运行时错误: {e}")
                             except Exception as e:
-                                logger.error(f"SignalManager关闭失败: {e}")
+                                # 其他异常记录为警告而非错误
+                                logger.warning(f"SignalManager关闭时出现异常（已忽略）: {e}")
                 
                 # 在新线程中创建新的事件循环
                 loop = asyncio.new_event_loop()
@@ -1179,9 +1284,17 @@ def _trigger_etf_signal_calculation_async():
                 finally:
                     if local_signal_manager:
                         try:
+                            # 安全关闭：捕获所有异常，避免事件循环冲突
                             await local_signal_manager.close()
+                        except RuntimeError as e:
+                            # 忽略事件循环相关错误（常见于多线程环境）
+                            if "different loop" in str(e) or "Event loop" in str(e):
+                                logger.debug(f"SignalManager关闭时的事件循环警告（可忽略）: {e}")
+                            else:
+                                logger.warning(f"SignalManager关闭时出现运行时错误: {e}")
                         except Exception as e:
-                            logger.error(f"SignalManager关闭失败: {e}")
+                            # 其他异常记录为警告而非错误
+                            logger.warning(f"SignalManager关闭时出现异常（已忽略）: {e}")
             
             # 在新线程中创建新的事件循环
             loop = asyncio.new_event_loop()
@@ -1436,14 +1549,16 @@ def trigger_stock_task(task_type: str, mode: str = "only_tasks", is_closing_upda
         return {'success': False, 'message': f'股票任务触发失败: {str(e)}', 'data': None}
 
 def refresh_stock_list() -> Dict[str, Any]:
-    """刷新股票列表（使用实时API获取完整列表）"""
+    """刷新股票列表（使用Tushare API获取完整列表）"""
     start_time = datetime.now()
     
     try:
-        logger.info("📡 开始刷新股票列表（实时API）...")
+        logger.info("📡 开始刷新股票列表（Tushare API）...")
         
-        # 使用实时API获取最新股票列表
-        df = ak.stock_zh_a_spot_em()
+        # 使用Tushare API获取最新股票列表（包含行业、地区等完整信息）
+        import tushare as ts
+        pro = ts.pro_api()
+        df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,list_date')
         
         if df.empty:
             raise Exception("获取股票列表失败")
@@ -1451,23 +1566,27 @@ def refresh_stock_list() -> Dict[str, Any]:
         # 转换数据格式
         stock_codes = []
         for _, row in df.iterrows():
-            code = row['代码']
-            # 判断市场
-            if code.startswith('6'):
+            code = row['symbol']
+            ts_code = row['ts_code']
+            
+            # 从ts_code解析市场
+            if ts_code.endswith('.SH'):
                 market = 'SH'
-                ts_code = f"{code}.SH"
-            elif code.startswith(('43', '83', '87', '88')):
-                market = 'BJ'
-                ts_code = f"{code}.BJ"
-            else:
+            elif ts_code.endswith('.SZ'):
                 market = 'SZ'
-                ts_code = f"{code}.SZ"
+            elif ts_code.endswith('.BJ'):
+                market = 'BJ'
+            else:
+                market = 'SH'  # 默认上海
             
             stock_data = {
                 'code': code,
-                'name': row['名称'],
+                'name': row['name'],
                 'ts_code': ts_code,
-                'market': market
+                'market': market,
+                'area': row['area'] if pd.notna(row['area']) else '',
+                'industry': row['industry'] if pd.notna(row['industry']) else '',
+                'list_date': row['list_date'] if pd.notna(row['list_date']) else ''
             }
             stock_codes.append(stock_data)
         
@@ -1505,7 +1624,7 @@ def refresh_stock_list() -> Dict[str, Any]:
 
 # ==================== ETF实时更新相关函数 ====================
 
-def _update_etf_realtime_internal(force_update=False) -> int:
+def _update_etf_realtime_internal(force_update=False) -> Tuple[int, int]:
     """
     内部函数：更新ETF实时数据（被股票实时更新调用）
     
@@ -1513,16 +1632,16 @@ def _update_etf_realtime_internal(force_update=False) -> int:
         force_update: 是否强制更新（忽略交易时间检查）
         
     Returns:
-        更新的ETF数量
+        Tuple[成功数量, 失败数量]
     """
     from app.services.realtime import get_etf_realtime_service_v2
-    from app.etf.etf_config import get_etf_list
+    from app.core.etf_config import get_etf_list
     
     try:
         # 检查交易时间（除非强制更新）
         if not force_update and not is_trading_time():
             logger.debug("非交易时间，跳过ETF实时数据更新")
-            return 0
+            return 0, 0
         
         # 1. 从配置文件读取ETF列表（121个精选ETF）
         etf_config_list = get_etf_list()
@@ -1535,8 +1654,6 @@ def _update_etf_realtime_internal(force_update=False) -> int:
                 'ts_code': etf['ts_code'],
                 'market': etf.get('market', 'ETF')
             })
-        
-        logger.info(f"📋 从配置文件读取ETF列表: {len(etf_codes_list)} 只")
         
         # 存储ETF代码列表到Redis
         redis_cache.set_cache(ETF_KEYS['etf_codes'], etf_codes_list, ttl=86400)
@@ -1558,23 +1675,12 @@ def _update_etf_realtime_internal(force_update=False) -> int:
         # 构建CSV中的ETF代码集合
         monitored_codes = {etf['code'] for etf in etf_codes_list}
         
-        # 显示CSV中的示例代码
-        sample_monitored = list(monitored_codes)[:5]
-        logger.info(f"📋 CSV中监控的ETF示例代码: {sample_monitored}")
-        
         realtime_dict = {}
-        matched_codes = []
         for etf in all_realtime_data:
             code = etf.get('code')
             # 只保留CSV中监控的ETF
             if code and code in monitored_codes:
                 realtime_dict[code] = etf
-                if len(matched_codes) < 5:
-                    matched_codes.append(code)
-        
-        logger.info(f"📋 过滤后监控的ETF数量: {len(realtime_dict)}/{len(all_realtime_data)}")
-        if matched_codes:
-            logger.info(f"📋 匹配到的示例代码: {matched_codes}")
         
         # 4. 存储到Redis（只存储监控的ETF）
         redis_cache.set_cache(
@@ -1591,14 +1697,16 @@ def _update_etf_realtime_internal(force_update=False) -> int:
         )
         
         # 5. 更新K线数据（只更新监控的ETF）
-        updated_kline_count = _merge_etf_realtime_to_kline(realtime_dict)
+        etf_success, etf_failed = _merge_etf_realtime_to_kline(realtime_dict)
         
-        return updated_kline_count
+        return etf_success, etf_failed
         
     except Exception as e:
         logger.error(f'ETF实时数据更新失败: {str(e)}')
         logger.error(traceback.format_exc())
-        return 0
+        # 返回0成功，所有ETF失败
+        etf_total = len(get_etf_list()) if 'get_etf_list' in dir() else 121
+        return 0, etf_total
 
 
 def update_etf_realtime_data(force_update=False):
@@ -1614,16 +1722,16 @@ def update_etf_realtime_data(force_update=False):
     try:
         logger.info("🎯 开始独立更新ETF实时数据...")
         
-        updated_count = _update_etf_realtime_internal(force_update=force_update)
+        etf_success, etf_failed = _update_etf_realtime_internal(force_update=force_update)
         
         execution_time = (datetime.now() - start_time).total_seconds()
-        logger.info(f"🎉 ETF实时数据更新完成: {updated_count}只，耗时 {execution_time:.2f}秒")
+        logger.info(f"🎉 ETF实时数据更新完成: 成功 {etf_success} 只, 失败 {etf_failed} 只, 耗时 {execution_time:.2f}秒")
         
         add_stock_job_log(
             'update_etf_realtime',
             'success',
-            f'ETF实时数据更新完成: {updated_count}只',
-            updated_count,
+            f'ETF: 成功{etf_success}只, 失败{etf_failed}只',
+            etf_success,
             execution_time
         )
         
@@ -1643,7 +1751,7 @@ def update_etf_realtime_data(force_update=False):
         add_stock_job_log('update_etf_realtime', 'failed', error_msg, 0, execution_time)
 
 
-def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
+def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> Tuple[int, int]:
     """
     将ETF实时数据合并到K线数据
     
@@ -1651,25 +1759,23 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
     - 增强日期判断逻辑，支持多种日期格式
     - 当没有K线数据时，创建新的K线数据而不是跳过
     - 简化日志输出，只显示汇总信息
+    - 确保成交量准确更新
     
     Args:
         realtime_dict: 实时数据字典 {code: data}
         
     Returns:
-        更新的ETF数量
+        Tuple[成功数量, 失败数量]
     """
     updated_count = 0
     appended_count = 0
     created_count = 0  # 新创建K线数据的ETF数量
+    failed_count = 0  # 失败数量
     
     try:
-        logger.info(f"📊 开始合并ETF实时数据到K线，共 {len(realtime_dict)} 只ETF")
-        
         # 当前日期的多种格式
         today_str = datetime.now().strftime('%Y-%m-%d')  # 2025-10-31
         today_trade_date = datetime.now().strftime('%Y%m%d')  # 20251031
-        
-        logger.info(f"📅 当前日期: {today_str} (trade_date: {today_trade_date})")
         
         for code, etf_data in realtime_dict.items():
             try:
@@ -1776,17 +1882,23 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                     appended_count += 1
                     
             except Exception as e:
-                logger.warning(f"合并ETF {code} 实时数据失败: {e}")
+                failed_count += 1
+                if failed_count <= 5:  # 只记录前5个
+                    logger.warning(f"合并ETF {code} 实时数据失败: {e}")
                 continue
         
-        total_processed = updated_count + appended_count + created_count
-        logger.info(f"📊 ETF K线合并完成: 更新 {updated_count} 只，新增 {appended_count} 只，创建 {created_count} 只，共处理 {total_processed} 只")
+        total_success = updated_count + appended_count + created_count
+        
+        # 简洁日志
+        if failed_count > 0:
+            logger.warning(f"⚠️  有 {failed_count} 只ETF更新失败")
         
     except Exception as e:
         logger.error(f"合并ETF实时数据到K线失败: {e}")
         logger.error(traceback.format_exc())
+        return 0, len(realtime_dict)
     
-    return updated_count
+    return total_success, failed_count
 
 
 def init_etf_kline_data():
@@ -1802,22 +1914,23 @@ def init_etf_kline_data():
     try:
         logger.info("🚀 开始初始化ETF历史K线数据...")
         
-        # 1. 读取ETF列表
-        etf_list_path = os.path.join(os.getcwd(), 'app', 'etf', 'ETF列表.csv')
-        if not os.path.exists(etf_list_path):
-            raise Exception(f"ETF列表文件不存在: {etf_list_path}")
+        # 1. 读取ETF列表（从配置文件）
+        from app.core.etf_config import get_etf_list
+        etf_list = get_etf_list()
         
+        if not etf_list:
+            raise Exception("无法从配置文件获取ETF列表")
+        
+        # 转换为兼容格式
         etf_codes_list = []
-        with open(etf_list_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                etf_codes_list.append({
-                    'code': row['symbol'],
-                    'name': row['name'],
-                    'ts_code': row['ts_code'],
-                })
+        for etf in etf_list:
+            etf_codes_list.append({
+                'code': etf['symbol'],
+                'name': etf['name'],
+                'ts_code': etf['ts_code'],
+            })
         
-        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只")
+        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只（来自配置文件）")
         
         success_count = 0
         failed_count = 0

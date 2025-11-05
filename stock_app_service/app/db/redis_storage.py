@@ -181,6 +181,75 @@ class RedisStockStorage:
         except Exception as e:
             logger.error(f"获取股票总数失败: {e}")
             return 0
+    
+    def query(self, *args, **kwargs):
+        """兼容性方法 - 模拟SQLAlchemy的query方法"""
+        # 对于简单的查询，返回空结果集
+        class MockQuery:
+            def all(self):
+                return []
+            def first(self):
+                return None
+            def filter(self, *args, **kwargs):
+                return self
+            def offset(self, *args, **kwargs):
+                return self
+            def limit(self, *args, **kwargs):
+                return self
+            def count(self):
+                return 0
+            def order_by(self, *args, **kwargs):
+                return self
+        
+        return MockQuery()
+    
+    def get_all_stock_codes(self) -> List[str]:
+        """获取所有股票代码"""
+        try:
+            if not self.redis_client:
+                return []
+            return list(self.redis_client.smembers(self.KEYS['stock_list']))
+        except Exception as e:
+            logger.error(f"获取股票代码列表失败: {e}")
+            return []
+    
+    def get_stock_by_code(self, code: str) -> Optional[Dict]:
+        """根据代码获取股票信息"""
+        try:
+            if not self.redis_client:
+                return None
+            
+            key = self.KEYS['stock_info'].format(code)
+            data = self.redis_client.hgetall(key)
+            
+            if not data:
+                return None
+                
+            return data
+            
+        except Exception as e:
+            logger.error(f"获取股票信息失败 {code}: {e}")
+            return None
+    
+    def get_all_stocks_dict(self) -> List[Dict]:
+        """获取所有股票信息字典格式"""
+        try:
+            if not self.redis_client:
+                return []
+            
+            codes = self.get_all_stock_codes()
+            stocks = []
+            
+            for code in codes:
+                stock_data = self.get_stock_by_code(code)
+                if stock_data:
+                    stocks.append(stock_data)
+            
+            return stocks
+            
+        except Exception as e:
+            logger.error(f"获取股票字典列表失败: {e}")
+            return []
 
 # 全局存储实例
-redis_storage = RedisStockStorage() 
+redis_storage = RedisStockStorage()

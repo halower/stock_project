@@ -25,7 +25,6 @@ from app.services.stock_data_manager import StockDataManager
 # from app.core.thread_pool import global_thread_pool
 from app.services.signal_manager import signal_manager
 from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
-import akshare as ak
 import pandas as pd
 import json
 
@@ -140,9 +139,9 @@ def _init_etf_only():
                         logger.error("ETF 清单初始化失败")
                         return False
                     
-                    # 2. 获取 ETF 列表（从 CSV，已过滤 LOF）
-                    from app.services.etf_manager import etf_manager
-                    etf_list = etf_manager.get_etf_list(enrich=False, use_csv=True)
+                    # 2. 获取 ETF 列表（从配置文件，121个精选ETF）
+                    from app.core.etf_config import get_etf_list
+                    etf_list = get_etf_list()
                     
                     if not etf_list:
                         logger.error("无法获取 ETF 列表")
@@ -1368,14 +1367,16 @@ def trigger_stock_task(task_type: str, mode: str = "only_tasks", is_closing_upda
         return {'success': False, 'message': f'股票任务触发失败: {str(e)}', 'data': None}
 
 def refresh_stock_list() -> Dict[str, Any]:
-    """刷新股票列表（使用实时API获取完整列表）"""
+    """刷新股票列表（使用Tushare API获取完整列表）"""
     start_time = datetime.now()
     
     try:
-        logger.info("📡 开始刷新股票列表（实时API）...")
+        logger.info("📡 开始刷新股票列表（Tushare API）...")
         
-        # 使用实时API获取最新股票列表
-        df = ak.stock_zh_a_spot_em()
+        # 使用Tushare API获取最新股票列表（包含行业、地区等完整信息）
+        import tushare as ts
+        pro = ts.pro_api()
+        df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,market,list_date')
         
         if df.empty:
             raise Exception("获取股票列表失败")
@@ -1383,23 +1384,27 @@ def refresh_stock_list() -> Dict[str, Any]:
         # 转换数据格式
         stock_codes = []
         for _, row in df.iterrows():
-            code = row['代码']
-            # 判断市场
-            if code.startswith('6'):
+            code = row['symbol']
+            ts_code = row['ts_code']
+            
+            # 从ts_code解析市场
+            if ts_code.endswith('.SH'):
                 market = 'SH'
-                ts_code = f"{code}.SH"
-            elif code.startswith(('43', '83', '87', '88')):
-                market = 'BJ'
-                ts_code = f"{code}.BJ"
-            else:
+            elif ts_code.endswith('.SZ'):
                 market = 'SZ'
-                ts_code = f"{code}.SZ"
+            elif ts_code.endswith('.BJ'):
+                market = 'BJ'
+            else:
+                market = 'SH'  # 默认上海
             
             stock_data = {
                 'code': code,
-                'name': row['名称'],
+                'name': row['name'],
                 'ts_code': ts_code,
-                'market': market
+                'market': market,
+                'area': row['area'] if pd.notna(row['area']) else '',
+                'industry': row['industry'] if pd.notna(row['industry']) else '',
+                'list_date': row['list_date'] if pd.notna(row['list_date']) else ''
             }
             stock_codes.append(stock_data)
         
@@ -1457,23 +1462,24 @@ def _update_etf_realtime_internal(force_update=False) -> int:
             logger.debug("非交易时间，跳过ETF实时数据更新")
             return 0
         
-        # 1. 读取ETF列表
-        etf_list_path = os.path.join(os.getcwd(), 'app', 'etf', 'ETF列表.csv')
-        if not os.path.exists(etf_list_path):
-            raise Exception(f"ETF列表文件不存在: {etf_list_path}")
+        # 1. 读取ETF列表（从配置文件）
+        from app.core.etf_config import get_etf_list
+        etf_list = get_etf_list()
         
+        if not etf_list:
+            raise Exception("无法从配置文件获取ETF列表")
+        
+        # 转换为兼容格式
         etf_codes_list = []
-        with open(etf_list_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                etf_codes_list.append({
-                    'code': row['symbol'],
-                    'name': row['name'],
-                    'ts_code': row['ts_code'],
-                    'market': row.get('market', 'ETF')
-                })
+        for etf in etf_list:
+            etf_codes_list.append({
+                'code': etf['symbol'],
+                'name': etf['name'],
+                'ts_code': etf['ts_code'],
+                'market': 'ETF'
+            })
         
-        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只")
+        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只（来自配置文件）")
         
         # 存储ETF代码列表到Redis
         redis_cache.set_cache(ETF_KEYS['etf_codes'], etf_codes_list, ttl=86400)
@@ -1739,22 +1745,23 @@ def init_etf_kline_data():
     try:
         logger.info("🚀 开始初始化ETF历史K线数据...")
         
-        # 1. 读取ETF列表
-        etf_list_path = os.path.join(os.getcwd(), 'app', 'etf', 'ETF列表.csv')
-        if not os.path.exists(etf_list_path):
-            raise Exception(f"ETF列表文件不存在: {etf_list_path}")
+        # 1. 读取ETF列表（从配置文件）
+        from app.core.etf_config import get_etf_list
+        etf_list = get_etf_list()
         
+        if not etf_list:
+            raise Exception("无法从配置文件获取ETF列表")
+        
+        # 转换为兼容格式
         etf_codes_list = []
-        with open(etf_list_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                etf_codes_list.append({
-                    'code': row['symbol'],
-                    'name': row['name'],
-                    'ts_code': row['ts_code'],
-                })
+        for etf in etf_list:
+            etf_codes_list.append({
+                'code': etf['symbol'],
+                'name': etf['name'],
+                'ts_code': etf['ts_code'],
+            })
         
-        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只")
+        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只（来自配置文件）")
         
         success_count = 0
         failed_count = 0

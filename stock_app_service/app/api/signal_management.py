@@ -166,75 +166,81 @@ async def get_buy_signals(
         }
 
 
-@router.post("/api/signals/calculate", summary="手动计算买入信号", tags=["买入信号"], dependencies=[Depends(verify_token)])
+@router.post("/api/signals/calculate", summary="手动计算买入信号（后台执行）", tags=["买入信号"], dependencies=[Depends(verify_token)])
 async def calculate_buy_signals_manually():
-    """手动触发买入信号计算"""
+    """手动触发买入信号计算（异步后台执行，不阻塞请求）"""
     try:
-        # 确保signal_manager已初始化
-        init_success = await signal_manager.initialize()
-        if not init_success:
-            raise HTTPException(status_code=500, detail="SignalManager初始化失败")
+        # 快速检查数据完整性（不阻塞太久）
+        from app.core.redis_client import get_redis_client
+        redis_client = await get_redis_client()
         
-        # 检查是否有足够的股票数据
-        from app.services.stock.stock_data_manager import stock_data_manager
-        await stock_data_manager.initialize()
-        
-        # 检查股票清单
-        stock_list_sufficient, stock_list_count = await stock_data_manager.check_stock_list_status()
-        if not stock_list_sufficient:
+        # 检查股票列表
+        stock_codes = await redis_client.get("stocks:codes:all")
+        if not stock_codes:
             return {
                 "code": 400,
                 "message": "股票清单数据不足，请先初始化股票数据",
-                "data": {
-                    "stock_list_count": stock_list_count,
-                    "required_minimum": 5000
-                }
+                "data": {"stock_list_count": 0}
             }
         
-        # 检查股票历史数据
-        trend_data_sufficient, trend_data_count = await stock_data_manager.check_stock_trend_data_status()
-        if not trend_data_sufficient:
+        import json
+        stock_list = json.loads(stock_codes)
+        if len(stock_list) < 100:
             return {
                 "code": 400,
-                "message": "股票历史数据不足，请先获取股票历史数据",
-                "data": {
-                    "trend_data_count": trend_data_count,
-                    "required_minimum": 5000
-                }
+                "message": f"股票清单数据不足（当前{len(stock_list)}只），请先初始化股票数据",
+                "data": {"stock_list_count": len(stock_list)}
             }
         
-        # 开始计算买入信号
-        logger.info("开始手动计算买入信号...")
-        result = await signal_manager.calculate_buy_signals(force_recalculate=True)
+        # 启动后台任务执行信号计算
+        import threading
         
-        await stock_data_manager.close()
-        await signal_manager.close()
+        def background_calculate():
+            """后台执行信号计算"""
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                async def _calc():
+                    from app.services.signal.signal_manager import SignalManager
+                    manager = SignalManager()
+                    await manager.initialize()
+                    result = await manager.calculate_buy_signals(force_recalculate=True)
+                    await manager.close()
+                    return result
+                
+                result = loop.run_until_complete(_calc())
+                logger.info(f"后台信号计算完成: {result}")
+            except Exception as e:
+                logger.error(f"后台信号计算失败: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+            finally:
+                loop.close()
         
-        if result.get("status") == "success":
-            return {
-                "code": 200,
-                "message": "买入信号计算成功",
-                "data": {
-                    "total_signals": result.get("total_signals", 0),
-                    "strategy_counts": result.get("strategy_counts", {}),
-                    "processed_stocks": result.get("processed_stocks", 0),
-                    "elapsed_seconds": result.get("elapsed_seconds", 0)
-                }
+        # 启动后台线程
+        thread = threading.Thread(target=background_calculate, daemon=True)
+        thread.start()
+        
+        # 立即返回
+        logger.info("信号计算任务已在后台启动，不会阻塞其他请求")
+        return {
+            "code": 200,
+            "message": "信号计算任务已启动（后台执行）",
+            "data": {
+                "status": "running",
+                "stock_count": len(stock_list),
+                "note": "计算正在后台进行，不会阻塞其他API请求。请稍后通过 /api/stocks/signal/buy 查看结果"
             }
-        else:
-            return {
-                "code": 500,
-                "message": f"买入信号计算失败: {result.get('message', '未知错误')}",
-                "data": result
-            }
+        }
             
     except Exception as e:
-        logger.error(f"手动计算买入信号失败: {str(e)}")
+        logger.error(f"启动信号计算任务失败: {str(e)}")
         import traceback
         logger.error(f"详细错误: {traceback.format_exc()}")
         return {
             "code": 500,
-            "message": f"手动计算买入信号失败: {str(e)}",
+            "message": f"启动信号计算任务失败: {str(e)}",
             "data": None
         }
 

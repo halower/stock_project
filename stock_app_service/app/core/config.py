@@ -46,24 +46,22 @@ CACHE_TTL_LONG = 86400  # 长期缓存24小时
 RESET_TABLES = os.environ.get("RESET_TABLES", "false").lower() == "true"
 
 # 股票系统启动初始化模式配置
-STOCK_INIT_MODE = os.environ.get("STOCK_INIT_MODE", "skip").lower()
 # 可选值:
-# - "skip": 跳过初始化，启动时什么都不执行，等待手动触发（推荐默认模式）
-# - "tasks_only": 仅执行任务，不获取历史K线数据，只执行信号计算、新闻获取等任务
-# - "full_init": 完整初始化，清空所有数据（股票+ETF）重新获取
-# - "etf_only": 仅初始化ETF，只获取和更新ETF数据
+# - "all": 初始化所有数据（股票+ETF） + 新闻 + 信号计算 → 进入计划任务（默认）
+# - "stock_only": 仅初始化股票 + 新闻 + 信号计算 → 进入计划任务
+# - "etf_only": 仅初始化ETF + 新闻 + 信号计算 → 进入计划任务
+# - "tasks_only": 不初始化数据，但执行新闻 + 信号计算 → 进入计划任务
+# - "none": 什么都不做，直接进入计划任务监听
 
-# 向后兼容旧配置名称
-_old_mode_mapping = {
-    "none": "skip",
-    "only_tasks": "tasks_only", 
-    "clear_all": "full_init"
-}
-if STOCK_INIT_MODE in _old_mode_mapping:
-    STOCK_INIT_MODE = _old_mode_mapping[STOCK_INIT_MODE]
+# 优先使用环境变量，如果没有则使用默认值
+STOCK_INIT_MODE = os.environ.get("STOCK_INIT_MODE", "none").lower()
 
 # 后台任务配置 - 控制后台任务对API服务的影响（使用asyncio，无需线程池）
 BACKGROUND_TASK_PRIORITY = os.environ.get("BACKGROUND_TASK_PRIORITY", "low").lower()  # low, normal, high
+
+# 实时更新自动触发信号计算配置
+# 默认关闭，避免频繁计算影响性能
+REALTIME_AUTO_CALCULATE_SIGNALS = os.environ.get("REALTIME_AUTO_CALCULATE_SIGNALS", "false").lower() in ("true", "1", "yes")
 
 # 外部API配置 - 单个Token（实际每分钟250次请求，设置240次留余量）
 TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN", "76777e0e5682492c8d346030b5f6d7547b77dbab8ddab96d51ab8267")

@@ -339,7 +339,7 @@ class StockDataManager:
             logger.info("开始初始化 ETF 清单...")
             
             # 直接从配置文件获取 ETF 列表（121个精选ETF）
-            from app.etf.etf_config import get_etf_list
+            from app.core.etf_config import get_etf_list
             etf_list = get_etf_list()
             
             if not etf_list:

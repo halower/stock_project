@@ -4,7 +4,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
-import akshare as ak
 import pandas as pd
 import datetime
 import concurrent.futures
@@ -14,6 +13,7 @@ import time
 from app.core.logging import logger
 from app.db.session import get_db, SessionLocal
 from app.services.stock.stock_crud import get_all_stocks, create_or_update_stock_realtime, sanitize_float_value
+from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
 
 # 简单的替代函数
 def set_background_task_status(status):
@@ -80,14 +80,24 @@ def update_realtime_data(
             "details": []
         }
         
-        # 获取A股最新行情
+        # 获取A股最新行情（使用V2实时行情服务，不依赖akshare）
         try:
-            logger.info("正在从akshare获取A股实时行情数据...")
-            spot_df = ak.stock_zh_a_spot_em()
+            logger.info("正在从实时行情服务获取A股实时行情数据...")
+            proxy_manager = get_proxy_manager()
+            realtime_service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
+            result = realtime_service.get_all_stocks_realtime()
             
-            # 设置代码作为索引，方便根据代码查询数据
-            spot_df = spot_df.set_index("代码")
-            logger.info(f"成功获取{len(spot_df)}只股票的实时行情数据")
+            if not result.get('success'):
+                raise Exception(f"获取实时数据失败: {result.get('error', '未知错误')}")
+            
+            realtime_data_list = result.get('data', [])
+            if not realtime_data_list:
+                raise Exception("获取的实时数据为空")
+            
+            # 转换为DataFrame并设置代码作为索引，方便根据代码查询数据
+            spot_df = pd.DataFrame(realtime_data_list)
+            spot_df = spot_df.set_index("code")
+            logger.info(f"成功获取{len(spot_df)}只股票的实时行情数据，数据源: {result.get('source', 'unknown')}")
         except Exception as e:
             logger.error(f"获取A股实时行情数据失败: {str(e)}")
             return {
@@ -112,15 +122,30 @@ def update_realtime_data(
                     # 将行数据转换为字典
                     realtime_data = row.to_dict()
                     
+                    # 转换字段名以兼容数据库存储（实时服务返回的是英文字段）
+                    # 实时服务字段: code, name, price, change, change_percent, open, high, low, volume, amount等
+                    # 需要转换为akshare格式的中文字段名以兼容现有的数据库函数
+                    converted_data = {
+                        "最新价": realtime_data.get("price", 0),
+                        "涨跌幅": realtime_data.get("change_percent", 0),
+                        "涨跌额": realtime_data.get("change", 0),
+                        "今开": realtime_data.get("open", 0),
+                        "最高": realtime_data.get("high", 0),
+                        "最低": realtime_data.get("low", 0),
+                        "成交量": realtime_data.get("volume", 0),
+                        "成交额": realtime_data.get("amount", 0),
+                        "换手率": realtime_data.get("turnover_rate", 0),
+                    }
+                    
                     # 更新数据库
-                    create_or_update_stock_realtime(thread_db, stock.code, realtime_data)
+                    create_or_update_stock_realtime(thread_db, stock.code, converted_data)
                     
                     return {
                         "code": stock.code,
                         "name": stock.name,
                         "status": "success",
-                        "price": sanitize_float_value(realtime_data.get("最新价")),
-                        "change_percent": sanitize_float_value(realtime_data.get("涨跌幅"))
+                        "price": sanitize_float_value(realtime_data.get("price")),
+                        "change_percent": sanitize_float_value(realtime_data.get("change_percent"))
                     }
                 else:
                     logger.warning(f"股票 {stock.code} 在实时行情数据中未找到")

@@ -572,3 +572,77 @@
 2025-10-31 14:03:17 - stock_app - INFO - 开始多线程并发获取13个ETF页面...
 2025-10-31 14:03:17 - stock_app - INFO - 多线程并发获取完成，共1272条ETF数据
 2025-10-31 14:03:17 - stock_app - INFO - 成功从eastmoney获取1269只ETF实时数据
+2025-11-05 20:43:40 - stock_app - INFO - 日志系统启动 - 自动轮转和清理已启用
+2025-11-05 20:43:40 - stock_app - INFO - 📁 日志目录: /Users/hsb/Downloads/stock_project/logs
+2025-11-05 20:43:40 - stock_app - INFO - 轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转
+2025-11-05 20:43:40 - stock_app - INFO - 清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周
+2025-11-05 20:43:41 - stock_app - INFO - 数据存储架构: 完全基于Redis，无关系数据库依赖
+2025-11-05 20:43:43 - stock_app - INFO - Redis客户端连接成功
+2025-11-05 20:49:28 - stock_app - INFO - 日志系统启动 - 自动轮转和清理已启用
+2025-11-05 20:49:28 - stock_app - INFO - 📁 日志目录: /Users/hsb/Downloads/stock_project/logs
+2025-11-05 20:49:28 - stock_app - INFO - 轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转
+2025-11-05 20:49:28 - stock_app - INFO - 清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周
+2025-11-05 20:49:31 - stock_app - INFO - 数据存储架构: 完全基于Redis，无关系数据库依赖
+2025-11-05 20:49:40 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:49:40 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:49:40 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:49:43 - stock_app - INFO - Redis客户端连接成功
+2025-11-05 20:51:13 - stock_app - INFO - 日志系统启动 - 自动轮转和清理已启用
+2025-11-05 20:51:13 - stock_app - INFO - 📁 日志目录: /Users/hsb/Downloads/stock_project/logs
+2025-11-05 20:51:13 - stock_app - INFO - 轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转
+2025-11-05 20:51:13 - stock_app - INFO - 清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周
+2025-11-05 20:51:15 - stock_app - INFO - 数据存储架构: 完全基于Redis，无关系数据库依赖
+2025-11-05 20:51:22 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:51:22 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:51:22 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:51:25 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:51:25 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:51:25 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:51:25 - stock_app - INFO - 简化Redis客户端连接成功
+2025-11-05 20:51:25 - app.services.stock.stock_data_manager - INFO - 开始初始化股票清单...
+2025-11-05 20:51:29 - app.services.stock.stock_data_manager - INFO - 股票清单初始化完成，共5448只股票
+2025-11-05 20:51:29 - app.services.stock.stock_data_manager - INFO - 同时存储了新格式(stock_list)和旧格式(stocks:codes:all)以确保兼容性
+2025-11-05 20:51:29 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:51:29 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:51:29 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:51:29 - stock_app - INFO - Redis客户端连接成功
+2025-11-05 20:52:40 - stock_app - INFO - 日志系统启动 - 自动轮转和清理已启用
+2025-11-05 20:52:40 - stock_app - INFO - 📁 日志目录: /Users/hsb/Downloads/stock_project/logs
+2025-11-05 20:52:40 - stock_app - INFO - 轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转
+2025-11-05 20:52:40 - stock_app - INFO - 清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周
+2025-11-05 20:52:40 - stock_app - INFO - 数据存储架构: 完全基于Redis，无关系数据库依赖
+2025-11-05 20:52:45 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:52:45 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:52:45 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:52:46 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:52:46 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:52:46 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:52:46 - stock_app - INFO - 简化Redis客户端连接成功
+2025-11-05 20:52:46 - app.services.stock.stock_data_manager - INFO - 开始初始化股票清单...
+2025-11-05 20:52:49 - app.services.stock.stock_data_manager - INFO - 股票清单初始化完成，共5448只股票
+2025-11-05 20:52:49 - app.services.stock.stock_data_manager - INFO - 同时存储了新格式(stock_list)和旧格式(stocks:codes:all)以确保兼容性
+2025-11-05 20:52:49 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:52:49 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:52:49 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:52:49 - stock_app - INFO - Redis客户端连接成功
+2025-11-05 20:52:49 - stock_app - INFO - 📊 从配置文件加载 ETF 列表: 121 个 ETF
+2025-11-05 20:52:50 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:52:50 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:52:50 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:52:50 - stock_app - INFO - 📊 从配置文件加载 ETF 列表: 121 个 ETF
+2025-11-05 20:54:14 - stock_app - INFO - 日志系统启动 - 自动轮转和清理已启用
+2025-11-05 20:54:14 - stock_app - INFO - 📁 日志目录: /Users/hsb/Downloads/stock_project/logs
+2025-11-05 20:54:14 - stock_app - INFO - 轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转
+2025-11-05 20:54:14 - stock_app - INFO - 清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周
+2025-11-05 20:54:28 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:54:28 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:54:28 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:54:29 - stock_app - INFO - 数据存储架构: 完全基于Redis，无关系数据库依赖
+2025-11-05 20:54:29 - app.services.stock.stock_data_manager - INFO - 初始化Tushare Token: 76777e0e5682492c8d34...
+2025-11-05 20:54:29 - app.services.stock.stock_data_manager - INFO - ✅ Token已配置（每分钟240次请求，纯异步IO模式）
+2025-11-05 20:54:29 - app.services.stock.stock_data_manager - INFO - 📊 数据管理器配置: 每分钟240次调用，纯异步IO模式
+2025-11-05 20:54:29 - stock_app - INFO - 简化Redis客户端连接成功
+2025-11-05 20:54:29 - app.services.stock.stock_data_manager - INFO - 开始初始化股票清单...
+2025-11-05 20:54:33 - app.services.stock.stock_data_manager - INFO - 股票清单初始化完成，共5448只股票
+2025-11-05 20:54:33 - app.services.stock.stock_data_manager - INFO - 同时存储了新格式(stock_list)和旧格式(stocks:codes:all)以确保兼容性
+2025-11-05 20:54:33 - stock_app - INFO - Redis客户端连接成功

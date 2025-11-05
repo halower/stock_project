@@ -15,8 +15,11 @@ services:
       - REDIS_PORT=6379
       - API_TOKEN=eXvM4zU8nP9qWt3dRfKgH7jBcA2yE5sZ
       - API_TOKEN_ENABLED=true
+      # 禁用Python缓存
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPYCACHEPREFIX=/dev/null
       # 可选值: none, only_tasks, clear_all
-      - STOCK_INIT_MODE=skip
+      - STOCK_INIT_MODE=clear_all
       # 后台任务配置 - 设置为低优先级避免影响API服务
       - BACKGROUND_TASK_PRIORITY=low
       # 实时行情配置（股票）
@@ -29,6 +32,8 @@ services:
       - ETF_AUTO_SWITCH=true
       - ETF_RETRY_TIMES=2
       - ETF_MIN_REQUEST_INTERVAL=3.0
+      # 实时更新自动触发信号计算（默认关闭，避免频繁计算影响性能）
+      - REALTIME_AUTO_CALCULATE_SIGNALS=false
       # 动态代理IP配置（可选）
       - PROXY_ENABLED=true
       - PROXY_API_URL=https://share.proxy.qg.net/get

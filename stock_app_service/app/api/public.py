@@ -9,8 +9,6 @@ import json
 import hashlib
 from sqlalchemy.orm import Session
 import time
-import akshare as ak
-import pandas as pd
 
 from app.core.logging import logger
 from app.db.session import get_db
@@ -21,6 +19,16 @@ news_cache = {}
 NEWS_CACHE_TTL = 3600  # 新闻缓存1小时
 
 router = APIRouter(tags=["新闻资讯"])
+
+# 尝试导入akshare用于新闻功能（可选依赖）
+try:
+    import akshare as ak
+    import pandas as pd
+    AKSHARE_AVAILABLE = True
+    logger.info("akshare可用，新闻功能已启用")
+except ImportError:
+    AKSHARE_AVAILABLE = False
+    logger.warning("akshare未安装，新闻功能不可用。如需使用新闻功能，请安装: pip install akshare")
 
 @router.get(
     "/api/public/stock_news", 
@@ -71,6 +79,15 @@ async def get_stock_news(
             return cache_entry["data"]
     
     try:
+        # 检查akshare是否可用
+        if not AKSHARE_AVAILABLE:
+            logger.warning(f"akshare未安装，无法获取股票 {symbol} 的新闻数据")
+            return {
+                "error": "新闻功能不可用",
+                "message": "akshare库未安装。本系统主要使用Tushare，akshare仅用于新闻功能（可选）。如需使用新闻功能，请安装: pip install akshare",
+                "data": []
+            }
+        
         # 直接使用akshare获取新闻数据，不再依赖外部API
         logger.info(f"使用akshare获取股票 {symbol} 的新闻资讯数据")
         

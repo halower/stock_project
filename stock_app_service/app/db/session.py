@@ -2,7 +2,6 @@
 """Redis数据存储管理 - 完全基于Redis架构"""
 
 import redis
-import aioredis
 from app.core.config import (
     REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD,
     REDIS_MAX_CONNECTIONS, REDIS_SOCKET_CONNECT_TIMEOUT, REDIS_SOCKET_TIMEOUT
@@ -23,41 +22,43 @@ class RedisCache:
     
     def __init__(self):
         self.redis_client = None
-        # 立即初始化Redis连接
-        try:
-            self.get_redis_client()
-        except Exception as e:
-            logger.error(f"Redis初始化失败: {e}")
-            self.redis_client = None
+        # 延迟初始化Redis连接，避免启动时连接失败
+        # 连接将在第一次使用时建立
         
     def get_redis_client(self):
         """获取同步Redis客户端"""
         if self.redis_client is None:
-            self.redis_client = redis.Redis(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
-                db=REDIS_DB,
-                password=REDIS_PASSWORD,
-                decode_responses=True,
-                socket_connect_timeout=REDIS_SOCKET_CONNECT_TIMEOUT,
-                socket_timeout=REDIS_SOCKET_TIMEOUT,
-                retry_on_timeout=True,
-                max_connections=REDIS_MAX_CONNECTIONS
-            )
+            try:
+                self.redis_client = redis.Redis(
+                    host=REDIS_HOST,
+                    port=REDIS_PORT,
+                    db=REDIS_DB,
+                    password=REDIS_PASSWORD,
+                    decode_responses=True,
+                    socket_connect_timeout=REDIS_SOCKET_CONNECT_TIMEOUT,
+                    socket_timeout=REDIS_SOCKET_TIMEOUT,
+                    retry_on_timeout=True,
+                    max_connections=REDIS_MAX_CONNECTIONS
+                )
+                # 测试连接
+                self.redis_client.ping()
+                logger.info("Redis客户端连接成功")
+            except Exception as e:
+                logger.warning(f"Redis客户端连接失败: {e}，将在需要时重试")
+                self.redis_client = None
         return self.redis_client
     
     async def get_async_redis_client(self):
         """
         获取异步Redis客户端。
-        重要：此方法现在每次都会创建一个新的连接池实例，以解决在不同线程和事件循环中共享客户端的问题。
-        虽然这种方式效率略低，但它能确保在当前的多线程+多asyncio.run架构下稳定运行。
-        理想的长期解决方案是重构应用，使用一个统一的后台事件循环。
+        使用redis-py的异步客户端替代aioredis。
         """
+        import redis.asyncio as aioredis
         redis_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
         if REDIS_PASSWORD:
             redis_url = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
         
-        return await aioredis.from_url(
+        return aioredis.from_url(
             redis_url,
             encoding='utf-8',
             decode_responses=True
@@ -67,6 +68,10 @@ class RedisCache:
         """设置缓存"""
         try:
             client = self.get_redis_client()
+            if client is None:
+                logger.warning(f"Redis客户端未连接，跳过设置缓存: {key}")
+                return False
+                
             if isinstance(value, (dict, list)):
                 value = json.dumps(value, ensure_ascii=False)
             
@@ -83,6 +88,10 @@ class RedisCache:
         """获取缓存"""
         try:
             client = self.get_redis_client()
+            if client is None:
+                logger.warning(f"Redis客户端未连接，跳过获取缓存: {key}")
+                return None
+                
             value = client.get(key)
             if value is None:
                 return None
@@ -100,6 +109,9 @@ class RedisCache:
         """删除缓存"""
         try:
             client = self.get_redis_client()
+            if client is None:
+                logger.warning(f"Redis客户端未连接，跳过删除缓存: {key}")
+                return False
             return bool(client.delete(key))
         except Exception as e:
             logger.error(f"Redis删除缓存失败: {key}, 错误: {e}")
@@ -109,6 +121,9 @@ class RedisCache:
         """按模式删除缓存"""
         try:
             client = self.get_redis_client()
+            if client is None:
+                logger.warning(f"Redis客户端未连接，跳过按模式删除: {pattern}")
+                return 0
             keys = client.keys(pattern)
             if keys:
                 return client.delete(*keys)
@@ -133,7 +148,8 @@ def get_redis_storage():
 async def init_redis_connection():
     """初始化Redis连接"""
     try:
-        await cache.get_async_redis_client()
+        # 使用同步客户端测试连接，避免异步客户端问题
+        cache.get_redis_client().ping()
         logger.info("Redis连接初始化成功")
     except Exception as e:
         logger.error(f"Redis连接初始化失败: {e}")
@@ -142,11 +158,14 @@ def test_redis_connection() -> bool:
     """测试Redis连接"""
     try:
         client = cache.get_redis_client()
+        if client is None:
+            logger.warning("Redis客户端未连接，连接测试失败")
+            return False
         client.ping()
         logger.info("Redis连接测试成功")
         return True
     except Exception as e:
-        logger.error(f"Redis连接测试失败: {e}")
+        logger.warning(f"Redis连接测试失败: {e}")
         return False
 
 def get_redis_db():
@@ -162,4 +181,4 @@ def get_redis_db():
 # 兼容性函数 - 返回Redis存储实例
 def get_db():
     """兼容性函数 - 返回Redis存储实例"""
-    return get_redis_db() 
+    return get_redis_db()

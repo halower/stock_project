@@ -240,12 +240,8 @@ class SignalManager:
             from app.core.sync_redis_client import get_sync_redis_client
             redis_client = get_sync_redis_client()
             
-            # 根据market字段判断是ETF还是股票，使用不同的Redis key
-            market = stock.get('market', '')
-            if market == 'ETF':
-                kline_key = f"etf_trend:{ts_code}"
-            else:
-                kline_key = f"stock_trend:{ts_code}"
+            # ETF和股票都存储在stock_trend:*（ETF是特殊的股票）
+            kline_key = f"stock_trend:{ts_code}"
             
             kline_data = redis_client.get(kline_key)
             
@@ -609,8 +605,8 @@ class SignalManager:
                     strategy_valid_data = 0
                     
                     # 分批处理股票，使用优化的批处理大小
-                    # 限制并发数量，避免Redis连接数过多
-                    batch_size = min(self.batch_size, 10)  # 将批处理大小限制为10，避免Too many connections
+                    # 信号计算只读取Redis，不调用API，可以大幅提升并发
+                    batch_size = min(self.batch_size * 10, 500)  # 每批500只，大幅提升效率
                     total_batches = (len(stock_list) + batch_size - 1) // batch_size
                     
                     for batch_idx in range(0, len(stock_list), batch_size):
@@ -619,8 +615,8 @@ class SignalManager:
                         
                         logger.info(f"  处理第 {current_batch}/{total_batches} 批股票 ({len(batch)} 只)")
                         
-                        # 使用信号量限制实际并发数量
-                        semaphore = asyncio.Semaphore(5)  # 最多5个并发任务，避免Redis连接耗尽
+                        # 使用信号量限制实际并发数量（信号计算从Redis读取，可以高并发）
+                        semaphore = asyncio.Semaphore(100)  # 100个并发任务，信号计算IO密集
                         
                         async def process_with_semaphore(stock):
                             async with semaphore:

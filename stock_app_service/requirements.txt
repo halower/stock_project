@@ -12,9 +12,9 @@ matplotlib==3.8.2
 Pillow==10.1.0
 jinja2==3.1.2 
 lightweight-charts==2.1
-akshare==1.17.4
 python-dotenv==1.0.0
 tushare==1.2.89
+# akshare==1.17.4  # 已移除，改用tushare。如需新闻功能可选安装: pip install akshare
 httpx==0.25.0
 beautifulsoup4>=4.10.0
 sqlalchemy==1.4.48
