@@ -243,6 +243,33 @@ def init_stock_system(mode: str = "tasks_only"):
         if mode == "tasks_only":
             logger.info("用户选择【tasks_only】模式 - 跳过K线数据获取，其他计划任务正常执行")
         
+        # 初始化 ETF 清单（所有模式都需要，确保 stock_list 包含 ETF）
+        logger.info("📥 初始化 ETF 清单...")
+        try:
+            def init_etf_list_sync():
+                """同步方式初始化 ETF 清单"""
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    async def _init():
+                        from app.services.stock.stock_data_manager import StockDataManager
+                        sdm = StockDataManager()
+                        await sdm.initialize()
+                        success = await sdm.initialize_etf_list(clear_existing=False)
+                        await sdm.close()
+                        return success
+                    return loop.run_until_complete(_init())
+                finally:
+                    loop.close()
+            
+            etf_init_success = init_etf_list_sync()
+            if etf_init_success:
+                logger.info("✅ ETF 清单初始化成功")
+            else:
+                logger.warning("⚠️ ETF 清单初始化失败，信号计算可能不包含 ETF")
+        except Exception as e:
+            logger.error(f"ETF 清单初始化异常: {e}")
+        
         # 其他模式需要获取股票列表（优先使用缓存，网络请求作为备选）
         logger.info("📥 正在获取股票列表...")
         
@@ -632,6 +659,47 @@ def update_realtime_stock_data(force_update=False, is_closing_update=False, auto
         # 非交易时间，但允许手动触发
         logger.info("非交易时间，跳过自动实时数据更新（可以通过force_update=True强制执行）")
         return
+
+    # 确保 ETF 清单已初始化（首次运行或 stock_list 中没有 ETF 时）
+    try:
+        from app.core.sync_redis_client import get_sync_redis_client
+        sync_redis = get_sync_redis_client()
+        stock_list_data = sync_redis.hgetall("stock_list")
+        
+        # 检查是否有 ETF 数据
+        has_etf = False
+        if stock_list_data:
+            for key, value in stock_list_data.items():
+                if isinstance(value, bytes):
+                    value = value.decode('utf-8')
+                if 'ETF' in value:
+                    has_etf = True
+                    break
+        
+        if not has_etf:
+            logger.info("📥 检测到 stock_list 中没有 ETF 数据，开始初始化 ETF 清单...")
+            
+            def init_etf_sync():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    async def _init():
+                        from app.services.stock.stock_data_manager import StockDataManager
+                        sdm = StockDataManager()
+                        await sdm.initialize()
+                        success = await sdm.initialize_etf_list(clear_existing=False)
+                        await sdm.close()
+                        return success
+                    return loop.run_until_complete(_init())
+                finally:
+                    loop.close()
+            
+            if init_etf_sync():
+                logger.info("✅ ETF 清单初始化成功，信号计算将包含 ETF")
+            else:
+                logger.warning("⚠️ ETF 清单初始化失败，信号计算可能不包含 ETF")
+    except Exception as e:
+        logger.warning(f"检查/初始化 ETF 清单时出错: {e}")
 
     start_time = datetime.now()
     
@@ -1448,8 +1516,7 @@ def _update_etf_realtime_internal(force_update=False) -> int:
         更新的ETF数量
     """
     from app.services.realtime import get_etf_realtime_service_v2
-    import csv
-    import os
+    from app.etf.etf_config import get_etf_list
     
     try:
         # 检查交易时间（除非强制更新）
@@ -1457,23 +1524,19 @@ def _update_etf_realtime_internal(force_update=False) -> int:
             logger.debug("非交易时间，跳过ETF实时数据更新")
             return 0
         
-        # 1. 读取ETF列表
-        etf_list_path = os.path.join(os.getcwd(), 'app', 'etf', 'ETF列表.csv')
-        if not os.path.exists(etf_list_path):
-            raise Exception(f"ETF列表文件不存在: {etf_list_path}")
+        # 1. 从配置文件读取ETF列表（121个精选ETF）
+        etf_config_list = get_etf_list()
         
         etf_codes_list = []
-        with open(etf_list_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                etf_codes_list.append({
-                    'code': row['symbol'],
-                    'name': row['name'],
-                    'ts_code': row['ts_code'],
-                    'market': row.get('market', 'ETF')
-                })
+        for etf in etf_config_list:
+            etf_codes_list.append({
+                'code': etf['symbol'],
+                'name': etf['name'],
+                'ts_code': etf['ts_code'],
+                'market': etf.get('market', 'ETF')
+            })
         
-        logger.info(f"📋 读取ETF列表: {len(etf_codes_list)} 只")
+        logger.info(f"📋 从配置文件读取ETF列表: {len(etf_codes_list)} 只")
         
         # 存储ETF代码列表到Redis
         redis_cache.set_cache(ETF_KEYS['etf_codes'], etf_codes_list, ttl=86400)

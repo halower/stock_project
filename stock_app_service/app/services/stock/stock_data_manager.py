@@ -338,15 +338,15 @@ class StockDataManager:
         try:
             logger.info("开始初始化 ETF 清单...")
             
-            # 导入 ETF 管理器
-            from app.services.etf.etf_manager import etf_manager
-            
-            # 获取 ETF 基本信息（从 CSV，已过滤为可交易的 ETF）
-            etf_list = etf_manager.get_etf_list(enrich=False, use_csv=True)
+            # 直接从配置文件获取 ETF 列表（121个精选ETF）
+            from app.etf.etf_config import get_etf_list
+            etf_list = get_etf_list()
             
             if not etf_list:
                 logger.error("获取 ETF 基本信息失败")
                 return False
+            
+            logger.info(f"从配置文件获取到 {len(etf_list)} 个 ETF")
             
             # 清空现有的 ETF 数据
             if clear_existing:
@@ -827,12 +827,17 @@ class StockDataManager:
                             if isinstance(stock_dict, dict):
                                 result.append(stock_dict)
                             else:
-                                logger.warning(f"股票数据格式错误 {key}: {type(stock_dict)}")
+                                logger.warning(f"股票数据格式错误 {key}: {type(stock_dict)}, 数据: {str(stock_dict)[:200]}")
                         else:
-                            logger.warning(f"股票数据不是字符串 {key}: {type(data)}")
+                            logger.warning(f"股票数据不是字符串 {key}: {type(data)}, 数据: {str(data)[:200]}")
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"解析股票数据JSON失败 {key}: {e}, 原始数据: {str(data)[:200]}")
+                        continue
                     except Exception as e:
                         logger.warning(f"解析股票数据失败 {key}: {e}")
                         continue
+                
+                logger.info(f"从 stock_list 获取到 {len(result)} 条有效数据（总共 {len(stocks)} 条）")
                 return result
             
             # 兼容旧格式
