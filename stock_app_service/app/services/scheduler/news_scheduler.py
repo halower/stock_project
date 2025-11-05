@@ -14,7 +14,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.logging import logger
 from app.db.session import RedisCache
-from app.services.news_analysis_service import get_phoenix_finance_news
+from app.services.analysis.news_analysis_service import get_phoenix_finance_news
 
 # Redis缓存客户端
 redis_cache = RedisCache()

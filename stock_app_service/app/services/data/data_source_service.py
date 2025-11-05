@@ -8,7 +8,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.logging import logger
-from app.services.stock_crud import create_or_update_stock_history, get_stock_by_code, delete_stock_completely
+from app.services.stock.stock_crud import create_or_update_stock_history, get_stock_by_code, delete_stock_completely
 
 # 初始化tushare
 try:

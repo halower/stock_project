@@ -35,6 +35,7 @@ APP_VERSION = "1.0.0"
 # 静态文件和图表配置
 STATIC_DIR = os.path.join(os.getcwd(), "static")
 CHART_DIR = os.path.join(STATIC_DIR, "charts")
+CHART_MAX_FILES = int(os.getenv("CHART_MAX_FILES", "1000"))  # 图表文件最大数量
 
 # 缓存配置
 CACHE_TTL = 3600  # 标准缓存1小时
@@ -64,7 +65,7 @@ if STOCK_INIT_MODE in _old_mode_mapping:
 # 后台任务配置 - 控制后台任务对API服务的影响（使用asyncio，无需线程池）
 BACKGROUND_TASK_PRIORITY = os.environ.get("BACKGROUND_TASK_PRIORITY", "low").lower()  # low, normal, high
 
-# 外部API配置 - 单个Token（2000积分，每分钟500次请求，设置480次留余量）
+# 外部API配置 - 单个Token（实际每分钟250次请求，设置240次留余量）
 TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN", "76777e0e5682492c8d346030b5f6d7547b77dbab8ddab96d51ab8267")
 
 # AI分析配置
@@ -83,6 +84,9 @@ API_TOKEN_ENABLED = os.getenv("API_TOKEN_ENABLED", "false").lower() in ("true", 
 
 # 日志配置
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# 历史数据记录数量限制（用于数据库模式，Redis模式不需要）
+MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "1000"))
 
 # 实时行情配置（股票）
 REALTIME_DATA_PROVIDER = os.getenv("REALTIME_DATA_PROVIDER", "eastmoney")  # eastmoney, sina, auto

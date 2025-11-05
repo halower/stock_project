@@ -10,7 +10,7 @@ import pandas as pd
 
 from app.core.redis_client import get_redis_client
 from app.core.logging import logger
-from app.services.stock_data_manager import StockDataManager
+from app.services.stock.stock_data_manager import StockDataManager
 from app import indicators
 
 
@@ -226,6 +226,11 @@ class SignalManager:
         try:
             # 获取线程资源
             await self.acquire_thread()
+            
+            # 修复：确保stock是字典类型
+            if not isinstance(stock, dict):
+                logger.warning(f"    股票数据类型错误: {type(stock)}, 数据: {stock}")
+                return False, 0
             
             ts_code = stock.get('ts_code')
             if not ts_code:

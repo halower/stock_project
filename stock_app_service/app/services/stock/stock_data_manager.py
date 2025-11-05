@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 class TushareRateLimiter:
     """Tushare API频率限制器 - 纯异步IO模式"""
     
-    def __init__(self, max_calls_per_minute=480):
+    def __init__(self, max_calls_per_minute=240):
         self.call_times = []  # 记录调用时间
-        self.max_calls_per_minute = max_calls_per_minute  # Tushare限制（2000积分=500次/分钟，设置480留余量）
+        self.max_calls_per_minute = max_calls_per_minute  # Tushare限制（实际250次/分钟，设置240留余量）
         self.daily_limit_reached = False
         self.daily_limit_check_time = None
         self.lock = threading.Lock()
@@ -123,15 +123,15 @@ class StockDataManager:
     参数:
         batch_size: 常规批处理大小，默认30
         small_batch_size: 小批量处理大小，默认15
-        max_calls_per_minute: 每分钟最大API调用次数，默认480（2000积分，留20次余量）
+        max_calls_per_minute: 每分钟最大API调用次数，默认240（实际250次/分钟，留10次余量）
     
     架构: 纯异步IO模式，不使用多线程
     """
     
-    def __init__(self, batch_size=30, small_batch_size=15, max_calls_per_minute=480):
+    def __init__(self, batch_size=30, small_batch_size=15, max_calls_per_minute=240):
         self.redis_client = None
         
-        # 单Token配置（2000积分，每分钟500次请求，设置480次留余量）
+        # 单Token配置（实际250次/分钟，设置240次留余量）
         self.tushare_token = settings.TUSHARE_TOKEN
         
         # 初始化Tushare API
@@ -139,7 +139,7 @@ class StockDataManager:
             ts.set_token(self.tushare_token)
             self.pro = ts.pro_api()
             logger.info(f"初始化Tushare Token: {self.tushare_token[:20]}...")
-            logger.info(f"✅ Token已配置（2000积分，每分钟480次请求，纯异步IO模式）")
+            logger.info(f"✅ Token已配置（每分钟240次请求，纯异步IO模式）")
         else:
             self.pro = None
             logger.warning("未配置Tushare Token")
@@ -339,7 +339,7 @@ class StockDataManager:
             logger.info("开始初始化 ETF 清单...")
             
             # 导入 ETF 管理器
-            from app.services.etf_manager import etf_manager
+            from app.services.etf.etf_manager import etf_manager
             
             # 获取 ETF 基本信息（从 CSV，已过滤为可交易的 ETF）
             etf_list = etf_manager.get_etf_list(enrich=False, use_csv=True)
@@ -528,7 +528,7 @@ class StockDataManager:
             total_count = len(stock_list)
             logger.info(f"📊 共需要初始化 {total_count} 只股票的走势数据")
             logger.info(f"📈 每只股票获取180天K线数据（满足EMA169需求）")
-            logger.info(f"⚡ API配置: 单Token（2000积分）, 每分钟{self.rate_limiter.max_calls_per_minute}次调用")
+            logger.info(f"⚡ API配置: 单Token, 每分钟{self.rate_limiter.max_calls_per_minute}次调用")
             logger.info(f"🔄 处理模式: 单线程串行（简单可靠）")
             
             start_time = datetime.now()
@@ -815,19 +815,40 @@ class StockDataManager:
             # 优先使用新格式
             stocks = sync_redis.hgetall("stock_list")
             if stocks:
-                return [json.loads(data) for data in stocks.values()]
+                result = []
+                for key, data in stocks.items():
+                    try:
+                        # 确保data是字符串再解析
+                        if isinstance(data, bytes):
+                            data = data.decode('utf-8')
+                        if isinstance(data, str):
+                            stock_dict = json.loads(data)
+                            # 确保解析后是字典
+                            if isinstance(stock_dict, dict):
+                                result.append(stock_dict)
+                            else:
+                                logger.warning(f"股票数据格式错误 {key}: {type(stock_dict)}")
+                        else:
+                            logger.warning(f"股票数据不是字符串 {key}: {type(data)}")
+                    except Exception as e:
+                        logger.warning(f"解析股票数据失败 {key}: {e}")
+                        continue
+                return result
             
             # 兼容旧格式
             old_format_stocks = sync_redis.get("stocks:codes:all")
             if old_format_stocks:
-                # 同步Redis返回的是字符串，需要解析
+                # 同步Redis返回的是字符串或bytes，需要解析
+                if isinstance(old_format_stocks, bytes):
+                    old_format_stocks = old_format_stocks.decode('utf-8')
                 if isinstance(old_format_stocks, str):
                     stocks_data = json.loads(old_format_stocks)
                 else:
                     stocks_data = old_format_stocks
                     
                 if isinstance(stocks_data, list):
-                    return stocks_data
+                    # 确保列表中的每个元素都是字典
+                    return [item for item in stocks_data if isinstance(item, dict)]
                     
             return []
         except Exception as e:
@@ -936,7 +957,7 @@ class StockDataManager:
             
             # 检查3: 买入信号（需要依赖前面的数据）
             if result['stock_list_count'] > 0 and result['trend_data_count'] > 0:
-                from app.services.signal_manager import signal_manager
+                from app.services.signal.signal_manager import signal_manager
                 await signal_manager.initialize()
                 
                 try:

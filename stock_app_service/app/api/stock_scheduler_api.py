@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.core.logging import logger
 from app.api.dependencies import verify_token
-from app.services.stock_scheduler import (
+from app.services.scheduler.stock_scheduler import (
     get_stock_scheduler_status, 
     trigger_stock_task,
     STOCK_KEYS
@@ -292,7 +292,7 @@ async def refresh_stock_list_api():
     使用实时API获取最新的股票代码列表并更新缓存
     """
     try:
-        from app.services.stock_scheduler import refresh_stock_list
+        from app.services.scheduler.stock_scheduler import refresh_stock_list
         
         result = refresh_stock_list()
         

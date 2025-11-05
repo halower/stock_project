@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 
 from app.core.logging import logger
 from app.services.realtime import get_proxy_manager, get_etf_realtime_service_v2
-from app.services.stock_scheduler import trigger_stock_task
+from app.services.scheduler.stock_scheduler import trigger_stock_task
 
 router = APIRouter()
 

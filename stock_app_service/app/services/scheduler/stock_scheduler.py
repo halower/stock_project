@@ -20,10 +20,10 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.core.logging import logger
 from app.core.config import settings
 from app.db.session import RedisCache
-from app.services.stock_data_manager import StockDataManager
+from app.services.stock.stock_data_manager import StockDataManager
 # 移除全局线程池导入，scheduler不应该影响API服务
 # from app.core.thread_pool import global_thread_pool
-from app.services.signal_manager import signal_manager
+from app.services.signal.signal_manager import signal_manager
 from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
 import akshare as ak
 import pandas as pd
@@ -129,7 +129,7 @@ def _init_etf_only():
             try:
                 async def init_etf():
                     # 初始化 StockDataManager
-                    from app.services.stock_data_manager import StockDataManager
+                    from app.services.stock.stock_data_manager import StockDataManager
                     sdm = StockDataManager()
                     await sdm.initialize()
                     
@@ -141,7 +141,7 @@ def _init_etf_only():
                         return False
                     
                     # 2. 获取 ETF 列表（从 CSV，已过滤 LOF）
-                    from app.services.etf_manager import etf_manager
+                    from app.services.etf.etf_manager import etf_manager
                     etf_list = etf_manager.get_etf_list(enrich=False, use_csv=True)
                     
                     if not etf_list:
@@ -577,7 +577,7 @@ async def _calculate_signals_async(etf_only: bool = False, stock_only: bool = Fa
         stock_only: 是否仅计算股票信号（True=仅股票, False=全部或仅ETF）
         clear_existing: 是否清空现有信号（默认True，追加模式设为False）
     """
-    from app.services.signal_manager import SignalManager
+    from app.services.signal.signal_manager import SignalManager
     
     local_signal_manager = None
     try:
@@ -665,18 +665,23 @@ def update_realtime_stock_data(force_update=False, is_closing_update=False, auto
         }, ttl=1800)  # 30分钟过期
         
         # 新增：将实时数据合并到K线数据的最后一根K线
-        logger.info("开始将实时数据合并到K线数据...")
+        logger.info("开始将股票实时数据合并到K线数据...")
         updated_kline_count = _merge_realtime_to_kline_data(realtime_data, is_closing_update=is_closing_update)
-        logger.info(f" 已更新 {updated_kline_count} 只股票的K线数据")
+        logger.info(f"✅ 已更新 {updated_kline_count} 只股票的K线数据")
+        
+        # 同时更新ETF实时数据
+        logger.info("📊 开始更新ETF实时数据...")
+        etf_updated_count = _update_etf_realtime_internal(force_update=True)
+        logger.info(f"✅ 已更新 {etf_updated_count} 只ETF的K线数据")
         
         execution_time = (datetime.now() - start_time).total_seconds()
-        logger.info(f" 实时数据更新完成: {len(realtime_data)}只股票，K线更新: {updated_kline_count}只，耗时 {execution_time:.2f}秒")
+        logger.info(f"🎉 实时数据更新完成: 股票 {len(realtime_data)}只，ETF {etf_updated_count}只，K线更新: {updated_kline_count + etf_updated_count}只，耗时 {execution_time:.2f}秒")
         
-        add_stock_job_log('update_realtime', 'success', f'实时数据更新完成: {len(realtime_data)}只，K线更新: {updated_kline_count}只', len(realtime_data), execution_time)
+        add_stock_job_log('update_realtime', 'success', f'实时数据更新完成: 股票{len(realtime_data)}只+ETF{etf_updated_count}只，K线更新: {updated_kline_count + etf_updated_count}只', len(realtime_data) + etf_updated_count, execution_time)
         
-        # 根据参数决定是否触发信号重新计算
+        # 根据参数决定是否触发信号重新计算（股票+ETF一起计算）
         if auto_calculate_signals:
-            logger.info("实时数据更新完成，自动触发买入信号重新计算...")
+            logger.info("🔄 实时数据更新完成，自动触发买入信号重新计算（股票+ETF）...")
             _trigger_signal_recalculation_async()
         else:
             logger.info("实时数据更新完成，跳过信号计算（未启用auto_calculate_signals）")
@@ -895,7 +900,7 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                             'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
                     else:
-                        # 交易时间内的更新，只有当前价格高于最高价或低于最低价时才更新
+                        # 盘中更新：更新价格和成交量
                         current_high = max(float(last_kline.get('high', 0)), stock_data['high'])
                         current_low = min(float(last_kline.get('low', float('inf'))), stock_data['low']) if float(last_kline.get('low', float('inf'))) != float('inf') else stock_data['low']
                         
@@ -909,9 +914,10 @@ def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=F
                             'pre_close': stock_data['pre_close'],
                             'change': stock_data['change'],
                             'pct_chg': stock_data['change_percent'],
-                            'vol': final_volume,  # 使用统一的手单位
-                            'amount': stock_data['amount'] / 1000,  # 使用统一的千元单位
+                            'vol': final_volume,  # 更新成交量（使用累积的成交量）
+                            'amount': stock_data['amount'] / 1000 if stock_data['amount'] > 1000 else stock_data['amount'],  # 更新成交额
                             'actual_trade_date': today_str,
+                            'is_closing_data': False,  # 标记为盘中数据
                             'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
                     
@@ -1019,7 +1025,7 @@ def _trigger_signal_recalculation_async():
             try:
                 async def _calculate():
                     # 在新事件循环中创建新的signal_manager实例，避免事件循环冲突
-                    from app.services.signal_manager import SignalManager
+                    from app.services.signal.signal_manager import SignalManager
                     
                     local_signal_manager = None
                     try:
@@ -1070,6 +1076,59 @@ def _trigger_signal_recalculation_async():
         # 重置运行标志
         with _signal_calculation_lock:
             _signal_calculation_running = False
+
+
+def _trigger_etf_signal_calculation_async():
+    """异步触发ETF买入信号计算（非阻塞，追加模式）"""
+    def _run_etf_signal_calculation():
+        """在独立线程中运行ETF信号计算"""
+        try:
+            async def _calculate_etf():
+                from app.services.signal.signal_manager import SignalManager
+                local_signal_manager = None
+                try:
+                    local_signal_manager = SignalManager()
+                    await local_signal_manager.initialize()
+                    logger.info("开始计算ETF买入信号（追加模式）...")
+                    
+                    # 追加模式：不清空现有信号
+                    result = await local_signal_manager.calculate_buy_signals(
+                        force_recalculate=True,
+                        etf_only=True,
+                        clear_existing=False
+                    )
+                    
+                    if result.get('status') == 'success':
+                        total_signals = result.get('total_signals', 0)
+                        elapsed = result.get('elapsed_seconds', 0)
+                        logger.info(f"✅ ETF买入信号计算完成: 生成 {total_signals} 个信号，耗时 {elapsed:.1f}秒")
+                    else:
+                        logger.warning(f"❌ ETF买入信号计算失败: {result.get('message', '未知错误')}")
+                        
+                except Exception as e:
+                    logger.error(f"计算ETF买入信号失败: {e}")
+                    logger.error(f"详细错误: {traceback.format_exc()}")
+                finally:
+                    if local_signal_manager:
+                        try:
+                            await local_signal_manager.close()
+                        except Exception as e:
+                            logger.error(f"SignalManager关闭失败: {e}")
+            
+            # 在新线程中创建新的事件循环
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(_calculate_etf())
+            finally:
+                loop.close()
+            
+        except Exception as e:
+            logger.error(f"ETF信号计算线程执行失败: {e}")
+    
+    # 启动后台线程执行ETF信号计算
+    threading.Thread(target=_run_etf_signal_calculation, daemon=True).start()
+    logger.info("ETF信号计算任务已提交到后台线程")
 
 # ===================== 调度器管理 =====================
 
@@ -1133,33 +1192,20 @@ def start_stock_scheduler():
         # 删除原有的17:35最终信号计算任务，因为实时更新已延长到15:20
         # 在K线全量更新后会自动触发信号计算
         
-        # 4. ETF实时数据更新任务 - 交易时间内每30分钟执行（启动后开始，自动间隔）
-        # 使用非阻塞的后台线程执行
-        def non_blocking_etf_update():
-            """非阻塞的ETF实时数据更新"""
-            def run_etf_update():
-                update_etf_realtime_data(force_update=False)
-            threading.Thread(target=run_etf_update, daemon=True).start()
-            
-        scheduler.add_job(
-            func=non_blocking_etf_update,
-            trigger=IntervalTrigger(minutes=settings.ETF_UPDATE_INTERVAL),  # 默认30分钟
-            id='etf_realtime_update',
-            name='ETF实时数据更新（每30分钟）',
-            replace_existing=True
-        )
+        # 注意：ETF实时数据更新已集成到股票实时数据更新中（每20分钟）
+        # 不再需要独立的ETF更新定时任务
         
         # 启动调度器
         scheduler.start()
         
         logger.info("=" * 70)
-        logger.info(" 股票调度器启动成功")
+        logger.info("📊 股票调度器启动成功")
         logger.info("=" * 70)
         logger.info("定时任务配置:")
         logger.info("  • K线数据刷新: 每个交易日17:30 (自动触发信号计算)")
-        logger.info("  • 股票实时更新: 交易时间内每20分钟 (9:00, 9:20, 9:40 ... 15:00)")
-        logger.info(f"  • ETF实时更新: 每{settings.ETF_UPDATE_INTERVAL}分钟 (交易日内持续)")
-        logger.info("  • 优化说明: 股票20分钟、ETF30分钟更新，平衡时效性与性能")
+        logger.info("  • 实时数据更新: 交易时间内每20分钟 (9:00, 9:20, 9:40 ... 15:00)")
+        logger.info("    - 股票+ETF同步更新，统一管理")
+        logger.info("    - 自动触发信号计算（股票+ETF）")
         logger.info("")
         logger.info("已注册的定时任务:")
         jobs = scheduler.get_jobs()
@@ -1391,26 +1437,25 @@ def refresh_stock_list() -> Dict[str, Any]:
 
 # ==================== ETF实时更新相关函数 ====================
 
-def update_etf_realtime_data(force_update=False):
+def _update_etf_realtime_internal(force_update=False) -> int:
     """
-    更新ETF实时数据
+    内部函数：更新ETF实时数据（被股票实时更新调用）
     
     Args:
         force_update: 是否强制更新（忽略交易时间检查）
+        
+    Returns:
+        更新的ETF数量
     """
     from app.services.realtime import get_etf_realtime_service_v2
     import csv
     import os
     
-    start_time = datetime.now()
-    
     try:
         # 检查交易时间（除非强制更新）
         if not force_update and not is_trading_time():
-            logger.info("非交易时间，跳过ETF实时数据更新（可以通过force_update=True强制执行）")
-            return
-        
-        logger.info("🎯 开始更新ETF实时数据...")
+            logger.debug("非交易时间，跳过ETF实时数据更新")
+            return 0
         
         # 1. 读取ETF列表
         etf_list_path = os.path.join(os.getcwd(), 'app', 'etf', 'ETF列表.csv')
@@ -1485,17 +1530,46 @@ def update_etf_realtime_data(force_update=False):
         # 5. 更新K线数据（只更新监控的ETF）
         updated_kline_count = _merge_etf_realtime_to_kline(realtime_dict)
         
-        execution_time = (datetime.now() - start_time).total_seconds()
+        return updated_kline_count
         
-        logger.info(f"🎉 ETF实时数据更新完成: {len(realtime_dict)}只，K线更新: {updated_kline_count}只，耗时 {execution_time:.2f}秒")
+    except Exception as e:
+        logger.error(f'ETF实时数据更新失败: {str(e)}')
+        logger.error(traceback.format_exc())
+        return 0
+
+
+def update_etf_realtime_data(force_update=False):
+    """
+    更新ETF实时数据（独立任务，用于手动触发或定时任务）
+    注意：常规实时更新已经集成到股票实时更新中，此函数仅用于独立触发
+    
+    Args:
+        force_update: 是否强制更新（忽略交易时间检查）
+    """
+    start_time = datetime.now()
+    
+    try:
+        logger.info("🎯 开始独立更新ETF实时数据...")
+        
+        updated_count = _update_etf_realtime_internal(force_update=force_update)
+        
+        execution_time = (datetime.now() - start_time).total_seconds()
+        logger.info(f"🎉 ETF实时数据更新完成: {updated_count}只，耗时 {execution_time:.2f}秒")
         
         add_stock_job_log(
             'update_etf_realtime',
             'success',
-            f'ETF实时数据更新完成: {len(realtime_dict)}只，K线更新: {updated_kline_count}只',
-            len(realtime_dict),
+            f'ETF实时数据更新完成: {updated_count}只',
+            updated_count,
             execution_time
         )
+        
+        # 触发ETF信号计算（追加模式，不清空现有股票信号）
+        logger.info("🔄 触发ETF信号计算（追加模式）...")
+        try:
+            _trigger_etf_signal_calculation_async()
+        except Exception as e:
+            logger.warning(f"触发ETF信号计算失败: {e}")
         
     except Exception as e:
         execution_time = (datetime.now() - start_time).total_seconds()
@@ -1512,7 +1586,8 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
     
     修复说明：
     - 增强日期判断逻辑，支持多种日期格式
-    - 添加详细日志，诊断盘中更新问题
+    - 当没有K线数据时，创建新的K线数据而不是跳过
+    - 简化日志输出，只显示汇总信息
     
     Args:
         realtime_dict: 实时数据字典 {code: data}
@@ -1522,7 +1597,7 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
     """
     updated_count = 0
     appended_count = 0
-    skipped_no_kline = 0
+    created_count = 0  # 新创建K线数据的ETF数量
     
     try:
         logger.info(f"📊 开始合并ETF实时数据到K线，共 {len(realtime_dict)} 只ETF")
@@ -1532,9 +1607,6 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
         today_trade_date = datetime.now().strftime('%Y%m%d')  # 20251031
         
         logger.info(f"📅 当前日期: {today_str} (trade_date: {today_trade_date})")
-        
-        # 调试：显示前3个ETF的详细信息
-        debug_count = 0
         
         for code, etf_data in realtime_dict.items():
             try:
@@ -1548,8 +1620,25 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                 kline_key = ETF_KEYS['etf_kline'].format(ts_code)
                 kline_data = redis_cache.get_cache(kline_key)
                 
+                # 如果没有K线数据，创建新的K线数据列表
                 if not kline_data or not isinstance(kline_data, list) or len(kline_data) == 0:
-                    skipped_no_kline += 1
+                    # 创建新的K线数据
+                    new_kline = {
+                        'date': today_str,
+                        'trade_date': today_trade_date,
+                        'open': etf_data.get('open', etf_data.get('price', 0)),
+                        'close': etf_data.get('price', 0),
+                        'high': etf_data.get('high', etf_data.get('price', 0)),
+                        'low': etf_data.get('low', etf_data.get('price', 0)),
+                        'volume': etf_data.get('volume', 0),
+                        'amount': etf_data.get('amount', 0),
+                        'turnover_rate': etf_data.get('turnover_rate', 0),
+                        'change': etf_data.get('change', 0),
+                        'pct_chg': etf_data.get('change_percent', 0)
+                    }
+                    kline_data = [new_kline]
+                    redis_cache.set_cache(kline_key, kline_data, ttl=604800)
+                    created_count += 1
                     continue
                 
                 # 获取最后一条K线
@@ -1577,18 +1666,6 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                     else:
                         last_date = last_trade_date
                 
-                # 调试：显示前3个ETF的详细信息
-                if debug_count < 3:
-                    logger.info(f"  🔍 调试 [{debug_count+1}] {ts_code}:")
-                    logger.info(f"      - K线数据条数: {len(kline_data)}")
-                    logger.info(f"      - 最后K线date字段: {last_kline.get('date', 'N/A')}")
-                    logger.info(f"      - 最后K线trade_date字段: {last_kline.get('trade_date', 'N/A')}")
-                    logger.info(f"      - 解析后last_date: {last_date}")
-                    logger.info(f"      - 解析后last_trade_date: {last_trade_date}")
-                    logger.info(f"      - 实时价格: {etf_data.get('price', 'N/A')}")
-                    logger.info(f"      - 判断: last_date==today_str? {last_date == today_str}, last_trade_date==today_trade_date? {last_trade_date == today_trade_date}")
-                    debug_count += 1
-                
                 # 双重判断：如果最后一条K线的日期等于今天，则更新；否则新增
                 is_today = (last_date == today_str) or (last_trade_date == today_trade_date)
                 
@@ -1611,9 +1688,6 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                     # 保存更新后的K线数据（TTL设为7天）
                     redis_cache.set_cache(kline_key, kline_data, ttl=604800)
                     updated_count += 1
-                    
-                    if debug_count <= 3:
-                        logger.info(f"      ✅ 更新现有K线: close={etf_data.get('price')}")
                 else:
                     # 如果最后一条不是今天的，创建新的K线
                     new_kline = {
@@ -1638,19 +1712,12 @@ def _merge_etf_realtime_to_kline(realtime_dict: Dict[str, Dict]) -> int:
                     redis_cache.set_cache(kline_key, kline_data, ttl=604800)
                     appended_count += 1
                     
-                    if debug_count <= 3:
-                        logger.info(f"      ➕ 新增今日K线: {today_str}, close={etf_data.get('price')}")
-                    
             except Exception as e:
                 logger.warning(f"合并ETF {code} 实时数据失败: {e}")
                 continue
         
-        total_processed = updated_count + appended_count
-        logger.info(f"📊 ETF K线合并完成: 更新 {updated_count} 只，新增 {appended_count} 只，共处理 {total_processed} 只")
-        logger.info(f"📊 跳过（无K线数据）{skipped_no_kline} 只")
-        
-        if skipped_no_kline > 0:
-            logger.warning(f"⚠️  有 {skipped_no_kline} 只ETF没有K线数据，请先初始化历史数据")
+        total_processed = updated_count + appended_count + created_count
+        logger.info(f"📊 ETF K线合并完成: 更新 {updated_count} 只，新增 {appended_count} 只，创建 {created_count} 只，共处理 {total_processed} 只")
         
     except Exception as e:
         logger.error(f"合并ETF实时数据到K线失败: {e}")

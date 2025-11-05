@@ -9,8 +9,8 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
-from app.services.stock_data_manager import stock_data_manager, create_stock_data_manager
-from app.services.signal_manager import signal_manager
+from app.services.stock.stock_data_manager import stock_data_manager, create_stock_data_manager
+from app.services.signal.signal_manager import signal_manager
 from app.db.session import RedisCache
 
 logger = logging.getLogger(__name__)

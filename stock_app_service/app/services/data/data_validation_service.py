@@ -7,7 +7,7 @@ from datetime import datetime, date, timedelta
 import random
 
 from app.core.logging import logger
-from app.services.stock_crud import get_all_stocks, get_latest_history_date, get_history_count, get_latest_history_updated_at
+from app.services.stock.stock_crud import get_all_stocks, get_latest_history_date, get_history_count, get_latest_history_updated_at
 
 
 def check_stock_data_integrity_by_updated_at(db: Session, stock_code: str) -> Dict[str, Any]:

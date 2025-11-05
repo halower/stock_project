@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.dependencies import verify_token
 from app.core.logging import logger
-from app.services.signal_manager import signal_manager
-from app.services.stock_data_manager import StockDataManager
+from app.services.signal.signal_manager import signal_manager
+from app.services.stock.stock_data_manager import StockDataManager
 import json
 
 router = APIRouter()
@@ -176,7 +176,7 @@ async def calculate_buy_signals_manually():
             raise HTTPException(status_code=500, detail="SignalManager初始化失败")
         
         # 检查是否有足够的股票数据
-        from app.services.stock_data_manager import stock_data_manager
+        from app.services.stock.stock_data_manager import stock_data_manager
         await stock_data_manager.initialize()
         
         # 检查股票清单
@@ -250,7 +250,7 @@ async def restart_schedulers():
         
         # 重启新闻调度器
         try:
-            from app.services.news_scheduler import stop_news_scheduler, start_news_scheduler
+            from app.services.scheduler.news_scheduler import stop_news_scheduler, start_news_scheduler
             stop_news_scheduler()
             await asyncio.sleep(1)  # 等待1秒确保完全停止
             start_news_scheduler()
@@ -270,7 +270,7 @@ async def restart_schedulers():
         
         # 重启股票调度器
         try:
-            from app.services.stock_scheduler_v2 import stop_stock_scheduler, start_stock_scheduler
+            from app.services.scheduler.stock_scheduler import stop_stock_scheduler, start_stock_scheduler
             stop_stock_scheduler()
             await asyncio.sleep(1)  # 等待1秒确保完全停止
             start_stock_scheduler()

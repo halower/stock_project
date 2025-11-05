@@ -6,7 +6,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, Depends, Body, Query
 from pydantic import BaseModel
-from app.services.stock_ai_analysis_service import StockAIAnalysisService
+from app.services.analysis.stock_ai_analysis_service import StockAIAnalysisService
 from app.api.dependencies import verify_token
 
 logger = logging.getLogger(__name__)

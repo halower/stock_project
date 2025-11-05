@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.core.logging import logger
 from app.models.stock import StockInfo, StockHistory, StockSignal
-from app.services.stock_crud import get_all_stocks, get_stock_history
+from app.services.stock.stock_crud import get_all_stocks, get_stock_history
 from app.indicators.volume_wave_strategy import VolumeWaveStrategy
 from app.indicators.trend_continuation_strategy import TrendContinuationStrategy
 

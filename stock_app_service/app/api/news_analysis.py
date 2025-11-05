@@ -9,10 +9,10 @@ from pydantic import BaseModel, Field
 from app.core.logging import logger
 from app.core.config import AI_ENABLED
 from app.db.session import RedisCache
-from app.services.news_analysis_service import get_news_sentiment_analysis
+from app.services.analysis.news_analysis_service import get_news_sentiment_analysis
 from app.schemas.news_schema import NewsAnalysisResponse, NewsAnalysisData
 from app.api.dependencies import verify_token
-from app.services.news_scheduler import get_scheduler_status, trigger_immediate_crawl, NEWS_KEYS
+from app.services.scheduler.news_scheduler import get_scheduler_status, trigger_immediate_crawl, NEWS_KEYS
 
 # Redis缓存客户端
 redis_cache = RedisCache()

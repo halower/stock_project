@@ -307,31 +307,38 @@ class ETFManager:
         获取 ETF 列表（主入口）
         
         Args:
-            enrich: 是否从 Tushare 补充详细信息（已弃用，CSV 已包含完整信息）
-            use_csv: 是否优先使用 CSV 文件（推荐）
+            enrich: 是否从 Tushare 补充详细信息（已弃用）
+            use_csv: 是否使用配置文件（推荐，默认 True）
             
         Returns:
             ETF 列表，格式与股票数据完全一致
         """
-        etf_list = []
+        # 优先从配置文件加载（最可靠）
+        try:
+            from app.etf.etf_config import get_etf_list as get_config_etf_list
+            etf_list = get_config_etf_list()
+            if etf_list:
+                logger.info(f"📊 从配置文件加载 ETF 列表: {len(etf_list)} 个 ETF")
+                return etf_list
+        except Exception as e:
+            logger.warning(f"从配置文件加载 ETF 列表失败: {e}")
         
-        # 策略1：优先从 CSV 加载（推荐）
+        # 备用方案1：从 CSV 加载
         if use_csv:
             etf_list = self.load_etf_list_from_csv()
-            
-            # 如果 CSV 加载失败，尝试从 Tushare 获取
-            if not etf_list:
-                logger.warning("CSV 加载失败，尝试从 Tushare 获取 ETF 列表")
-                etf_list = self.load_etf_list_from_tushare(filter_lof=True)
-        else:
-            # 策略2：直接从 Tushare 获取
-            etf_list = self.load_etf_list_from_tushare(filter_lof=True)
+            if etf_list:
+                logger.info(f"📊 从 CSV 文件加载 ETF 列表: {len(etf_list)} 个 ETF")
+                return etf_list
+        
+        # 备用方案2：从 Tushare 获取（不推荐，会获取所有 ETF）
+        logger.warning("⚠️ 配置文件和 CSV 都加载失败，将从 Tushare 获取所有 ETF（不推荐）")
+        etf_list = self.load_etf_list_from_tushare(filter_lof=True)
         
         if not etf_list:
-            logger.error("无法获取 ETF 列表")
+            logger.error("❌ 无法获取 ETF 列表")
             return []
         
-        logger.info(f"📊 ETF 列表准备完成: {len(etf_list)} 个纯 ETF")
+        logger.info(f"📊 ETF 列表准备完成: {len(etf_list)} 个 ETF")
         return etf_list
     
     def validate_data_format(self, data: Dict[str, Any]) -> bool:

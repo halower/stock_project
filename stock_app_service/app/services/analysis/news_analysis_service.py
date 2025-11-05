@@ -348,7 +348,7 @@ def analyze_news_by_titles(news_list: List[Dict[str, Any]], use_cache: bool = Tr
     Returns:
         分析文本
     """
-    from app.services.llm_service import get_completion_with_custom_params
+    from app.services.analysis.llm_service import get_completion_with_custom_params
     from app.core.config import AI_MAX_TOKENS, AI_TEMPERATURE
     
     # 准备新闻标题数据

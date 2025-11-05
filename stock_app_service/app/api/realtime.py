@@ -13,7 +13,7 @@ import time
 
 from app.core.logging import logger
 from app.db.session import get_db, SessionLocal
-from app.services.stock_crud import get_all_stocks, create_or_update_stock_realtime, sanitize_float_value
+from app.services.stock.stock_crud import get_all_stocks, create_or_update_stock_realtime, sanitize_float_value
 
 # 简单的替代函数
 def set_background_task_status(status):

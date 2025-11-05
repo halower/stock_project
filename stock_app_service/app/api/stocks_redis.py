@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from app.core.redis_client import get_redis_client
 from app.api.dependencies import verify_token
 from app.core.logging import logger
-from app.services.redis_stock_service import get_stock_history
+from app.services.stock.redis_stock_service import get_stock_history
 
 router = APIRouter(tags=["股票数据"])
 
@@ -153,7 +153,7 @@ async def get_stock_history_data(
         logger.info(f"获取股票 {stock_code} 的历史数据")
         
         # 首先尝试从Redis缓存获取
-        from app.services.stock_scheduler import STOCK_KEYS
+        from app.services.scheduler.stock_scheduler import STOCK_KEYS
         
         # 构造ts_code
         if stock_code.startswith('6'):

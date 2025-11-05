@@ -12,6 +12,14 @@ from app.core.config import (
     AI_MAX_TOKENS, AI_TEMPERATURE
 )
 
+# 全局LLM服务实例（用于兼容性）
+def get_llm_service():
+    """获取LLM服务实例（兼容性函数）"""
+    return {
+        'get_completion': get_completion,
+        'get_chat_completion': get_chat_completion,
+    }
+
 def get_completion(
     prompt: str, 
     max_tokens: int = 1000, 

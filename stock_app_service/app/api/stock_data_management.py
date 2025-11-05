@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional
 import logging
 from datetime import datetime
 
-from app.services.stock_data_manager import stock_data_manager
+from app.services.stock.stock_data_manager import stock_data_manager
 # 导入任务将在需要时进行，避免循环导入问题
 
 logger = logging.getLogger(__name__)

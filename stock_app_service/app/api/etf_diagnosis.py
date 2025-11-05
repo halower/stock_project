@@ -10,8 +10,8 @@ import asyncio
 
 from app.core.logging import logger
 from app.db.session import RedisCache
-from app.services.stock_data_manager import StockDataManager
-from app.services.signal_manager import SignalManager
+from app.services.stock.stock_data_manager import StockDataManager
+from app.services.signal.signal_manager import SignalManager
 from app.api.dependencies import verify_token
 
 router = APIRouter(tags=["ETF诊断"])

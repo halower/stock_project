@@ -24,8 +24,7 @@ async def lifespan(app: FastAPI):
     
     # 在主事件循环中启动调度器
     try:
-        from app.services.news_scheduler import start_news_scheduler
-        from app.services.stock_scheduler import start_stock_scheduler
+        from app.services.scheduler import start_news_scheduler, start_stock_scheduler
         from app.tasks import scheduler
         
         start_news_scheduler()
@@ -66,7 +65,7 @@ async def lifespan(app: FastAPI):
                     logger.info(f"数据初始化模式: {STOCK_INIT_MODE}")
                     
                     def init_data():
-                        from app.services.stock_scheduler import init_stock_system
+                        from app.services.scheduler import init_stock_system
                         init_stock_system(STOCK_INIT_MODE)
                     
                     # 数据初始化也在独立线程中执行
@@ -91,8 +90,7 @@ async def lifespan(app: FastAPI):
     # 关闭时的清理
     logger.info("应用关闭中...")
     try:
-        from app.services.news_scheduler import stop_news_scheduler
-        from app.services.stock_scheduler import stop_stock_scheduler
+        from app.services.scheduler import stop_news_scheduler, stop_stock_scheduler
         from app.tasks import scheduler
         from app.core.redis_client import close_redis_client
         

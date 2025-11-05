@@ -12,7 +12,7 @@ from pathlib import Path
 
 from app.core.config import CHART_DIR, CHART_MAX_FILES
 from app.models.stock import StockHistory
-from app.services.stock_crud import get_stock_history, get_stock_by_code
+from app.services.stock.stock_crud import get_stock_history, get_stock_by_code
 # 使用策略工厂接口替代直接引入具体策略类
 from app.indicators import apply_strategy, get_strategy_by_code, VolumeWaveStrategy
 # 引入新的图表策略模块
