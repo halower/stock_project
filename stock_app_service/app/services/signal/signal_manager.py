@@ -236,9 +236,9 @@ class SignalManager:
             if not ts_code:
                 return False, 0
             
-            # 每次都重新获取Redis客户端，避免事件循环冲突
-            # 不使用实例变量，因为可能在不同事件循环中运行
-            redis_client = await get_redis_client()
+            # 使用同步Redis客户端，避免事件循环冲突
+            from app.core.sync_redis_client import get_sync_redis_client
+            redis_client = get_sync_redis_client()
             
             # 根据market字段判断是ETF还是股票，使用不同的Redis key
             market = stock.get('market', '')
@@ -247,7 +247,7 @@ class SignalManager:
             else:
                 kline_key = f"stock_trend:{ts_code}"
             
-            kline_data = await redis_client.get(kline_key)
+            kline_data = redis_client.get(kline_key)
             
             if not kline_data:
                 logger.debug(f"    {ts_code} 没有K线数据")
@@ -297,8 +297,8 @@ class SignalManager:
                     
                     # 只保留最后一根K线的买入信号
                     if signal_index == last_index:
-                        # 存储信号逻辑（使用当前获取的客户端）
-                        await self._store_signal(stock, signal, df, signal_index, strategy_code, strategy_info, redis_client)
+                        # 存储信号逻辑（使用同步Redis客户端）
+                        self._store_signal_sync(stock, signal, df, signal_index, strategy_code, strategy_info, redis_client)
                         signal_count += 1
             
             return True, signal_count
@@ -310,9 +310,9 @@ class SignalManager:
             # 释放线程资源
             self.release_thread()
     
-    async def _store_signal(self, stock: Dict, signal: Dict, df: pd.DataFrame, signal_index: int, 
+    def _store_signal_sync(self, stock: Dict, signal: Dict, df: pd.DataFrame, signal_index: int, 
                            strategy_code: str, strategy_info: Dict, redis_client) -> None:
-        """存储买入信号"""
+        """存储买入信号（同步版本，避免事件循环冲突）"""
         try:
             ts_code = stock.get('ts_code')
             confidence = 0.8  # 默认置信度
@@ -430,7 +430,7 @@ class SignalManager:
             }
             
             signal_key = f"{clean_code}:{strategy_code}"
-            await redis_client.hset(
+            redis_client.hset(
                 self.buy_signals_key,
                 signal_key,
                 json.dumps(signal_data)
