@@ -206,7 +206,7 @@ def init_stock_system(mode: str = "all"):
             - "all": 初始化所有数据（股票+ETF） + 新闻 + 信号计算 → 进入计划任务（默认）
             - "stock_only": 仅初始化股票 + 新闻 + 信号计算 → 进入计划任务
             - "etf_only": 仅初始化ETF + 新闻 + 信号计算 → 进入计划任务
-            - "tasks_only": 不初始化数据，但执行新闻 + 信号计算 → 进入计划任务
+            - "tasks_only": 不初始化数据，仅获取新闻 → 直接进入计划任务监听（不计算信号）
             - "signals_only": 不获取数据和新闻，仅计算信号（股票+ETF） → 进入计划任务
             - "none": 什么都不做，直接进入计划任务监听
     """
@@ -358,7 +358,7 @@ def init_stock_system(mode: str = "all"):
         elif mode == "all":
             logger.info(f"📋 【all】模式 - 初始化所有数据: 股票{stock_count}只 + ETF{etf_count}只")
         elif mode == "tasks_only":
-            logger.info(f"📋 【tasks_only】模式 - 不获取历史数据，仅执行新闻+信号计算")
+            logger.info(f"📋 【tasks_only】模式 - 不获取历史数据，仅获取新闻，直接进入计划任务监听")
             stock_codes = []  # tasks_only不需要获取K线
         
         # 步骤2: 清空历史数据（仅all/stock_only/etf_only模式）
@@ -402,19 +402,23 @@ def init_stock_system(mode: str = "all"):
                         # 新闻获取在其他地方自动触发，这里只记录
                         logger.info("✅ 新闻获取已在后台进行")
                         
-                        # 步骤5: 计算买入信号（所有非none模式）
-                        logger.info("")
-                        logger.info("📥 步骤5: 计算买入信号...")
-                        
-                        # 根据模式决定计算哪些信号
-                        if mode == "etf_only":
-                            await _calculate_signals_async(etf_only=True, stock_only=False, clear_existing=True)
-                        elif mode == "stock_only":
-                            await _calculate_signals_async(etf_only=False, stock_only=True, clear_existing=True)
-                        else:  # all 或 tasks_only
-                            await _calculate_signals_async(etf_only=False, stock_only=False, clear_existing=True)
-                        
-                        logger.info("✅ 买入信号计算完成")
+                        # 步骤5: 计算买入信号（tasks_only模式跳过）
+                        if mode != "tasks_only":
+                            logger.info("")
+                            logger.info("📥 步骤5: 计算买入信号...")
+                            
+                            # 根据模式决定计算哪些信号
+                            if mode == "etf_only":
+                                await _calculate_signals_async(etf_only=True, stock_only=False, clear_existing=True)
+                            elif mode == "stock_only":
+                                await _calculate_signals_async(etf_only=False, stock_only=True, clear_existing=True)
+                            else:  # all
+                                await _calculate_signals_async(etf_only=False, stock_only=False, clear_existing=True)
+                            
+                            logger.info("✅ 买入信号计算完成")
+                        else:
+                            logger.info("")
+                            logger.info("⏭️  步骤5: 跳过信号计算（tasks_only模式）")
                         
                         # 完成后输出总结
                         logger.info("")
@@ -427,7 +431,7 @@ def init_stock_system(mode: str = "all"):
                         elif mode == "etf_only":
                             logger.info(f"   - 已初始化: ETF{len(stock_codes)}只")
                         elif mode == "tasks_only":
-                            logger.info("   - 已执行: 新闻获取 + 信号计算")
+                            logger.info("   - 已执行: 新闻获取（跳过信号计算）")
                         logger.info("=" * 70)
                         
                     except Exception as e:
@@ -459,7 +463,7 @@ def init_stock_system(mode: str = "all"):
         elif mode == "etf_only":
             logger.info(f"   - 初始化范围: ETF{len(stock_codes)}只")
         elif mode == "tasks_only":
-            logger.info("   - 初始化范围: 仅新闻+信号计算")
+            logger.info("   - 初始化范围: 仅新闻获取（跳过信号计算）")
         logger.info(f"   - 耗时: {execution_time:.2f}秒")
         logger.info("=" * 70)
         
