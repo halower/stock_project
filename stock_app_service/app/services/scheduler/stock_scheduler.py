@@ -24,7 +24,7 @@ from app.services.stock.stock_data_manager import StockDataManager
 # 移除全局线程池导入，scheduler不应该影响API服务
 # from app.core.thread_pool import global_thread_pool
 from app.services.signal.signal_manager import signal_manager
-from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
+from app.services.scheduler.realtime_updater import update_realtime_data
 import pandas as pd
 import json
 
@@ -752,139 +752,33 @@ async def _calculate_signals_async(etf_only: bool = False, stock_only: bool = Fa
 # 在K线全量更新和实时更新时会自动触发买入信号计算
 
 def update_realtime_stock_data(force_update=False, is_closing_update=False, auto_calculate_signals=False):
-    """更新实时股票数据
+    """
+    更新实时股票数据（包装函数，调用独立的 realtime_updater 模块）
     
     Args:
         force_update: 是否强制更新，忽略交易时间检查
-        is_closing_update: 是否为收盘后更新，使用不同的数据源
+        is_closing_update: 是否为收盘后更新
         auto_calculate_signals: 是否自动计算买入信号
-    
-    时间策略：
-    - 交易时间内（9:30-15:00）：每15-20分钟更新一次实时数据
-    - 收盘后（15:00-15:30）：可以获取收盘数据
-    - 手动触发（force_update=True）：任何时间都可以执行
     """
     if not force_update and not is_trading_time():
-        # 非交易时间，但允许手动触发
         logger.info("非交易时间，跳过自动实时数据更新（可以通过force_update=True强制执行）")
         return
-
-    # 确保 ETF 清单已初始化（首次运行或 stock_list 中没有 ETF 时）
-    try:
-        from app.core.sync_redis_client import get_sync_redis_client
-        sync_redis = get_sync_redis_client()
-        stock_list_data = sync_redis.hgetall("stock_list")
-        
-        # 检查是否有 ETF 数据
-        has_etf = False
-        if stock_list_data:
-            for key, value in stock_list_data.items():
-                if isinstance(value, bytes):
-                    value = value.decode('utf-8')
-                if 'ETF' in value:
-                    has_etf = True
-                    break
-        
-        if not has_etf:
-            logger.info("📥 检测到 stock_list 中没有 ETF 数据，开始初始化 ETF 清单...")
-            
-            def init_etf_sync():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    async def _init():
-                        from app.services.stock.stock_data_manager import StockDataManager
-                        sdm = StockDataManager()
-                        await sdm.initialize()
-                        success = await sdm.initialize_etf_list(clear_existing=False)
-                        await sdm.close()
-                        return success
-                    return loop.run_until_complete(_init())
-                finally:
-                    loop.close()
-            
-            if init_etf_sync():
-                logger.info("✅ ETF 清单初始化成功，信号计算将包含 ETF")
-            else:
-                logger.warning("⚠️ ETF 清单初始化失败，信号计算可能不包含 ETF")
-    except Exception as e:
-        logger.warning(f"检查/初始化 ETF 清单时出错: {e}")
-
-    start_time = datetime.now()
     
-    try:
-        if is_closing_update:
-            logger.info(" 开始更新收盘股票数据（使用收盘价）...")
-        else:
-            logger.info(" 开始更新实时股票数据...")
-        
-        # 使用V2实时行情服务获取数据（支持代理）
-        proxy_manager = get_proxy_manager()
-        realtime_service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
-        result = realtime_service.get_all_stocks_realtime()
-        
-        if not result.get('success'):
-            raise Exception(f"获取实时数据失败: {result.get('error', '未知错误')}")
-        
-        realtime_data = result.get('data', [])
-        data_source = result.get('source', 'unknown')
-        
-        if not realtime_data:
-            raise Exception("获取的实时数据为空")
-        
-        # 存储到Redis
-        redis_cache.set_cache(STOCK_KEYS['realtime_data'], {
-            'data': realtime_data,
-            'count': len(realtime_data),
-            'update_time': datetime.now().isoformat(),
-            'data_source': data_source,  # 记录实际使用的数据源
-            'is_closing_data': is_closing_update
-        }, ttl=1800)  # 30分钟过期
-        
-        # 步骤1: 将股票实时数据合并到K线
-        logger.info("📊 步骤1/3: 更新股票实时数据到K线...")
-        stock_success, stock_failed = _merge_realtime_to_kline_data(realtime_data, is_closing_update=is_closing_update)
-        logger.info(f"   ✅ 股票更新完成: 成功 {stock_success} 只, 失败 {stock_failed} 只")
-        
-        # 步骤2: 立即更新ETF实时数据
-        logger.info("📊 步骤2/3: 更新ETF实时数据到K线...")
-        etf_success, etf_failed = _update_etf_realtime_internal(force_update=True)
-        logger.info(f"   ✅ ETF更新完成: 成功 {etf_success} 只, 失败 {etf_failed} 只")
-        
-        # 步骤3: 根据配置决定是否触发信号计算
-        # 读取配置：默认关闭自动触发
-        from app.core.config import REALTIME_AUTO_CALCULATE_SIGNALS
-        should_calculate = REALTIME_AUTO_CALCULATE_SIGNALS if not auto_calculate_signals else auto_calculate_signals
-        
-        if should_calculate:
-            logger.info("📊 步骤3/3: 触发买入信号计算（股票+ETF）...")
-            _trigger_signal_recalculation_async()
-            signal_status = "✅ 信号计算已触发"
-        else:
-            logger.info("📊 步骤3/3: 跳过信号计算（配置: REALTIME_AUTO_CALCULATE_SIGNALS=false）")
-            signal_status = "⏭️ 信号计算已跳过"
-        
-        total_success = stock_success + etf_success
-        total_failed = stock_failed + etf_failed
-        execution_time = (datetime.now() - start_time).total_seconds()
-        
-        logger.info("=" * 70)
-        logger.info("🎉 实时数据更新完成")
-        logger.info(f"   📈 股票: 成功 {stock_success} 只, 失败 {stock_failed} 只")
-        logger.info(f"   📊 ETF:  成功 {etf_success} 只, 失败 {etf_failed} 只")
-        logger.info(f"   📋 总计: 成功 {total_success} 只, 失败 {total_failed} 只")
-        logger.info(f"   🔔 信号: {signal_status}")
-        logger.info(f"   ⏱️  耗时: {execution_time:.2f}秒")
-        logger.info("=" * 70)
-        
-        summary_msg = f'股票{stock_success}/{stock_success+stock_failed}只, ETF{etf_success}/{etf_success+etf_failed}只'
-        add_stock_job_log('update_realtime', 'success', summary_msg, total_success, execution_time)
-        
-    except Exception as e:
-        execution_time = (datetime.now() - start_time).total_seconds()
-        error_msg = f'实时数据更新失败: {str(e)}'
-        logger.error(f" {error_msg}")
-        add_stock_job_log('update_realtime', 'failed', error_msg, 0, execution_time)
+    # 调用独立的更新模块
+    result = update_realtime_data(
+        force_update=force_update,
+        is_closing_update=is_closing_update,
+        auto_calculate_signals=auto_calculate_signals
+    )
+    
+    # 记录日志
+    if result.get('success'):
+        summary_msg = f"股票{result['stock_success']}/{result['stock_success']+result['stock_failed']}只, ETF{result['etf_success']}/{result['etf_success']+result['etf_failed']}只"
+        add_stock_job_log('update_realtime', 'success', summary_msg, result['total_success'], result['execution_time'])
+    else:
+        add_stock_job_log('update_realtime', 'failed', result.get('error', '未知错误'), 0, result['execution_time'])
+
+# 以下函数已移至 realtime_updater.py 独立模块
 
 def _merge_realtime_to_kline_data(realtime_data: List[Dict], is_closing_update=False) -> Tuple[int, int]:
     """将实时数据合并到K线数据的最后一根K线
@@ -1628,12 +1522,13 @@ def refresh_stock_list() -> Dict[str, Any]:
 
 # ==================== ETF实时更新相关函数 ====================
 
-def _update_etf_realtime_internal(force_update=False) -> Tuple[int, int]:
+def _update_etf_realtime_internal(force_update=False, is_closing_update=False) -> Tuple[int, int]:
     """
     内部函数：更新ETF实时数据（被股票实时更新调用）
     
     Args:
         force_update: 是否强制更新（忽略交易时间检查）
+        is_closing_update: 是否为收盘后更新
         
     Returns:
         Tuple[成功数量, 失败数量]
@@ -1726,7 +1621,18 @@ def update_etf_realtime_data(force_update=False):
     try:
         logger.info("🎯 开始独立更新ETF实时数据...")
         
-        etf_success, etf_failed = _update_etf_realtime_internal(force_update=force_update)
+        # 使用 realtime_updater 模块的函数
+        from app.services.scheduler.realtime_updater import get_etf_realtime_data, merge_etf_realtime_to_kline
+        
+        # 获取ETF实时数据
+        etf_realtime_dict, etf_source = get_etf_realtime_data(force_update=force_update)
+        
+        if not etf_realtime_dict:
+            logger.warning("⚠️  获取ETF实时数据为空")
+            etf_success, etf_failed = 0, 0
+        else:
+            # 合并到K线
+            etf_success, etf_failed = merge_etf_realtime_to_kline(etf_realtime_dict, is_closing_update=False)
         
         execution_time = (datetime.now() - start_time).total_seconds()
         logger.info(f"🎉 ETF实时数据更新完成: 成功 {etf_success} 只, 失败 {etf_failed} 只, 耗时 {execution_time:.2f}秒")
