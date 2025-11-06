@@ -109,7 +109,7 @@ def get_completion_with_custom_params(
                 endpoint,
                 headers=headers,
                 json=payload,
-                timeout=60  # 优化超时时间为60秒，避免长时间阻塞
+                timeout=300  # 超时时间为5分钟（300秒），适应大批量新闻分析
             )
             
             # 检查响应状态码
@@ -216,7 +216,7 @@ def get_chat_completion(
             endpoint,
             headers=headers,
             json=payload,
-            timeout=60  # 优化超时时间为60秒
+            timeout=300  # 超时时间为5分钟（300秒），适应大批量新闻分析
         )
         
         # 检查响应状态码
