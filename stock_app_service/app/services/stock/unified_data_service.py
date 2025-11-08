@@ -18,11 +18,22 @@ from app.db.session import RedisCache
 
 
 class TushareRateLimiter:
-    """Tushare API频率限制器（简化版）"""
+    """
+    Tushare API频率限制器（滑动窗口算法）
     
-    def __init__(self, max_calls_per_minute=240):
+    Tushare限制：500次/分钟
+    设置：450次/分钟（留50次余量，避免触发限制）
+    
+    工作原理：
+    1. 维护一个60秒的滑动窗口
+    2. 记录每次API调用的时间戳
+    3. 自动清理60秒前的旧记录
+    4. 如果窗口内调用次数 >= 450次，等待最早的调用过期
+    """
+    
+    def __init__(self, max_calls_per_minute=450):
         self.call_times = []
-        self.max_calls_per_minute = max_calls_per_minute
+        self.max_calls_per_minute = max_calls_per_minute  # Tushare实际500次/分，设置450留余量
         self.lock = threading.Lock()
     
     def _record_call(self):
@@ -30,40 +41,59 @@ class TushareRateLimiter:
         with self.lock:
             current_time = time.time()
             self.call_times.append(current_time)
-            # 清理过期记录
+            # 清理过期记录（60秒前的）
             cutoff_time = current_time - 60
             self.call_times = [t for t in self.call_times if t > cutoff_time]
     
     def wait_if_needed(self):
-        """如果需要，等待频率限制解除"""
+        """
+        如果需要，等待频率限制解除（滑动窗口）
+        
+        不是等待60秒，而是等待最早的调用过期（滑出窗口）
+        """
         with self.lock:
             current_time = time.time()
             cutoff_time = current_time - 60
+            # 清理60秒前的旧记录
             self.call_times = [t for t in self.call_times if t > cutoff_time]
             
+            # 如果窗口内调用次数达到限制
             if len(self.call_times) >= self.max_calls_per_minute:
-                # 计算需要等待的时间
+                # 计算需要等待的时间：等待最早的调用滑出60秒窗口
                 oldest_call = min(self.call_times)
-                wait_seconds = max(1.0, 60 - (current_time - oldest_call) + 1.0)
-                logger.warning(f"触发Tushare频率限制（{len(self.call_times)}/{self.max_calls_per_minute}），等待 {wait_seconds:.1f} 秒...")
+                elapsed = current_time - oldest_call  # 最早调用已经过去的时间
+                wait_seconds = max(1.0, 60 - elapsed + 0.5)  # 等待它滑出窗口，加0.5秒余量
+                
+                logger.warning(
+                    f"触发Tushare频率限制（{len(self.call_times)}/{self.max_calls_per_minute}次/分钟），"
+                    f"等待 {wait_seconds:.1f} 秒（滑动窗口）..."
+                )
                 time.sleep(wait_seconds)
                 
-                # 清理过期记录
+                # 等待后清理过期记录
                 current_time = time.time()
                 cutoff_time = current_time - 60
+                old_count = len(self.call_times)
                 self.call_times = [t for t in self.call_times if t > cutoff_time]
-                logger.info("频率限制解除，继续数据获取...")
+                new_count = len(self.call_times)
+                
+                logger.info(f"频率限制解除，窗口内调用: {old_count} → {new_count}，继续数据获取...")
 
 
 # 全局频率限制器实例（确保所有服务共享同一个限制器）
 _global_rate_limiter = None
 
 def get_rate_limiter():
-    """获取全局频率限制器"""
+    """
+    获取全局频率限制器
+    
+    Tushare限制：500次/分钟
+    设置：450次/分钟（留50次余量）
+    """
     global _global_rate_limiter
     if _global_rate_limiter is None:
-        _global_rate_limiter = TushareRateLimiter(max_calls_per_minute=240)
-        logger.info("初始化全局Tushare频率限制器: 240次/分钟")
+        _global_rate_limiter = TushareRateLimiter(max_calls_per_minute=450)
+        logger.info("初始化全局Tushare频率限制器: 450次/分钟（Tushare实际500次/分钟，留50次余量）")
     return _global_rate_limiter
 
 
