@@ -208,14 +208,12 @@ class StartupTasks:
     @staticmethod
     async def task_crawl_news():
         """任务：爬取新闻"""
-        logger.info(">>> 执行任务: 爬取财经新闻")
         start_time = datetime.now()
         
         try:
             result = await stock_atomic_service.crawl_news(days=1)
             
             elapsed = (datetime.now() - start_time).total_seconds()
-            logger.info(f">>> 任务完成: 爬取新闻完成，共 {result.get('news_count', 0)} 条，耗时 {elapsed:.2f}秒")
             
             add_job_log(
                 'crawl_news',
@@ -346,7 +344,6 @@ class RuntimeTasks:
     @staticmethod
     def job_crawl_news():
         """定时任务：爬取新闻"""
-        logger.info("========== 开始爬取新闻 ==========")
         start_time = datetime.now()
         
         try:
@@ -359,7 +356,6 @@ class RuntimeTasks:
                 )
                 
                 elapsed = (datetime.now() - start_time).total_seconds()
-                logger.info(f"========== 新闻爬取完成，耗时 {elapsed:.2f}秒 ==========")
                 
                 add_job_log(
                     'crawl_news',

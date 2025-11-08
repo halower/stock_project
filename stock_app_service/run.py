@@ -70,11 +70,9 @@ def start_fastapi_server(port=8001, trigger_news=False):
     try:
         import uvicorn
         
-        # 获取CPU核心数，用于设置工作进程数
-        import multiprocessing
-        workers_count = min(multiprocessing.cpu_count() + 1, 8)  # 工作进程数，最多8个
-        
-        print(f"启动 {workers_count} 个工作进程以支持并发请求...")
+        # 使用单进程模式，避免多进程导致的调度器重复初始化和日志重复
+        # 注意：单进程模式足够处理大部分请求，如需高并发可使用 Gunicorn + Uvicorn workers
+        print(f"启动单进程模式（避免调度器重复初始化）...")
         
         uvicorn.run(
             "app.main:app",
@@ -83,7 +81,7 @@ def start_fastapi_server(port=8001, trigger_news=False):
             reload=False,
             log_level="info",
             access_log=True,
-            workers=workers_count  # 使用多个工作进程
+            workers=1  # 单进程模式，避免调度器重复
         )
     except Exception as e:
         print(f"启动FastAPI服务失败: {str(e)}")

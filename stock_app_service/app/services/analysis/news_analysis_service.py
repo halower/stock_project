@@ -183,13 +183,17 @@ def get_phoenix_finance_news(days: int = 1, skip_content: bool = False, force_cr
         
         # 获取每篇新闻的详情内容，仅当skip_content为False时进行
         if not skip_content:
-            logger.info(f"开始获取 {len(news_list)} 条新闻的详情内容")
+            # 只在 DEBUG 模式下输出详细日志
+            import logging
+            is_debug = logger.level <= logging.DEBUG
+            if is_debug:
+                logger.debug(f"开始获取 {len(news_list)} 条新闻的详情内容")
             content_count = 0
             
             for i, news in enumerate(news_list):
                 try:
-                    # 防止请求过快
-                    time.sleep(random.uniform(0.2, 0.3))  # 减少延迟时间
+                    # 优化：减少延迟时间，提升速度（0.05-0.1秒足够避免被封）
+                    time.sleep(random.uniform(0.05, 0.1))
                     
                     # 尝试使用禁用代理的方式请求
                     try:
@@ -264,14 +268,20 @@ def get_phoenix_finance_news(days: int = 1, skip_content: bool = False, force_cr
                         news['content'] = summary
                         content_count += 1
                         
-                        # 每处理5条新闻记录一次日志
-                        if content_count % 5 == 0:
-                            logger.info(f"已获取 {content_count}/{len(news_list)} 条新闻的详情内容")
+                        # 优化：只在 DEBUG 模式下输出进度日志，避免日志刷屏
+                        if is_debug and content_count % 10 == 0:
+                            logger.debug(f"已获取 {content_count}/{len(news_list)} 条新闻的详情内容")
                         
                 except Exception as e:
-                    logger.warning(f"获取新闻详情失败: {news['url']}, {str(e)}")
+                    if is_debug:
+                        logger.debug(f"获取新闻详情失败: {news['url']}, {str(e)}")
+            
+            # 完成后输出一次总结日志
+            if content_count > 0:
+                logger.info(f"✓ 成功获取 {content_count}/{len(news_list)} 条新闻详情")
         else:
-            logger.info("跳过获取新闻详情内容")
+            if is_debug:
+                logger.debug("跳过获取新闻详情内容")
             # 对于跳过内容的情况，设置空内容
             for news in news_list:
                 news['content'] = ''

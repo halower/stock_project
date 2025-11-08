@@ -136,10 +136,14 @@ class StockDataManager:
         
         # 初始化Tushare API
         if self.tushare_token:
-            ts.set_token(self.tushare_token)
-            self.pro = ts.pro_api()
-            logger.info(f"初始化Tushare Token: {self.tushare_token[:20]}...")
-            logger.info(f"✅ Token已配置（每分钟240次请求，纯异步IO模式）")
+            try:
+                ts.set_token(self.tushare_token)
+                self.pro = ts.pro_api(self.tushare_token)  # 直接传入token，避免读取文件
+                logger.info(f"初始化Tushare Token: {self.tushare_token[:20]}...")
+                logger.info(f"✅ Token已配置（每分钟240次请求，纯异步IO模式）")
+            except Exception as e:
+                logger.error(f"初始化Tushare API失败: {e}")
+                self.pro = None
         else:
             self.pro = None
             logger.warning("未配置Tushare Token")

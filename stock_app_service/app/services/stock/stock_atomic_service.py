@@ -100,7 +100,7 @@ class StockAtomicService:
             logger.info(f"  - 无效代码配置:")
             logger.info(f"    · 北交所废弃代码: {invalid_summary['bj_codes']} 只")
             logger.info(f"    · 退市股票代码: {invalid_summary['delist_codes']} 只")
-            logger.info(f"    · 其他无效代码: {invalid_summary['other_codes']} 只")
+            logger.info(f"    · 暂停上市代码: {invalid_summary['suspend_codes']} 只")
             logger.info(f"    · 总计: {invalid_summary['total']} 只")
             
             valid_stock_list = filter_valid_stocks(stock_list)
@@ -528,7 +528,6 @@ class StockAtomicService:
         Returns:
             爬取结果统计
         """
-        logger.info(f"开始爬取财经新闻，天数={days}天")
         start_time = datetime.now()
         
         try:
@@ -568,7 +567,7 @@ class StockAtomicService:
             self.redis_cache.set_cache('news:latest', cache_data, ttl=7200)  # 2小时
             
             elapsed = (datetime.now() - start_time).total_seconds()
-            logger.info(f"新闻爬取完成，共 {len(formatted_news)} 条，耗时 {elapsed:.2f}秒")
+            logger.info(f"✓ 新闻爬取完成: {len(formatted_news)}条，耗时 {elapsed:.1f}秒")
             
             return {
                 'success': True,

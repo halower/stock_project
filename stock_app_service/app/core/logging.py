@@ -19,6 +19,13 @@ def setup_logging(level: Optional[int] = None) -> logging.Logger:
     """
     if level is None:
         level = logging.INFO
+    
+    # 获取应用日志记录器
+    logger = logging.getLogger("stock_app")
+    
+    # 如果已经配置过，直接返回（避免多进程重复配置）
+    if logger.handlers:
+        return logger
         
     # 确保日志目录存在
     log_dir = "logs"
@@ -30,13 +37,9 @@ def setup_logging(level: Optional[int] = None) -> logging.Logger:
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # 清理根logger的现有handlers
-    root_logger = logging.getLogger()
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
-    
-    # 设置根logger级别
-    root_logger.setLevel(level)
+    # 设置logger级别（不设置根logger，避免影响其他库）
+    logger.setLevel(level)
+    logger.propagate = False  # 不传播到根logger，避免重复日志
     
     # 1. 控制台输出（保留）
     console_handler = logging.StreamHandler()
@@ -75,16 +78,13 @@ def setup_logging(level: Optional[int] = None) -> logging.Logger:
     system_handler.setFormatter(formatter)
     system_handler.addFilter(SystemLogFilter())
     
-    # 添加所有handlers到根logger
-    root_logger.addHandler(console_handler)
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(error_handler)
-    root_logger.addHandler(system_handler)
+    # 添加所有handlers到应用logger（不是根logger）
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    logger.addHandler(error_handler)
+    logger.addHandler(system_handler)
     
-    # 获取应用日志记录器
-    logger = logging.getLogger("stock_app")
-    
-    # 记录日志系统启动信息
+    # 记录日志系统启动信息（只记录一次）
     logger.info("日志系统启动 - 自动轮转和清理已启用")
     logger.info(f"📁 日志目录: {os.path.abspath(log_dir)}")
     logger.info("轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转")
