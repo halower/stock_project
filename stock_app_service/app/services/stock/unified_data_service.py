@@ -6,6 +6,8 @@
 
 import asyncio
 import json
+import time
+import threading
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import pandas as pd
@@ -15,6 +17,56 @@ from app.core.config import settings
 from app.db.session import RedisCache
 
 
+class TushareRateLimiter:
+    """Tushare API频率限制器（简化版）"""
+    
+    def __init__(self, max_calls_per_minute=240):
+        self.call_times = []
+        self.max_calls_per_minute = max_calls_per_minute
+        self.lock = threading.Lock()
+    
+    def _record_call(self):
+        """记录API调用"""
+        with self.lock:
+            current_time = time.time()
+            self.call_times.append(current_time)
+            # 清理过期记录
+            cutoff_time = current_time - 60
+            self.call_times = [t for t in self.call_times if t > cutoff_time]
+    
+    def wait_if_needed(self):
+        """如果需要，等待频率限制解除"""
+        with self.lock:
+            current_time = time.time()
+            cutoff_time = current_time - 60
+            self.call_times = [t for t in self.call_times if t > cutoff_time]
+            
+            if len(self.call_times) >= self.max_calls_per_minute:
+                # 计算需要等待的时间
+                oldest_call = min(self.call_times)
+                wait_seconds = max(1.0, 60 - (current_time - oldest_call) + 1.0)
+                logger.warning(f"触发Tushare频率限制（{len(self.call_times)}/{self.max_calls_per_minute}），等待 {wait_seconds:.1f} 秒...")
+                time.sleep(wait_seconds)
+                
+                # 清理过期记录
+                current_time = time.time()
+                cutoff_time = current_time - 60
+                self.call_times = [t for t in self.call_times if t > cutoff_time]
+                logger.info("频率限制解除，继续数据获取...")
+
+
+# 全局频率限制器实例（确保所有服务共享同一个限制器）
+_global_rate_limiter = None
+
+def get_rate_limiter():
+    """获取全局频率限制器"""
+    global _global_rate_limiter
+    if _global_rate_limiter is None:
+        _global_rate_limiter = TushareRateLimiter(max_calls_per_minute=240)
+        logger.info("初始化全局Tushare频率限制器: 240次/分钟")
+    return _global_rate_limiter
+
+
 class UnifiedDataService:
     """统一数据服务类 - 处理股票和ETF"""
     
@@ -22,6 +74,8 @@ class UnifiedDataService:
         self.redis_cache = RedisCache()
         # 统一的Redis键规则（股票和ETF使用相同格式）
         self.kline_key_template = 'stock_trend:{}'  # ts_code
+        # 使用全局共享的频率限制器
+        self.rate_limiter = get_rate_limiter()
     
     # ==================== 1. 统一的历史数据获取方法 ====================
     
@@ -29,7 +83,8 @@ class UnifiedDataService:
         self,
         ts_code: str,
         days: int = 180,
-        is_etf: bool = False
+        is_etf: bool = False,
+        retry_on_limit: bool = True
     ) -> List[Dict[str, Any]]:
         """
         统一的历史数据获取方法（股票+ETF）
@@ -38,6 +93,7 @@ class UnifiedDataService:
             ts_code: 股票/ETF代码，如 000001.SZ 或 510050.SH
             days: 获取天数
             is_etf: 是否为ETF（用于选择数据源）
+            retry_on_limit: 触发频率限制时是否自动重试
             
         Returns:
             K线数据列表
@@ -48,9 +104,15 @@ class UnifiedDataService:
             ts.set_token(settings.TUSHARE_TOKEN)
             pro = ts.pro_api()
             
+            # 等待频率限制（如果需要）
+            self.rate_limiter.wait_if_needed()
+            
             # 计算日期范围（扩大2倍以确保获取足够的交易日数据）
             end_date = datetime.now().strftime('%Y%m%d')
             start_date = (datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d')
+            
+            # 记录API调用
+            self.rate_limiter._record_call()
             
             # 获取日线数据（股票和ETF使用相同的接口）
             df = pro.daily(
@@ -90,7 +152,16 @@ class UnifiedDataService:
             return kline_data
             
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"获取 {'ETF' if is_etf else '股票'} {ts_code} 历史数据失败: {e}")
+            
+            # 检查是否是频率限制错误
+            if retry_on_limit and ("每分钟最多访问" in error_msg or "500次" in error_msg):
+                logger.warning(f"{ts_code} 触发频率限制，等待后重试...")
+                # 强制等待并重试
+                time.sleep(5)  # 等待5秒
+                return self.fetch_historical_data(ts_code, days, is_etf, retry_on_limit=False)
+            
             return []
     
     async def async_fetch_historical_data(
@@ -483,4 +554,9 @@ class UnifiedDataService:
 
 # 全局单例
 unified_data_service = UnifiedDataService()
+
+
+
+# 导出频率限制器，供其他模块使用
+__all__ = ['UnifiedDataService', 'unified_data_service', 'get_rate_limiter', 'TushareRateLimiter']
 
