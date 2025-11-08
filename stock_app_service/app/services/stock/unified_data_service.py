@@ -151,7 +151,7 @@ class UnifiedDataService:
     def fetch_etf_realtime_data(self) -> Optional[pd.DataFrame]:
         """
         获取所有ETF的实时数据
-        优先使用同花顺接口，失败后尝试新浪接口（保留所有接口以提高稳定性）
+        使用新浪接口（通过akshare封装）
         
         Returns:
             包含所有ETF实时数据的DataFrame
@@ -161,37 +161,25 @@ class UnifiedDataService:
             
             logger.info("开始获取ETF实时数据...")
             
-            # 接口1：同花顺接口（默认）
+            # 使用新浪ETF实时数据接口
             try:
-                logger.info("尝试同花顺接口...")
-                df = ak.fund_etf_spot_sina()
-                
-                if df is not None and not df.empty:
-                    # 添加获取时间和数据来源
-                    df['update_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    df['data_source'] = 'ths'  # 同花顺
-                    
-                    logger.info(f"同花顺接口成功获取 {len(df)} 只ETF的实时数据")
-                    return df
-            except Exception as e:
-                logger.warning(f"同花顺接口获取ETF实时数据失败: {e}，尝试新浪接口...")
-            
-            # 接口2：新浪接口（备用）
-            try:
-                logger.info("尝试新浪接口...")
+                logger.info("使用新浪接口获取ETF数据...")
                 df = ak.fund_etf_category_sina(symbol="ETF基金")
                 
                 if df is not None and not df.empty:
                     # 添加获取时间和数据来源
                     df['update_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    df['data_source'] = 'sina'  # 新浪
+                    df['data_source'] = 'sina'
                     
-                    logger.info(f"新浪接口成功获取 {len(df)} 只ETF的实时数据")
+                    logger.info(f"成功获取 {len(df)} 只ETF的实时数据")
                     return df
-            except Exception as e2:
-                logger.error(f"新浪接口也失败: {e2}")
+                else:
+                    logger.warning("新浪接口返回空数据")
+                    return None
+            except Exception as e:
+                logger.error(f"新浪接口获取ETF实时数据失败: {e}")
             
-            logger.warning("所有ETF实时数据接口都失败")
+            logger.warning("获取ETF实时数据失败")
             return None
                 
         except Exception as e:
