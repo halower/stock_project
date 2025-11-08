@@ -313,7 +313,8 @@ class SignalManager:
             ts_code = stock.get('ts_code')
             confidence = 0.8  # 默认置信度
             
-            logger.info(f"    发现最新买入信号: {ts_code} - 价格: {signal.get('price', 0)} (最后一根K线)")
+            # 不输出每条信号日志，由批次汇总统计
+            # logger.info(f"    发现最新买入信号: {ts_code} - 价格: {signal.get('price', 0)} (最后一根K线)")
             
             # 去掉ts_code的后缀，只保留纯数字代码
             clean_code = ts_code.split('.')[0] if '.' in ts_code else ts_code
@@ -647,8 +648,13 @@ class SignalManager:
                             elif isinstance(result, Exception):
                                 logger.warning(f"    处理股票 {stock.get('ts_code', 'unknown')} 异常: {str(result)}")
                         
-                        # 显示批次进度
-                        logger.info(f"  第 {current_batch} 批完成: 成功 {batch_success} 只，信号 {batch_signals} 个")
+                        # 显示批次进度（包含累计统计）
+                        logger.info(
+                            f"  第 {current_batch}/{total_batches} 批完成: "
+                            f"成功 {batch_success}/{len(batch)}, "
+                            f"信号 {batch_signals} 个, "
+                            f"累计信号 {total_signals}"
+                        )
                         
                         # 短暂休息，避免内存压力
                         await asyncio.sleep(0.1)  # 减少休息时间，加快处理速度
