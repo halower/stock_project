@@ -239,13 +239,36 @@ class StockAtomicService:
                 max_concurrent=max_concurrent
             )
             
+            # 4. 失败补偿：对失败的股票重试一次
+            if result['failed_count'] > 0 and result.get('failed_stocks'):
+                logger.warning(f"检测到 {result['failed_count']} 只股票获取失败，开始补偿重试...")
+                compensation_result = await self._compensate_failed_stocks(
+                    result['failed_stocks'],
+                    days=days,
+                    max_concurrent=max_concurrent
+                )
+                
+                # 更新统计
+                result['success_count'] += compensation_result['success_count']
+                result['failed_count'] = compensation_result['failed_count']
+                result['compensation_attempted'] = compensation_result['total_count']
+                result['compensation_success'] = compensation_result['success_count']
+                
+                logger.info(
+                    f"补偿完成: 重试 {compensation_result['total_count']} 只, "
+                    f"成功 {compensation_result['success_count']} 只, "
+                    f"最终失败 {compensation_result['failed_count']} 只"
+                )
+            
             elapsed = (datetime.now() - start_time).total_seconds()
             result['elapsed_seconds'] = round(elapsed, 2)
             result['elapsed_minutes'] = round(elapsed / 60, 2)
             
             logger.info(
-                f"全量更新完成: 成功={result['success_count']}, "
+                f"全量更新完成: 总计={result['total_count']}, "
+                f"成功={result['success_count']}, "
                 f"失败={result['failed_count']}, "
+                f"成功率={result['success_rate']:.2f}%, "
                 f"耗时={result['elapsed_minutes']:.2f}分钟"
             )
             
@@ -287,6 +310,7 @@ class StockAtomicService:
         total_count = len(stock_list)
         success_count = 0
         failed_count = 0
+        failed_stocks = []  # 记录失败的股票
         
         # 分批处理
         for i in range(0, total_count, batch_size):
@@ -305,14 +329,24 @@ class StockAtomicService:
             
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
-            # 统计结果
-            for result in results:
+            # 统计结果并记录失败的股票
+            batch_success = 0
+            batch_failed = 0
+            for idx, result in enumerate(results):
                 if isinstance(result, Exception):
                     failed_count += 1
+                    batch_failed += 1
+                    failed_stocks.append(batch[idx])
                 elif result:
                     success_count += 1
+                    batch_success += 1
                 else:
                     failed_count += 1
+                    batch_failed += 1
+                    failed_stocks.append(batch[idx])
+            
+            # 输出批次汇总日志
+            logger.info(f"第 {batch_num} 批完成: 成功 {batch_success}/{len(batch)}, 失败 {batch_failed}/{len(batch)}, 累计成功 {success_count}/{total_count}")
             
             # 避免频繁请求
             await asyncio.sleep(0.5)
@@ -321,6 +355,7 @@ class StockAtomicService:
             'total_count': total_count,
             'success_count': success_count,
             'failed_count': failed_count,
+            'failed_stocks': failed_stocks,  # 返回失败的股票列表
             'success_rate': round(success_count / total_count * 100, 2) if total_count > 0 else 0
         }
     
@@ -362,12 +397,65 @@ class StockAtomicService:
                     self.redis_cache.set_cache(key, cache_data, ttl=86400 * 30)  # 30天
                     return True
                 else:
-                    logger.warning(f"股票 {ts_code} 获取K线数据为空")
+                    # 不输出每条失败日志，由批次汇总统计
                     return False
                     
             except Exception as e:
-                logger.error(f"获取股票 {ts_code} K线数据失败: {e}")
+                # 不输出每条失败日志，由批次汇总统计
                 return False
+    
+    async def _compensate_failed_stocks(
+        self,
+        failed_stocks: List[Dict[str, Any]],
+        days: int = 180,
+        max_concurrent: int = 5
+    ) -> Dict[str, Any]:
+        """
+        补偿失败的股票数据获取
+        
+        Args:
+            failed_stocks: 失败的股票列表
+            days: 获取天数
+            max_concurrent: 最大并发数（补偿时使用较小的并发数）
+            
+        Returns:
+            补偿结果统计
+        """
+        total_count = len(failed_stocks)
+        success_count = 0
+        failed_count = 0
+        
+        logger.info(f"开始补偿 {total_count} 只失败股票...")
+        
+        # 等待5秒，让API限制恢复
+        await asyncio.sleep(5)
+        
+        # 并发重试
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            self._fetch_single_stock_kline(stock, days, semaphore)
+            for stock in failed_stocks
+        ]
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 统计结果
+        for idx, result in enumerate(results):
+            if isinstance(result, Exception):
+                failed_count += 1
+            elif result:
+                success_count += 1
+            else:
+                failed_count += 1
+                # 记录最终失败的股票代码
+                ts_code = failed_stocks[idx].get('ts_code', 'unknown')
+                logger.warning(f"补偿失败: {ts_code}")
+        
+        return {
+            'total_count': total_count,
+            'success_count': success_count,
+            'failed_count': failed_count
+        }
     
     def _sync_fetch_kline(self, ts_code: str, days: int) -> List[Dict[str, Any]]:
         """同步获取K线数据（在线程池中执行）"""

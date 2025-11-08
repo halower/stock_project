@@ -423,7 +423,7 @@ class StockAIAnalysisService:
                     }
                 ],
                 'stream': False,
-                'max_tokens': 2048,
+                'max_tokens': 4000,  # 设置为4000，低于4096的限制
                 'temperature': 0.7,
             }
             

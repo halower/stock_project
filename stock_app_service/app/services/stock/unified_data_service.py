@@ -177,7 +177,8 @@ class UnifiedDataService:
                 }
                 kline_data.append(kline_item)
             
-            logger.info(f"成功获取 {'ETF' if is_etf else '股票'} {ts_code} 历史数据 {len(kline_data)} 条")
+            # 不输出每条成功日志，由批次汇总统计
+            # logger.info(f"成功获取 {'ETF' if is_etf else '股票'} {ts_code} 历史数据 {len(kline_data)} 条")
             
             return kline_data
             
