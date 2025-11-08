@@ -175,9 +175,8 @@ class StockAtomicService:
         try:
             import tushare as ts
             
-            # 初始化Tushare
-            ts.set_token(settings.TUSHARE_TOKEN)
-            pro = ts.pro_api()
+            # 初始化Tushare（直接传入token，避免读取文件）
+            pro = ts.pro_api(settings.TUSHARE_TOKEN)
             
             # 获取股票列表
             df = pro.stock_basic(

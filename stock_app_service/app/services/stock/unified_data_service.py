@@ -131,8 +131,8 @@ class UnifiedDataService:
         try:
             import tushare as ts
             
-            ts.set_token(settings.TUSHARE_TOKEN)
-            pro = ts.pro_api()
+            # 直接传入token，避免读取文件导致 "No columns to parse from file" 错误
+            pro = ts.pro_api(settings.TUSHARE_TOKEN)
             
             # 等待频率限制（如果需要）
             self.rate_limiter.wait_if_needed()
