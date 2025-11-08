@@ -144,12 +144,19 @@ class UnifiedDataService:
             # 记录API调用
             self.rate_limiter._record_call()
             
-            # 获取日线数据（股票和ETF使用相同的接口）
-            df = pro.daily(
-                ts_code=ts_code,
-                start_date=start_date,
-                end_date=end_date
-            )
+            # 获取日线数据（ETF使用fund_daily，股票使用daily）
+            if is_etf:
+                df = pro.fund_daily(
+                    ts_code=ts_code,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+            else:
+                df = pro.daily(
+                    ts_code=ts_code,
+                    start_date=start_date,
+                    end_date=end_date
+                )
             
             if df is None or df.empty:
                 logger.warning(f"{'ETF' if is_etf else '股票'} {ts_code} 历史数据为空")
