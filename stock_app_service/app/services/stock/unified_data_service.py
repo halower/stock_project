@@ -48,9 +48,9 @@ class UnifiedDataService:
             ts.set_token(settings.TUSHARE_TOKEN)
             pro = ts.pro_api()
             
-            # 计算日期范围
+            # 计算日期范围（扩大2倍以确保获取足够的交易日数据）
             end_date = datetime.now().strftime('%Y%m%d')
-            start_date = (datetime.now() - timedelta(days=days)).strftime('%Y%m%d')
+            start_date = (datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d')
             
             # 获取日线数据（股票和ETF使用相同的接口）
             df = pro.daily(
@@ -62,6 +62,9 @@ class UnifiedDataService:
             if df is None or df.empty:
                 logger.warning(f"{'ETF' if is_etf else '股票'} {ts_code} 历史数据为空")
                 return []
+            
+            # 按日期排序并取最近的指定天数
+            df = df.sort_values('trade_date').tail(days)
             
             # 转换为字典列表，并确保字段格式统一
             kline_data = []
