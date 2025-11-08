@@ -36,7 +36,7 @@
 
 | 接口路径 | 方法 | 说明 | 文件位置 |
 |---------|------|------|---------|
-| `/api/strategies` | GET | 获取所有可用策略 | strategy.py |
+
 
 ### 6. 市场类型接口
 
@@ -51,8 +51,7 @@
 |---------|------|------|---------|
 | `/api/news/scheduler/status` | GET | 获取新闻调度器状态 | news_analysis.py |
 | `/api/news/scheduler/trigger` | POST | 立即触发新闻爬取 | news_analysis.py |
-| `/api/news/analysis/status` | GET | 获取财经新闻消息面分析状态 | news_analysis.py |
-| `/api/public/stock_news` | GET | 获取个股新闻资讯数据 | public.py |
+| `/api/news/analysis/status` | GET | 获取财经新闻消息面分析状态 | 
 
 ### 8. 股票AI分析接口
 

@@ -68,75 +68,7 @@ async def get_stocks_list() -> Dict[str, Any]:
         logger.error(f"获取股票清单失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"获取股票清单失败: {str(e)}")
 
-@router.get("/api/stocks/search", summary="股票搜索", dependencies=[Depends(verify_token)])
-async def search_stocks(
-    keyword: str = Query(..., description="搜索关键词(代码或名称)"),
-    limit: int = Query(50, description="返回数量限制，最大200")
-) -> Dict[str, Any]:
-    """
-    根据关键词搜索股票
-    
-    Args:
-        keyword: 搜索关键词
-        limit: 返回数量限制
-        
-    Returns:
-        匹配的股票列表
-    """
-    redis_client = None
-    try:
-        # 限制返回数量
-        limit = min(limit, 200)
-        
-        # 获取Redis连接 - 每次请求都重新获取，确保在正确的事件循环中
-        redis_client = await get_redis_client()
-        
-        # 获取股票代码数据
-        stock_codes_key = "stocks:codes:all"
-        stock_codes_data = await redis_client.get(stock_codes_key)
-        
-        if not stock_codes_data:
-            raise HTTPException(status_code=500, detail="股票代码数据不可用")
-        
-        stock_codes = json.loads(stock_codes_data)
-        
-        # 搜索匹配的股票
-        keyword_lower = keyword.lower()
-        matched_stocks = []
-        
-        for stock in stock_codes:
-            ts_code = stock.get('ts_code', '').lower()
-            name = stock.get('name', '').lower()
-        
-            # 精确匹配优先
-            if ts_code == keyword_lower:
-                matched_stocks.insert(0, stock)
-            elif name == keyword_lower:
-                matched_stocks.insert(0, stock)
-            # 前缀匹配次优先
-            elif ts_code.startswith(keyword_lower):
-                matched_stocks.append(stock)
-            # 包含匹配最后
-            elif keyword_lower in ts_code or keyword_lower in name:
-                matched_stocks.append(stock)
-            
-            # 达到限制数量就停止
-            if len(matched_stocks) >= limit:
-                break
-        
-        return {
-            "keyword": keyword,
-            "total": len(matched_stocks),
-            "limit": limit,
-            "stocks": matched_stocks[:limit],
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"搜索股票失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"搜索股票失败: {str(e)}")
+
 
 @router.get("/api/stocks/history", 
            response_model=StockHistoryResponse, 
