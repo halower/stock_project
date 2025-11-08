@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal
 
 from app.core.logging import logger
-from app.services.realtime import get_realtime_service, get_proxy_manager
+from app.services.realtime import get_realtime_service
 from app.services.stock.stock_atomic_service import stock_atomic_service
 from app.api.dependencies import verify_token
 
@@ -44,8 +44,7 @@ async def test_fetch_realtime(
         logger.info(f"测试获取实时数据: provider={provider}, include_etf={include_etf}")
         
         # 获取实时服务
-        proxy_manager = get_proxy_manager()
-        service = get_realtime_service(proxy_manager)
+        service = get_realtime_service()
         
         # 获取实时数据
         result = service.get_all_stocks_realtime(provider=provider, include_etf=include_etf)
@@ -133,8 +132,7 @@ async def test_fetch_etf_realtime(
         logger.info(f"测试获取ETF实时数据: provider={provider}")
         
         # 获取实时服务
-        proxy_manager = get_proxy_manager()
-        service = get_realtime_service(proxy_manager)
+        service = get_realtime_service()
         
         # 获取ETF实时数据
         result = service.get_all_etfs_realtime(provider=provider)
@@ -176,8 +174,7 @@ async def test_service_info():
         服务配置和统计信息
     """
     try:
-        proxy_manager = get_proxy_manager()
-        service = get_realtime_service(proxy_manager)
+        service = get_realtime_service()
         
         return {
             'success': True,
@@ -186,11 +183,7 @@ async def test_service_info():
                 'auto_switch': service.config.auto_switch,
                 'retry_times': service.config.retry_times,
                 'timeout': service.config.timeout,
-                'enable_proxy': service.config.enable_proxy
-            },
-            'proxy': {
-                'enabled': proxy_manager.enable_proxy,
-                'stats': proxy_manager.get_stats()
+                'mode': 'direct'  # 直连模式
             },
             'service_stats': service.get_stats()
         }

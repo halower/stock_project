@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 实时行情服务（优化版）
-统一的股票和ETF实时数据获取
+统一的股票和ETF实时数据获取，直连模式
 """
 
 from .config import DataProvider, RealtimeConfig, realtime_config, update_config, get_config
-from .proxy_manager import ProxyManager, ProxyInfo, get_proxy_manager
 from .realtime_service import (
     RealtimeService,
     get_realtime_service,
@@ -20,11 +19,6 @@ __all__ = [
     'realtime_config',
     'update_config',
     'get_config',
-    
-    # 代理管理
-    'ProxyManager',
-    'ProxyInfo',
-    'get_proxy_manager',
     
     # 实时服务
     'RealtimeService',

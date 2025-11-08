@@ -13,7 +13,7 @@ import time
 
 from app.core.logging import logger
 from app.db.session import RedisCache
-from app.services.realtime import get_proxy_manager, get_stock_realtime_service_v2
+from app.services.realtime import get_stock_realtime_service_v2
 
 # Redis缓存客户端
 redis_cache = RedisCache()
@@ -167,8 +167,7 @@ def get_realtime_stock_data(stock_code: str, provider: str = None) -> Dict[str, 
         logger.info(f"开始获取股票 {stock_code} 的实时数据")
         
         # 使用V2实时行情服务
-        proxy_manager = get_proxy_manager()
-        service = get_stock_realtime_service_v2(proxy_manager=proxy_manager)
+        service = get_stock_realtime_service_v2()
         # V2版本只有get_all_stocks_realtime，需要从结果中筛选
         all_result = service.get_all_stocks_realtime(provider=provider)
         

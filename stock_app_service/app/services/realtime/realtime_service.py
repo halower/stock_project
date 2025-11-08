@@ -11,7 +11,6 @@ from typing import Dict, Any, Optional
 
 from app.core.logging import logger
 from .config import DataProvider, realtime_config
-from .proxy_manager import ProxyManager, ProxyInfo
 
 
 class RealtimeService:
@@ -26,14 +25,8 @@ class RealtimeService:
     5. 多线程并发获取
     """
     
-    def __init__(self, proxy_manager: Optional[ProxyManager] = None):
-        """
-        初始化服务
-        
-        Args:
-            proxy_manager: 代理管理器
-        """
-        self.proxy_manager = proxy_manager
+    def __init__(self):
+        """初始化服务"""
         self.config = realtime_config
         
         # 统计信息
@@ -47,8 +40,7 @@ class RealtimeService:
             'last_update': None
         }
         
-        logger.info(f"实时行情服务初始化: provider={self.config.default_provider.value}, "
-                   f"proxy={'enabled' if proxy_manager and proxy_manager.enable_proxy else 'disabled'}")
+        logger.info(f"实时行情服务初始化: provider={self.config.default_provider.value}, 直连模式")
     
     def get_all_stocks_realtime(
         self, 
@@ -102,20 +94,17 @@ class RealtimeService:
             # 重试机制
             for retry in range(self.config.retry_times):
                 try:
-                    # 获取代理
-                    proxy_info = self._get_proxy()
-                    
                     # 调用对应数据源
                     if prov == DataProvider.EASTMONEY:
-                        result = self._fetch_eastmoney_spot(proxy_info, include_etf)
+                        result = self._fetch_eastmoney_spot(include_etf)
                     elif prov == DataProvider.SINA:
-                        result = self._fetch_sina_spot(proxy_info, include_etf)
+                        result = self._fetch_sina_spot(include_etf)
                     else:
                         continue
                     
                     # 成功
                     if result.get('success'):
-                        self._mark_success(prov, proxy_info)
+                        self._mark_success(prov)
                         logger.info(f"成功从{prov.value}获取{result.get('count', 0)}只{'股票+ETF' if include_etf else '股票'}实时数据")
                         return result
                     
@@ -124,7 +113,6 @@ class RealtimeService:
                 except Exception as e:
                     last_error = str(e)
                     logger.warning(f"获取实时数据失败 (provider={prov.value}, retry={retry+1}): {e}")
-                    self._mark_failed(prov, proxy_info)
                     
                     # 重试前等待
                     if retry < self.config.retry_times - 1:
@@ -173,51 +161,24 @@ class RealtimeService:
         
         return result
     
-    def _get_proxy(self) -> Optional[ProxyInfo]:
-        """获取代理"""
-        if self.proxy_manager and self.proxy_manager.enable_proxy:
-            proxy_info = self.proxy_manager.get_proxy()
-            if proxy_info:
-                self.stats['proxy_used'] += 1
-                return proxy_info
-            else:
-                self.stats['direct_used'] += 1
-                logger.warning("无可用代理，使用直连")
-        else:
-            self.stats['direct_used'] += 1
-        
-        return None
-    
-    def _mark_success(self, provider: DataProvider, proxy_info: Optional[ProxyInfo]):
+    def _mark_success(self, provider: DataProvider):
         """标记成功"""
         self.stats[provider.value]['success'] += 1
         self.stats[provider.value]['last_success_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.stats['last_provider'] = provider.value
         self.stats['last_update'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        if proxy_info and self.proxy_manager:
-            self.proxy_manager.mark_proxy_success(proxy_info)
-    
-    def _mark_failed(self, provider: DataProvider, proxy_info: Optional[ProxyInfo]):
-        """标记失败"""
-        if proxy_info and self.proxy_manager:
-            self.proxy_manager.mark_proxy_failed(proxy_info)
+        self.stats['direct_used'] += 1
     
     def _is_etf(self, code: str) -> bool:
         """判断是否为ETF（代码以5或1开头）"""
         return code.startswith(('5', '1'))
     
-    def _fetch_eastmoney_spot(
-        self, 
-        proxy_info: Optional[ProxyInfo] = None,
-        include_etf: bool = False
-    ) -> Dict[str, Any]:
+    def _fetch_eastmoney_spot(self, include_etf: bool = False) -> Dict[str, Any]:
         """从东方财富获取实时行情（使用akshare）"""
         try:
             import akshare as ak
             
-            proxies = proxy_info.proxy_dict if proxy_info else None
-            logger.info(f"使用{'代理' if proxies else '直连'}获取东方财富数据（akshare）")
+            logger.info("使用akshare获取东方财富数据（直连）")
             
             # 使用akshare获取东方财富数据
             df = ak.stock_zh_a_spot_em()
@@ -262,17 +223,12 @@ class RealtimeService:
             logger.error(f"东方财富数据获取失败: {e}")
             return {'success': False, 'error': str(e), 'data': [], 'count': 0, 'source': 'eastmoney'}
     
-    def _fetch_sina_spot(
-        self, 
-        proxy_info: Optional[ProxyInfo] = None,
-        include_etf: bool = False
-    ) -> Dict[str, Any]:
+    def _fetch_sina_spot(self, include_etf: bool = False) -> Dict[str, Any]:
         """从新浪获取实时行情（使用akshare）"""
         try:
             import akshare as ak
             
-            proxies = proxy_info.proxy_dict if proxy_info else None
-            logger.info(f"使用{'代理' if proxies else '直连'}获取新浪数据（akshare）")
+            logger.info("使用akshare获取新浪数据（直连）")
             
             # 使用akshare获取新浪数据
             df = ak.stock_zh_a_spot()
@@ -339,23 +295,23 @@ class RealtimeService:
 _realtime_service = None
 
 
-def get_realtime_service(proxy_manager: Optional[ProxyManager] = None) -> RealtimeService:
+def get_realtime_service() -> RealtimeService:
     """获取实时行情服务实例"""
     global _realtime_service
     
     if _realtime_service is None:
-        _realtime_service = RealtimeService(proxy_manager)
+        _realtime_service = RealtimeService()
     
     return _realtime_service
 
 
 # 兼容旧接口
-def get_stock_realtime_service_v2(proxy_manager: Optional[ProxyManager] = None) -> RealtimeService:
+def get_stock_realtime_service_v2() -> RealtimeService:
     """获取股票实时服务（兼容旧接口）"""
-    return get_realtime_service(proxy_manager)
+    return get_realtime_service()
 
 
-def get_etf_realtime_service_v2(proxy_manager: Optional[ProxyManager] = None) -> RealtimeService:
+def get_etf_realtime_service_v2() -> RealtimeService:
     """获取ETF实时服务（兼容旧接口）"""
-    return get_realtime_service(proxy_manager)
+    return get_realtime_service()
 
