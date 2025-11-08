@@ -18,22 +18,15 @@ services:
       # 禁用Python缓存
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONPYCACHEPREFIX=/dev/null
-      # 可选值: none, only_tasks, clear_all
-      - STOCK_INIT_MODE=clear_all
+      # 股票调度器启动配置（新版本）
+      # SCHEDULER_INIT_MODE: skip（跳过初始化，快速启动）或 full_init（全量初始化）
+      # SCHEDULER_CALCULATE_SIGNALS: true（启动时计算信号）或 false（不计算）
+      - SCHEDULER_INIT_MODE=skip
+      - SCHEDULER_CALCULATE_SIGNALS=false
       # 后台任务配置 - 设置为低优先级避免影响API服务
       - BACKGROUND_TASK_PRIORITY=low
-      # 实时行情配置（股票）
-      - REALTIME_DATA_PROVIDER=auto
-      - REALTIME_UPDATE_INTERVAL=20
-      - REALTIME_AUTO_SWITCH=true
-      # ETF实时行情配置
-      - ETF_REALTIME_PROVIDER=eastmoney
-      - ETF_UPDATE_INTERVAL=30
-      - ETF_AUTO_SWITCH=true
-      - ETF_RETRY_TIMES=2
-      - ETF_MIN_REQUEST_INTERVAL=3.0
-      # 实时更新自动触发信号计算（默认关闭，避免频繁计算影响性能）
-      - REALTIME_AUTO_CALCULATE_SIGNALS=false
+      # Tushare Token配置
+      - TUSHARE_TOKEN=76777e0e5682492c8d346030b5f6d7547b77dbab8ddab96d51ab8267
       # 动态代理IP配置（可选）
       - PROXY_ENABLED=true
       - PROXY_API_URL=https://share.proxy.qg.net/get

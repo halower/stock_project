@@ -22,17 +22,13 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理 - 调度器在主循环启动"""
     logger.info("Stock Intelligence API 服务启动...")
     
-    # 在主事件循环中启动调度器
+    # 在主事件循环中启动任务调度器（图表清理等）
     try:
-        from app.services.scheduler import start_news_scheduler, start_stock_scheduler
         from app.tasks import scheduler
-        
-        start_news_scheduler()
-        start_stock_scheduler() 
         scheduler.start()
-        logger.info("调度器启动成功")
+        logger.info("任务调度器启动成功")
     except Exception as e:
-        logger.error(f"调度器启动失败: {e}")
+        logger.error(f"任务调度器启动失败: {e}")
     
     # 其他初始化操作在后台执行
     def background_initialization():
@@ -58,21 +54,32 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.error(f"Redis初始化异常: {e}")
             
-            # 数据初始化
+            # 启动新闻调度器
             try:
-                from app.core.config import STOCK_INIT_MODE
-                if STOCK_INIT_MODE != "none":
-                    logger.info(f"数据初始化模式: {STOCK_INIT_MODE}")
-                    
-                    def init_data():
-                        from app.services.scheduler import init_stock_system
-                        init_stock_system(STOCK_INIT_MODE)
-                    
-                    # 数据初始化也在独立线程中执行
-                    threading.Thread(target=init_data, daemon=True).start()
-                    logger.info("数据初始化已启动")
+                from app.services.scheduler import start_news_scheduler
+                start_news_scheduler()
+                logger.info("新闻调度器启动成功")
             except Exception as e:
-                logger.error(f"数据初始化异常: {e}")
+                logger.error(f"新闻调度器启动异常: {e}")
+            
+            # 启动股票调度器（新版本）
+            try:
+                def start_scheduler():
+                    import os
+                    from app.services.scheduler.stock_scheduler import start_stock_scheduler
+                    
+                    # 从环境变量读取配置，默认值：skip模式，不计算信号
+                    init_mode = os.getenv("SCHEDULER_INIT_MODE", "skip").lower()
+                    calculate_signals = os.getenv("SCHEDULER_CALCULATE_SIGNALS", "false").lower() in ("true", "1", "yes")
+                    
+                    logger.info(f"股票调度器配置: init_mode={init_mode}, calculate_signals={calculate_signals}")
+                    start_stock_scheduler(init_mode=init_mode, calculate_signals=calculate_signals)
+                
+                # 在独立线程中启动调度器
+                threading.Thread(target=start_scheduler, daemon=True).start()
+                logger.info("股票调度器启动中...")
+            except Exception as e:
+                logger.error(f"股票调度器启动异常: {e}")
             
             logger.info("后台初始化完成")
             
@@ -121,7 +128,7 @@ templates = Jinja2Templates(directory="templates")
 # 导入所有API路由
 from app.api import (
     system, public, news_analysis, stocks_redis, strategy, 
-    signal_management, task_management, stock_scheduler_api,
+    signal_management, task_management,
     stock_data_management, stock_ai_analysis, chart, market_types,
     realtime_config, data_validation
 )
@@ -134,7 +141,6 @@ app.include_router(stocks_redis.router)
 app.include_router(strategy.router)
 app.include_router(signal_management.router)
 app.include_router(task_management.router)
-app.include_router(stock_scheduler_api.router)
 app.include_router(stock_data_management.router)
 app.include_router(stock_ai_analysis.router)
 app.include_router(chart.router)

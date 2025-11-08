@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 PICC股票分析系统启动脚本 - 简化版
 使用APScheduler替代Celery，减少复杂性

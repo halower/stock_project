@@ -4,10 +4,7 @@
 from .stock_scheduler import (
     start_stock_scheduler,
     stop_stock_scheduler,
-    init_stock_system,
-    update_realtime_stock_data,
-    update_etf_realtime_data,
-    trigger_stock_task
+    get_stock_scheduler_status
 )
 
 from .news_scheduler import (
@@ -18,10 +15,7 @@ from .news_scheduler import (
 __all__ = [
     'start_stock_scheduler',
     'stop_stock_scheduler',
-    'init_stock_system',
-    'update_realtime_stock_data',
-    'update_etf_realtime_data',
-    'trigger_stock_task',
+    'get_stock_scheduler_status',
     'start_news_scheduler',
     'stop_news_scheduler',
 ]

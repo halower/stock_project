@@ -45,16 +45,8 @@ CACHE_TTL_LONG = 86400  # 长期缓存24小时
 # 数据库初始化配置
 RESET_TABLES = os.environ.get("RESET_TABLES", "false").lower() == "true"
 
-# 股票系统启动初始化模式配置
-# 可选值:
-# - "all": 初始化所有数据（股票+ETF） + 新闻 + 信号计算 → 进入计划任务（默认）
-# - "stock_only": 仅初始化股票 + 新闻 + 信号计算 → 进入计划任务
-# - "etf_only": 仅初始化ETF + 新闻 + 信号计算 → 进入计划任务
-# - "tasks_only": 不初始化数据，但执行新闻 + 信号计算 → 进入计划任务
-# - "none": 什么都不做，直接进入计划任务监听
-
-# 优先使用环境变量，如果没有则使用默认值
-STOCK_INIT_MODE = os.environ.get("STOCK_INIT_MODE", "none").lower()
+# 注意：STOCK_INIT_MODE已废弃，不再使用
+# 新的调度器使用 start_stock_scheduler(init_mode, calculate_signals) 参数控制
 
 # 后台任务配置 - 控制后台任务对API服务的影响（使用asyncio，无需线程池）
 BACKGROUND_TASK_PRIORITY = os.environ.get("BACKGROUND_TASK_PRIORITY", "low").lower()  # low, normal, high
@@ -129,9 +121,6 @@ class Settings(BaseModel):
     CACHE_TTL: int = CACHE_TTL
     CACHE_TTL_SHORT: int = CACHE_TTL_SHORT
     CACHE_TTL_LONG: int = CACHE_TTL_LONG
-    
-    # 股票系统启动初始化模式配置
-    STOCK_INIT_MODE: str = STOCK_INIT_MODE
     
     # 后台任务配置（纯异步IO模式，无需线程池）
     BACKGROUND_TASK_PRIORITY: str = BACKGROUND_TASK_PRIORITY

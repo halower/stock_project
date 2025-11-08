@@ -374,43 +374,91 @@ A_STOCK_DELISTED_CODES = [
 # 合并所有无效股票代码（北交所废弃 + A股退市）
 ALL_INVALID_STOCK_CODES = BJ_OBSOLETE_CODES + A_STOCK_DELISTED_CODES
 
-# 只包含代码的列表（用于快速查询）
-INVALID_STOCK_CODE_LIST = [code for code, name in ALL_INVALID_STOCK_CODES]
+# 提取所有无效股票代码（只要代码，不要名称）
+INVALID_STOCK_CODES = set([code for code, _ in ALL_INVALID_STOCK_CODES])
 
-# 代码到名称的映射字典
-INVALID_STOCK_CODE_TO_NAME = {code: name for code, name in ALL_INVALID_STOCK_CODES}
+# A股退市代码列表（只要代码）
+A_DELIST_CODES = [code for code, _ in A_STOCK_DELISTED_CODES]
 
-# 统计信息
-INVALID_STOCK_CODES_INFO = {
-    "北交所废弃代码数量": len(BJ_OBSOLETE_CODES),
-    "A股退市代码数量": len(A_STOCK_DELISTED_CODES),
-    "总无效代码数量": len(ALL_INVALID_STOCK_CODES),
-    "生成时间": "2025-11-08 10:29:53"
-}
+# A股暂停上市代码列表（目前为空）
+A_SUSPEND_CODES = []
 
-# 检查股票代码是否无效的函数
-def is_invalid_stock_code(code):
-    """检查给定的股票代码是否为无效代码"""
-    return code in INVALID_STOCK_CODE_LIST
 
-# 获取股票代码对应名称的函数
-def get_invalid_stock_name(code):
-    """获取无效股票代码对应的名称"""
-    return INVALID_STOCK_CODE_TO_NAME.get(code, None)
-
-if __name__ == "__main__":
-    print("无效股票代码配置文件")
-    print("=" * 50)
-    print(f"北交所废弃代码数量: {INVALID_STOCK_CODES_INFO['北交所废弃代码数量']}")
-    print(f"A股退市代码数量: {INVALID_STOCK_CODES_INFO['A股退市代码数量']}")
-    print(f"总无效代码数量: {INVALID_STOCK_CODES_INFO['总无效代码数量']}")
-    print(f"生成时间: {INVALID_STOCK_CODES_INFO['生成时间']}")
-    print("=" * 50)
+def get_invalid_stock_codes() -> set:
+    """
+    获取所有无效股票代码集合
     
-    print("\n北交所废弃股票代码示例:")
-    for i, (code, name) in enumerate(BJ_OBSOLETE_CODES[:5], 1):
-        print(f"{i:3d}. {code} - {name}")
+    Returns:
+        无效股票代码集合
+    """
+    return INVALID_STOCK_CODES.copy()
+
+
+def is_valid_stock_code(ts_code: str) -> bool:
+    """
+    判断股票代码是否有效
     
-    print("\nA股退市股票代码示例:")
-    for i, (code, name) in enumerate(A_STOCK_DELISTED_CODES[:5], 1):
-        print(f"{i:3d}. {code} - {name}")
+    Args:
+        ts_code: 股票代码，如 000001.SZ
+        
+    Returns:
+        True表示有效，False表示无效
+    """
+    return ts_code not in INVALID_STOCK_CODES
+
+
+def filter_valid_stocks(stock_list: list) -> list:
+    """
+    过滤出有效的股票列表
+    
+    Args:
+        stock_list: 股票列表，每个元素应包含ts_code字段
+        
+    Returns:
+        过滤后的有效股票列表
+    """
+    return [
+        stock for stock in stock_list 
+        if is_valid_stock_code(stock.get('ts_code', ''))
+    ]
+
+
+def add_invalid_code(ts_code: str, name: str = "", reason: str = ""):
+    """
+    动态添加无效股票代码
+    
+    Args:
+        ts_code: 股票代码
+        name: 股票名称（可选）
+        reason: 无效原因（可选）
+    """
+    INVALID_STOCK_CODES.add(ts_code)
+    if reason:
+        print(f"添加无效股票代码: {ts_code} ({name}), 原因: {reason}")
+
+
+def remove_invalid_code(ts_code: str):
+    """
+    移除无效股票代码（如果股票恢复上市）
+    
+    Args:
+        ts_code: 股票代码
+    """
+    if ts_code in INVALID_STOCK_CODES:
+        INVALID_STOCK_CODES.discard(ts_code)
+        print(f"移除无效股票代码: {ts_code}")
+
+
+def get_invalid_codes_summary() -> dict:
+    """
+    获取无效代码统计摘要
+    
+    Returns:
+        包含各类无效代码数量的字典
+    """
+    return {
+        'bj_codes': len(BJ_OBSOLETE_CODES),
+        'delist_codes': len(A_DELIST_CODES),
+        'suspend_codes': len(A_SUSPEND_CODES),
+        'total': len(INVALID_STOCK_CODES)
+    }
