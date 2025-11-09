@@ -243,44 +243,43 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
           width: 1,
         ),
       ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  // 当前资金
-                  Expanded(
-                    child: _buildInfoCard(
-                      '当前资金',
-                      '¥${(_session!.currentCapital / 10000).toStringAsFixed(2)}万',
-                      Icons.account_balance_wallet,
-                      Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  
-                  // 总盈亏
-                  Expanded(
-                    child: _buildInfoCard(
-                      '总盈亏',
-                      '${_session!.totalProfitLoss >= 0 ? '+' : ''}¥${_session!.totalProfitLoss.toStringAsFixed(0)}',
-                      Icons.trending_up,
-                      _session!.totalProfitLoss >= 0 ? Colors.red : Colors.green,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  
-                  // 收益率
-                  Expanded(
-                    child: _buildInfoCard(
-                      '收益率',
-                      '${_session!.profitLossRate >= 0 ? '+' : ''}${_session!.profitLossRate.toStringAsFixed(2)}%',
-                      Icons.show_chart,
-                      _session!.profitLossRate >= 0 ? Colors.red : Colors.green,
-                    ),
-                  ),
-                ],
+        child: Row(
+          children: [
+            // 当前资金（包含持仓浮动盈亏）
+            Expanded(
+              child: _buildInfoCard(
+                '当前资金',
+                '¥${(_calculateTotalAssets() / 10000).toStringAsFixed(2)}万',
+                Icons.account_balance_wallet,
+                Colors.blue,
               ),
+            ),
+            const SizedBox(width: 8),
+            
+            // 总盈亏（包含持仓浮动盈亏）
+            Expanded(
+              child: _buildInfoCard(
+                '总盈亏',
+                '${_calculateTotalProfitLoss() >= 0 ? '+' : ''}¥${_calculateTotalProfitLoss().toStringAsFixed(0)}',
+                Icons.trending_up,
+                _calculateTotalProfitLoss() >= 0 ? Colors.red : Colors.green,
+              ),
+            ),
+            const SizedBox(width: 8),
+            
+            // 收益率（包含持仓浮动盈亏）
+            Expanded(
+              child: _buildInfoCard(
+                '收益率',
+                '${_calculateTotalProfitLossRate() >= 0 ? '+' : ''}${_calculateTotalProfitLossRate().toStringAsFixed(2)}%',
+                Icons.show_chart,
+                _calculateTotalProfitLossRate() >= 0 ? Colors.red : Colors.green,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -447,19 +446,12 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             ),
             ),
             
-                // 当前价格信息 - 精致设计
-            Positioned(
-              top: 16,
-              left: 16,
-              child: _buildCurrentPriceInfo(snapshot.data!.last),
-            ),
-            
-                // 持仓信息 - 精致设计
-            if (_session != null && _session!.currentPosition > 0)
+                // 统一信息框 - 左上角
+            if (_session != null)
               Positioned(
-                top: 50,  // 调整位置，避免遮挡K线
-                right: 16,
-                child: _buildPositionInfo(),
+                top: 16,
+                left: 16,
+                child: _buildUnifiedInfoBox(),
               ),
           ],
             ),
@@ -469,28 +461,36 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     );
   }
   
-  /// 构建当前价格信息（缩小版）
-  Widget _buildCurrentPriceInfo(Map<String, dynamic> currentCandle) {
-    final open = currentCandle['open'] ?? 0.0;
-    final high = currentCandle['high'] ?? 0.0;
-    final low = currentCandle['low'] ?? 0.0;
-    final close = currentCandle['close'] ?? 0.0;
-    final volume = currentCandle['volume'] ?? 0.0;
+  /// 构建统一信息框（合并价格和持仓信息）
+  Widget _buildUnifiedInfoBox() {
+    if (_session == null) return const SizedBox.shrink();
+    
+    final currentCandle = _replayService.currentCandle;
+    if (currentCandle == null) return const SizedBox.shrink();
+    
+    final currentPrice = currentCandle['close'] ?? 0.0;
     final date = currentCandle['trade_date'] ?? '';
     
-    // 计算涨跌幅
-    final change = close - open;
-    final changePercent = open > 0 ? (change / open) * 100 : 0.0;
-    final isRise = change >= 0;
-    final changeColor = isRise ? Colors.red : Colors.green;
+    // 计算持仓浮动盈亏
+    double unrealizedPL = 0.0;
+    double unrealizedPLRate = 0.0;
+    if (_session!.currentPosition > 0) {
+      final positionValue = currentPrice * _session!.currentPosition;
+      final costValue = (_session!.positionCost ?? 0) * _session!.currentPosition;
+      unrealizedPL = positionValue - costValue;
+      unrealizedPLRate = costValue > 0 ? (unrealizedPL / costValue) * 100 : 0;
+    }
+    
+    final hasPosition = _session!.currentPosition > 0;
+    final plColor = unrealizedPL >= 0 ? Colors.red : Colors.green;
     
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.black.withValues(alpha: 0.75),
-            Colors.black.withValues(alpha: 0.65),
+            Colors.black.withValues(alpha: 0.8),
+            Colors.black.withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -504,217 +504,101 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
           ),
         ],
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
+          color: hasPosition 
+              ? plColor.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.1),
+          width: 1.5,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$_selectedStockName',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-              height: 1.2,
-            ),
-          ),
-          Text(
-            date,
-            style: const TextStyle(
-              color: Colors.white70, 
-              fontSize: 9,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          _buildPriceRow('开', open),
-          _buildPriceRow('高', high),
-          _buildPriceRow('低', low),
-          _buildPriceRow('收', close, bold: true),
-          const SizedBox(height: 2),
-          // 涨跌幅
+          // 股票名称和日期
           Row(
             children: [
-              const Text(
-                '涨跌: ',
-                style: TextStyle(
-                  color: Colors.white70, 
-                  fontSize: 10,
-                  height: 1.2,
-                ),
-              ),
               Text(
-                '${isRise ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
-                style: TextStyle(
-                  color: changeColor,
-                  fontSize: 10,
-                  height: 1.2,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          // 成交量
-          Row(
-            children: [
-              const Text(
-                '量: ',
-                style: TextStyle(
-                  color: Colors.white70, 
-                  fontSize: 10,
-                  height: 1.2,
-                ),
-              ),
-              Text(
-                _formatVolume(volume),
+                '$_selectedStockName',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 10,
-                  height: 1.2,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// 格式化成交量
-  String _formatVolume(double volume) {
-    if (volume >= 100000000) {
-      return '${(volume / 100000000).toStringAsFixed(2)}亿';
-    } else if (volume >= 10000) {
-      return '${(volume / 10000).toStringAsFixed(2)}万';
-    } else {
-      return volume.toStringAsFixed(0);
-    }
-  }
-  
-  Widget _buildPriceRow(String label, double price, {bool bold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              color: Colors.white70, 
-              fontSize: 10,
-              height: 1.2,
-            ),
-          ),
-          Text(
-            price.toStringAsFixed(2),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              height: 1.2,
-              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// 构建持仓信息 - 精致设计
-  Widget _buildPositionInfo() {
-    if (_session == null || _session!.currentPosition == 0) {
-      return const SizedBox.shrink();
-    }
-    
-    final currentPrice = _replayService.currentCandle?['close'] ?? 0.0;
-    final positionValue = currentPrice * _session!.currentPosition;
-    final costValue = (_session!.positionCost ?? 0) * _session!.currentPosition;
-    final unrealizedPL = positionValue - costValue;
-    final plColor = unrealizedPL >= 0 ? Colors.red : Colors.green;
-    
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            plColor.withValues(alpha: 0.9),
-            plColor.withValues(alpha: 0.75),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: plColor.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.inventory_2, color: Colors.white, size: 14),
-              SizedBox(width: 4),
+              const SizedBox(width: 8),
               Text(
-            '持仓',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  height: 1.2,
-            ),
-          ),
+                date,
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 10,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
+          
+          // 当前价格
           Text(
-            '${_session!.currentPosition}股',
+            '¥${currentPrice.toStringAsFixed(2)}',
             style: const TextStyle(
-              color: Colors.white, 
-              fontSize: 11,
-              height: 1.2,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Text(
-            '成本 ¥${_session!.positionCost?.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white70, 
-              fontSize: 10,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              '${unrealizedPL >= 0 ? '+' : ''}¥${unrealizedPL.toStringAsFixed(0)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                height: 1.2,
+              color: Colors.white,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+          
+          // 持仓信息（如果有持仓）
+          if (hasPosition) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: plColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: plColor.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.inventory_2, color: plColor, size: 12),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_session!.currentPosition}股',
+                    style: TextStyle(
+                      color: plColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${unrealizedPL >= 0 ? '+' : ''}¥${unrealizedPL.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: plColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '(${unrealizedPLRate >= 0 ? '+' : ''}${unrealizedPLRate.toStringAsFixed(1)}%)',
+                    style: TextStyle(
+                      color: plColor,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
+  
   
   /// 构建交易按钮 - 精致设计
   Widget _buildTradingButtons() {
@@ -927,6 +811,37 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       const Duration(milliseconds: 1000),
       (_) => _nextCandle(),
     );
+  }
+  
+  /// 计算总资产（现金 + 持仓市值）
+  double _calculateTotalAssets() {
+    if (_session == null) return 0.0;
+    
+    double totalAssets = _session!.currentCapital;
+    
+    // 如果有持仓，加上持仓市值
+    if (_session!.currentPosition > 0) {
+      final currentPrice = _replayService.currentCandle?['close'] ?? 0.0;
+      totalAssets += currentPrice * _session!.currentPosition;
+    }
+    
+    return totalAssets;
+  }
+  
+  /// 计算总盈亏（总资产 - 初始资金）
+  double _calculateTotalProfitLoss() {
+    if (_session == null) return 0.0;
+    
+    // 总盈亏 = 总资产 - 初始资金
+    return _calculateTotalAssets() - _session!.initialCapital;
+  }
+  
+  /// 计算总收益率
+  double _calculateTotalProfitLossRate() {
+    if (_session == null || _session!.initialCapital == 0) return 0.0;
+    
+    final totalPL = _calculateTotalProfitLoss();
+    return (totalPL / _session!.initialCapital) * 100;
   }
   
   /// 执行交易
@@ -1796,35 +1711,19 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             ],
           ),
           
-            // 左上角：股票信息和当前价格（缩小版）
-          if (_replayService.currentCandle != null)
-            Positioned(
-              top: 8,
-              left: 8,
-                child: _buildCompactPriceInfo(_replayService.currentCandle!),
-              ),
-            
-            // 左下角：训练信息（浮动显示）
+            // 左上角：统一信息框
             if (_session != null)
               Positioned(
-                bottom: 55,
+                top: 8,
                 left: 8,
-                child: _buildFloatingTrainingInfo(),
-            ),
-          
-          // 右上角：持仓信息
-          if (_session != null && _session!.currentPosition > 0)
-            Positioned(
-              top: 8,
-              right: 8,
-                child: _buildCompactPositionInfo(),
-            ),
+                child: _buildUnifiedInfoBox(),
+              ),
           
             // 右上角按钮组
             if (_session != null)
           Positioned(
             top: 8,
-                right: _session!.currentPosition > 0 ? 100 : 8,
+                right: 8,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1929,163 +1828,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   }
   
   /// 构建紧凑价格信息（横屏专用）
-  Widget _buildCompactPriceInfo(Map<String, dynamic> currentCandle) {
-    final close = currentCandle['close'] ?? 0.0;
-    final open = currentCandle['open'] ?? 0.0;
-    final change = close - open;
-    final changePercent = open > 0 ? (change / open) * 100 : 0.0;
-    final isRise = change >= 0;
-    final changeColor = isRise ? Colors.red : Colors.green;
-    
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$_selectedStockName',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-              height: 1.2,
-            ),
-          ),
-          Text(
-            '${close.toStringAsFixed(2)}',
-            style: TextStyle(
-              color: changeColor,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-            ),
-          ),
-          Text(
-            '${isRise ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
-            style: TextStyle(
-              color: changeColor,
-              fontSize: 9,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// 构建紧凑持仓信息（横屏专用）
-  Widget _buildCompactPositionInfo() {
-    if (_session == null || _session!.currentPosition == 0) {
-      return const SizedBox.shrink();
-    }
-    
-    final currentPrice = _replayService.currentCandle?['close'] ?? 0.0;
-    final positionValue = currentPrice * _session!.currentPosition;
-    final costValue = (_session!.positionCost ?? 0) * _session!.currentPosition;
-    final unrealizedPL = positionValue - costValue;
-    
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '持仓 ${_session!.currentPosition}股',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              height: 1.2,
-            ),
-          ),
-          Text(
-            '${unrealizedPL >= 0 ? '+' : ''}${unrealizedPL.toStringAsFixed(0)}',
-            style: TextStyle(
-              color: unrealizedPL >= 0 ? Colors.yellow : Colors.orange,
-              fontSize: 10,
-              height: 1.2,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// 构建浮动训练信息（横屏专用）
-  Widget _buildFloatingTrainingInfo() {
-    if (_session == null) return const SizedBox.shrink();
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: Colors.blue.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildMiniInfoItem(
-            '资金',
-            '${(_session!.currentCapital / 10000).toStringAsFixed(1)}万',
-            _session!.currentCapital >= _session!.initialCapital ? Colors.red : Colors.green,
-          ),
-          const SizedBox(width: 8),
-          _buildMiniInfoItem(
-            '盈亏',
-            '${_session!.profitLossRate >= 0 ? '+' : ''}${_session!.profitLossRate.toStringAsFixed(1)}%',
-            _session!.profitLossRate >= 0 ? Colors.red : Colors.green,
-          ),
-          const SizedBox(width: 8),
-          _buildMiniInfoItem(
-            '胜率',
-            '${_session!.winRate.toStringAsFixed(0)}%',
-            _session!.winRate >= 50 ? Colors.orange : Colors.grey,
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// 构建超小信息项
-  Widget _buildMiniInfoItem(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 8,
-            color: Colors.grey,
-            height: 1.2,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: color,
-            height: 1.2,
-          ),
-        ),
-      ],
-    );
-  }
   
   /// 构建紧凑回放控制（横屏专用）
   Widget _buildCompactReplayControls() {
@@ -2175,6 +1917,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     );
   }
 }
+
 
 
 
