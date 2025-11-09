@@ -978,15 +978,15 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      children: [
           Row(
             children: [
-              Icon(
-                icon,
+          Icon(
+            icon,
                 size: 12,
                 color: color,
-              ),
-              const SizedBox(width: 4),
+          ),
+          const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
@@ -1002,9 +1002,9 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
+        Text(
                 value,
-                style: TextStyle(
+          style: TextStyle(
                   fontSize: 13,
                   color: color,
                   fontWeight: FontWeight.bold,
@@ -1041,12 +1041,19 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     double? stopLossPercentage;
     
     if (analysisData is Map && analysisData['stop_loss'] != null && widget.stock.price != null) {
-      final stopLoss = analysisData['stop_loss'];
-      final currentPrice = widget.stock.price!;
-      stopLossPercentage = ((stopLoss - currentPrice) / currentPrice * 100).abs();
+      final stopLossValue = analysisData['stop_loss'];
+      // 确保stopLoss是数字类型
+      final stopLoss = (stopLossValue is num) 
+          ? stopLossValue.toDouble() 
+          : double.tryParse(stopLossValue.toString());
       
-      if (stopLossPercentage > 10) {
-        hasUnreasonableStopLoss = true;
+      if (stopLoss != null) {
+        final currentPrice = widget.stock.price!;
+        stopLossPercentage = ((stopLoss - currentPrice) / currentPrice * 100).abs();
+        
+        if (stopLossPercentage > 10) {
+          hasUnreasonableStopLoss = true;
+        }
       }
     }
     
@@ -1091,10 +1098,10 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
             '盈亏比: ',
             style: TextStyle(
               fontSize: 10,
-              color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
-              fontWeight: FontWeight.w500,
-            ),
+            color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
           ),
+        ),
           Text(
             ratioStr,
             style: TextStyle(

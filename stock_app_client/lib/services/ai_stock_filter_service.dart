@@ -181,53 +181,13 @@ class AIStockFilterService {
     }
   }
   
-  // 预筛选股票以减少处理量（优化：减少预筛选比例，避免过度过滤）
+  // 预筛选股票（已禁用：直接返回全部股票）
   Future<List<StockIndicator>> _preFilterStocks(
     List<StockIndicator> stocks, 
     String filterCriteria
   ) async {
-    final originalCount = stocks.length;
-    List<StockIndicator> filtered = stocks;
-    
-    // 🔧 优化：只在股票数量超过50只时才预筛选，且比例提高到90%
-    if (originalCount <= 50) {
-      debugPrint('📊 预筛选：股票数量≤50只，不进行预筛选，将分析全部 $originalCount 只股票');
-      return stocks;
-    }
-    
-    // 示例：如果筛选条件包含"成交量"或"量能"关键词，可以预先筛选出成交量较大的股票
-    if (filterCriteria.contains('成交量') || 
-        filterCriteria.contains('量能') || 
-        filterCriteria.contains('放量')) {
-      // 按照成交量排序，取前90%（提高比例）
-      final sortedByVolume = List<StockIndicator>.from(stocks)
-        ..sort((a, b) => (b.volume ?? 0).compareTo(a.volume ?? 0));
-      
-      // 取前90%的数据（从70%提高到90%）
-      final int count = (sortedByVolume.length * 0.9).ceil();
-      filtered = sortedByVolume.take(count).toList();
-      debugPrint('📊 预筛选：根据成交量筛选，从 $originalCount 只股票中保留前 ${filtered.length} 只（90%）');
-      return filtered;
-    }
-    
-    // 如果筛选条件包含"上涨"或"涨幅"关键词，可以预先筛选出涨幅大的股票
-    if (filterCriteria.contains('上涨') || 
-        filterCriteria.contains('涨幅') || 
-        filterCriteria.contains('突破') ||
-        filterCriteria.contains('概率')) {
-      // 按照涨跌幅排序，取前90%（提高比例）
-      final sortedByChange = List<StockIndicator>.from(stocks)
-        ..sort((a, b) => (b.changePercent ?? 0).compareTo(a.changePercent ?? 0));
-      
-      // 取前90%的数据（从70%提高到90%）
-      final int count = (sortedByChange.length * 0.9).ceil();
-      filtered = sortedByChange.take(count).toList();
-      debugPrint('📊 预筛选：根据涨跌幅筛选，从 $originalCount 只股票中保留前 ${filtered.length} 只（90%）');
-      return filtered;
-    }
-    
-    // 默认情况，返回原始列表
-    debugPrint('📊 预筛选：无特定条件，将分析全部 $originalCount 只股票');
+    // 🔧 完全禁用预筛选，分析全部股票
+    debugPrint('📊 预筛选已禁用：将分析全部 ${stocks.length} 只股票');
     return stocks;
   }
   
