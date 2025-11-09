@@ -60,8 +60,12 @@ TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN", "76777e0e5682492c8d346030b5f6d7547b77
 
 # AI分析配置
 AI_ENABLED = os.getenv("AI_ENABLED", "true").lower() in ("true", "1", "yes")
-AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "8000"))
+AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "8000"))  # 通用max_tokens（已废弃，使用下面的细分配置）
 AI_TEMPERATURE = float(os.getenv("AI_TEMPERATURE", "0.7"))
+
+# AI max_tokens 细分配置（根据不同场景设置不同的token限制）
+AI_STOCK_ANALYSIS_MAX_TOKENS = int(os.getenv("AI_STOCK_ANALYSIS_MAX_TOKENS", "4000"))  # 股票AI分析
+AI_NEWS_ANALYSIS_MAX_TOKENS = int(os.getenv("AI_NEWS_ANALYSIS_MAX_TOKENS", "3000"))   # 新闻分析
 
 # AI服务默认配置
 DEFAULT_AI_ENDPOINT = os.getenv("DEFAULT_AI_ENDPOINT", "")

@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 from app.core.logging import logger
 from app.core.config import (
-    AI_MAX_TOKENS, AI_TEMPERATURE
+    AI_NEWS_ANALYSIS_MAX_TOKENS, AI_TEMPERATURE
 )
 from app.db.session import RedisCache
 
@@ -359,7 +359,7 @@ def analyze_news_by_titles(news_list: List[Dict[str, Any]], use_cache: bool = Tr
         分析文本
     """
     from app.services.analysis.llm_service import get_completion_with_custom_params
-    from app.core.config import AI_MAX_TOKENS, AI_TEMPERATURE
+    from app.core.config import AI_NEWS_ANALYSIS_MAX_TOKENS, AI_TEMPERATURE
     
     # 准备新闻标题数据
     news_titles = [news["title"] for news in news_list[:50]]  
@@ -412,7 +412,7 @@ def analyze_news_by_titles(news_list: List[Dict[str, Any]], use_cache: bool = Tr
         model=ai_model_name,
         endpoint=ai_endpoint,
         api_key=ai_api_key,
-        max_tokens=AI_MAX_TOKENS,
+        max_tokens=AI_NEWS_ANALYSIS_MAX_TOKENS,  # 使用新闻分析专用的max_tokens
         temperature=AI_TEMPERATURE
     )
     

@@ -304,7 +304,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 构建美化的侧边栏导航
   Widget _buildDrawer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Drawer(
+      // 适配dark模式的背景色
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       child: Column(
         children: [
           // 简洁的头部（移除logo）
@@ -415,7 +419,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   end: Alignment.bottomRight,
                                 )
                               : null,
-                          color: isSelected ? null : Colors.grey.shade100,
+                          color: isSelected 
+                              ? null 
+                              : (isDark ? Colors.grey.shade800 : Colors.grey.shade100),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: isSelected ? [
                             BoxShadow(
@@ -427,7 +433,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         child: Icon(
                           item.icon,
-                          color: isSelected ? Colors.white : Colors.grey.shade600,
+                          color: isSelected 
+                              ? Colors.white 
+                              : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                           size: 24,
                         ),
                       ),
@@ -438,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: isSelected ? 15 : 14,
                           color: isSelected 
                               ? itemColor.withOpacity(0.9)
-                              : Colors.black87,
+                              : (isDark ? Colors.grey.shade300 : Colors.black87),
                           letterSpacing: 0.3,
                         ),
                       ),

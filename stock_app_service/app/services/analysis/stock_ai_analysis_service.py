@@ -414,6 +414,9 @@ class StockAIAnalysisService:
             logger.info(f"调用AI服务: {ai_endpoint}")
             logger.info(f"使用模型: {ai_model}")
             
+            # 从配置读取max_tokens，避免硬编码
+            from app.core.config import AI_STOCK_ANALYSIS_MAX_TOKENS, AI_TEMPERATURE
+            
             request_body = {
                 'model': ai_model,
                 'messages': [
@@ -423,8 +426,8 @@ class StockAIAnalysisService:
                     }
                 ],
                 'stream': False,
-                'max_tokens': 4000,  # 设置为4000，低于4096的限制
-                'temperature': 0.7,
+                'max_tokens': AI_STOCK_ANALYSIS_MAX_TOKENS,  # 从环境变量读取
+                'temperature': AI_TEMPERATURE,
             }
             
             headers = {
