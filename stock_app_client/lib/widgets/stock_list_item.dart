@@ -931,8 +931,34 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     );
   }
   
-  // 构建价格卡片（止损/目标）
+  // 构建价格卡片（止损/目标）- 增强版，显示百分比
   Widget _buildPriceCard(String label, String value, Color color, IconData icon, bool isDarkMode) {
+    // 尝试从value中提取价格并计算百分比
+    String? percentageText;
+    Color? percentageColor;
+    
+    // 从value中提取数字（去掉¥符号）
+    final priceMatch = RegExp(r'[\d.]+').firstMatch(value);
+    if (priceMatch != null && widget.stock.price != null) {
+      final price = double.tryParse(priceMatch.group(0)!);
+      if (price != null) {
+        final currentPrice = widget.stock.price!;
+        final percentage = ((price - currentPrice) / currentPrice * 100);
+        final absPercentage = percentage.abs();
+        
+        // 判断百分比是否合理
+        bool isReasonable = true;
+        if (label == '止损' && absPercentage > 10) {
+          isReasonable = false; // 止损超过10%不合理
+        }
+        
+        percentageText = '${percentage >= 0 ? '+' : ''}${percentage.toStringAsFixed(1)}%';
+        percentageColor = isReasonable 
+            ? color 
+            : const Color(0xFFFF6B6B); // 不合理用红色警告
+      }
+    }
+    
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -952,15 +978,15 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        children: [
           Row(
             children: [
-          Icon(
-            icon,
+              Icon(
+                icon,
                 size: 12,
                 color: color,
-          ),
-          const SizedBox(width: 4),
+              ),
+              const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
@@ -972,42 +998,83 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
             ],
           ),
           const SizedBox(height: 4),
-        Text(
-            value,
-          style: TextStyle(
-              fontSize: 13,
-              color: color,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              if (percentageText != null) ...[
+                const SizedBox(width: 4),
+                Text(
+                  percentageText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: percentageColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
     );
   }
   
-  // 构建盈亏比显示
+  // 构建盈亏比显示 - 增强版，检查止损合理性
   Widget _buildRiskRewardRatio(dynamic ratio, bool isDarkMode) {
     final ratioStr = ratio.toString();
-    final isGoodRatio = _parseRatio(ratioStr) >= 2.0;
+    final ratioValue = _parseRatio(ratioStr);
+    final isGoodRatio = ratioValue >= 2.0;
+    
+    // 检查止损幅度是否合理（从analysisData中获取）
+    final analysisData = widget.stock.details['ai_analysis'];
+    bool hasUnreasonableStopLoss = false;
+    double? stopLossPercentage;
+    
+    if (analysisData is Map && analysisData['stop_loss'] != null && widget.stock.price != null) {
+      final stopLoss = analysisData['stop_loss'];
+      final currentPrice = widget.stock.price!;
+      stopLossPercentage = ((stopLoss - currentPrice) / currentPrice * 100).abs();
+      
+      if (stopLossPercentage > 10) {
+        hasUnreasonableStopLoss = true;
+      }
+    }
+    
+    // 如果止损不合理，强制显示警告
+    final finalColor = hasUnreasonableStopLoss 
+        ? const Color(0xFFEF4444) // 红色警告
+        : (isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B));
+    
+    final finalIcon = hasUnreasonableStopLoss
+        ? Icons.error_outline
+        : (isGoodRatio ? Icons.check_circle_outline : Icons.warning_amber_outlined);
+    
+    final finalText = hasUnreasonableStopLoss
+        ? '(止损过大)'
+        : (isGoodRatio ? '(优秀)' : '(一般)');
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isGoodRatio
-              ? [
-                  const Color(0xFF10B981).withOpacity(0.15),
-                  const Color(0xFF10B981).withOpacity(0.08),
-                ]
-              : [
-                  const Color(0xFFF59E0B).withOpacity(0.15),
-                  const Color(0xFFF59E0B).withOpacity(0.08),
-                ],
+          colors: [
+            finalColor.withOpacity(0.15),
+            finalColor.withOpacity(0.08),
+          ],
         ),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: (isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.4),
+          color: finalColor.withOpacity(0.4),
           width: 1,
         ),
       ),
@@ -1015,35 +1082,46 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isGoodRatio ? Icons.check_circle_outline : Icons.warning_amber_outlined,
+            finalIcon,
             size: 14,
-            color: isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+            color: finalColor,
           ),
           const SizedBox(width: 6),
           Text(
             '盈亏比: ',
             style: TextStyle(
               fontSize: 10,
-            color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
-            fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
           Text(
             ratioStr,
             style: TextStyle(
               fontSize: 11,
-              color: isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+              color: finalColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(width: 4),
           Text(
-            isGoodRatio ? '(优秀)' : '(一般)',
+            finalText,
             style: TextStyle(
               fontSize: 9,
-              color: (isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.8),
+              color: finalColor.withOpacity(0.8),
             ),
           ),
+          if (hasUnreasonableStopLoss && stopLossPercentage != null) ...[
+            const SizedBox(width: 4),
+            Text(
+              '${stopLossPercentage.toStringAsFixed(0)}%',
+              style: TextStyle(
+                fontSize: 9,
+                color: finalColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ],
       ),
     );
