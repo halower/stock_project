@@ -446,13 +446,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             ),
             ),
             
-                // 统一信息框 - 左上角
-            if (_session != null)
-              Positioned(
-                top: 16,
-                left: 16,
-                child: _buildUnifiedInfoBox(),
-              ),
+                // 注释掉统一信息框 - 用户要求删除浮动框
+            // if (_session != null)
+            //   Positioned(
+            //     top: 16,
+            //     left: 16,
+            //     child: _buildUnifiedInfoBox(),
+            //   ),
           ],
             ),
           ),
@@ -1711,13 +1711,13 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
             ],
           ),
           
-            // 左上角：统一信息框
-            if (_session != null)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: _buildUnifiedInfoBox(),
-              ),
+            // 注释掉左上角统一信息框 - 用户要求删除浮动框
+            // if (_session != null)
+            //   Positioned(
+            //     top: 8,
+            //     left: 8,
+            //     child: _buildUnifiedInfoBox(),
+            //   ),
           
             // 右上角按钮组
             if (_session != null)
