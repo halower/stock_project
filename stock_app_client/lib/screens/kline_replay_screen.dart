@@ -471,7 +471,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
                 // 持仓信息 - 精致设计
             if (_session != null && _session!.currentPosition > 0)
               Positioned(
-                top: 16,
+                top: 50,  // 调整位置，避免遮挡K线
                 right: 16,
                 child: _buildPositionInfo(),
               ),
