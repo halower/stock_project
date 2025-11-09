@@ -480,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -512,6 +512,8 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // 构建我的备选池带数量徽标
   Widget _buildWatchlistTile() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: FutureBuilder<int>(
@@ -522,19 +524,19 @@ class _HomeScreenState extends State<HomeScreen> {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.star,
-                color: Colors.grey.shade700,
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
                 size: 22,
               ),
             ),
-            title: const Text(
+            title: Text(
               '我的备选池',
               style: TextStyle(
-                color: Colors.black87,
+                color: isDark ? Colors.grey.shade200 : Colors.black87,
               ),
             ),
             trailing: count > 0 ? Container(
@@ -573,25 +575,27 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             icon,
-            color: Colors.grey.shade700,
+            color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
             size: 22,
           ),
         ),
         title: Text(
           title,
-          style: const TextStyle(
-            color: Colors.black87,
+          style: TextStyle(
+            color: isDark ? Colors.grey.shade200 : Colors.black87,
           ),
         ),
         onTap: onTap,
