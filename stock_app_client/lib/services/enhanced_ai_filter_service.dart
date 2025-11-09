@@ -67,10 +67,11 @@ class EnhancedAIFilterService {
         currentHistogram,
       );
       
-      // 支撑阻力位
+      // 支撑阻力位（专业版：传入收盘价，计算多个关键价位）
       final supportResistance = TechnicalIndicators.calculateSupportResistance(
         highs,
         lows,
+        closes: closes,
         period: 20,
       );
       
@@ -395,8 +396,19 @@ $technicalText
 - 整体趋势: ${_getTrendDescription(overallTrend)}
 - RSI状态: ${rsiValue.toStringAsFixed(1)} (${_getRSIDescription(rsiStatus)})
 - MACD方向: ${_getMACDDescription(macdDirection)}
-- 支撑位: ¥${support.toStringAsFixed(2)}
-- 阻力位: ¥${resistance.toStringAsFixed(2)}
+
+📍 **关键价位分析（基于真实计算，不可编造）**：
+当前价：¥${currentPrice.toStringAsFixed(2)}
+
+🔴 阻力位（由近到远）：
+  第1阻力：¥${resistance.toStringAsFixed(2)} (+${((resistance - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第2阻力：¥${(supportResistance['resistance2'] ?? resistance * 1.05).toStringAsFixed(2)} (+${(((supportResistance['resistance2'] ?? resistance * 1.05) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第3阻力：¥${(supportResistance['resistance3'] ?? resistance * 1.10).toStringAsFixed(2)} (+${(((supportResistance['resistance3'] ?? resistance * 1.10) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+
+🟢 支撑位（由近到远）：
+  第1支撑：¥${support.toStringAsFixed(2)} (${((support - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第2支撑：¥${(supportResistance['support2'] ?? support * 0.95).toStringAsFixed(2)} (${(((supportResistance['support2'] ?? support * 0.95) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第3支撑：¥${(supportResistance['support3'] ?? support * 0.90).toStringAsFixed(2)} (${(((supportResistance['support3'] ?? support * 0.90) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
 
 $filterSection【交易指导原则】
 1. **技术分析主导** (权重70%)：趋势、支撑阻力、K线形态是主要依据
@@ -407,38 +419,31 @@ $filterSection【交易指导原则】
    - 明显下跌趋势 ${filterCriteria != null && filterCriteria.isNotEmpty ? '或不符合筛选条件' : ''} → 卖出信号（但A股做多为主，可以观望）
 4. **技术指标权重**: 趋势(均线排列) > RSI > MACD > 布林带
 
-🚨 **止损和目标价设置规则（极其重要）**：
-
-**止损价设置（基于关键支撑位）：**
-- 当前价：¥${currentPrice.toStringAsFixed(2)}
-- 关键支撑位：¥${support.toStringAsFixed(2)}
-- **止损价计算方法**：
-  1. 如果当前价接近支撑位（<5%）：止损 = 支撑位 × 0.97（支撑位下方3%）
-  2. 如果当前价远离支撑位（>5%）：止损 = max(支撑位 × 0.97, 当前价 × 0.92)
-  3. 确保止损幅度在3-8%之间
-- **示例**：当前价¥112，支撑¥108，止损 = ¥108 × 0.97 = ¥104.76（-6.4%）
-
-**目标价设置（基于关键阻力位）：**
-- 关键阻力位：¥${resistance.toStringAsFixed(2)}
-- **目标价计算方法**：
-  1. 如果阻力位合理（盈亏比≥2:1）：目标价 = 阻力位 × 0.98（阻力位下方2%）
-  2. 如果阻力位太近（盈亏比<2:1）：目标价 = 当前价 + (当前价 - 止损价) × 2
-  3. 优先使用阻力位，但必须确保盈亏比≥2:1
-- **示例**：当前价¥112，阻力¥125，目标 = ¥125 × 0.98 = ¥122.50（+9.4%）
-
-**盈亏比验证（必须执行）**：
-- 风险空间 = (当前价 - 止损价) / 当前价 × 100%
-- 盈利空间 = (目标价 - 当前价) / 当前价 × 100%
-- 盈亏比 = 盈利空间 / 风险空间
-- **如果盈亏比 < 2:1，必须调整目标价或给出观望信号！**
-
-**完整示例**：
-- 当前价：¥112.00
-- 支撑位：¥108.00，止损价：¥104.76（-6.4%）
-- 阻力位：¥125.00，目标价：¥122.50（+9.4%）
-- 盈亏比：9.4% / 6.4% = 1.47:1 ❌ 不满足2:1
-- **调整**：目标价 = 112 + (112 - 104.76) × 2 = ¥126.48（+12.9%）
-- 盈亏比：12.9% / 6.4% = 2.02:1 ✅ 满足要求
+🚨 **盈亏比硬性要求（极其重要）**：
+- **止损价设置原则**：
+  * 必须基于上述计算的支撑位，不可随意编造
+  * 通常选择第1支撑位下方2-3%，或第2支撑位
+  * 止损幅度通常控制在3-8%
+  
+- **目标价设置原则**：
+  * 必须基于上述计算的阻力位，不可随意编造
+  * 通常选择第1阻力位下方1-2%，或第2阻力位
+  * 必须确保盈利空间至少是止损空间的2倍
+  
+- **盈亏比计算与验证**：
+  * 风险空间 = (当前价 - 止损价) / 当前价 × 100%
+  * 盈利空间 = (目标价 - 当前价) / 当前价 × 100%
+  * 盈亏比 = 盈利空间 / 风险空间
+  * **必须确保盈亏比 ≥ 2:1，否则给出观望信号！**
+  
+- **专业示例**：
+  * 当前价：¥112.33
+  * 第1支撑：¥108.50（-3.4%）
+  * 第1阻力：¥120.00（+6.8%）
+  * 止损价：¥106.00（第1支撑下方2.3%，风险-5.6%）
+  * 目标价：¥124.00（第2阻力，盈利+10.4%）
+  * 盈亏比：10.4% / 5.6% = 1.86:1 ❌ 不足2:1，应调整为观望
+  * 调整后目标价：¥125.00（盈利+11.3%），盈亏比2.02:1 ✅
 
 【分析要求】
 🚨 **再次强调时间重点**：
@@ -450,13 +455,14 @@ $filterSection【交易指导原则】
 基于以上分析${filterCriteria != null && filterCriteria.isNotEmpty ? '和用户筛选条件' : ''}，请给出明确的交易信号。注意：
 - 买入信号必须有明确的技术支撑${filterCriteria != null && filterCriteria.isNotEmpty ? '且完全符合筛选条件（特别是行业要求）' : ''}
 - 观望信号用于技术面不明确或震荡整理的情况${filterCriteria != null && filterCriteria.isNotEmpty ? '，或部分符合筛选条件，或行业不完全匹配' : ''}
-- ${filterCriteria != null && filterCriteria.isNotEmpty ? '如果用户筛选条件明确提到行业（如"半导体"、"新能源"等），而该股票行业不匹配，必须给出观望或卖出信号\n- ' : ''}**止损价必须基于关键支撑位¥${support.toStringAsFixed(2)}计算**
-- **目标价必须基于关键阻力位¥${resistance.toStringAsFixed(2)}计算**
-- **严格按照上述止损和目标价设置规则，确保盈亏比≥2:1**
+- ${filterCriteria != null && filterCriteria.isNotEmpty ? '如果用户筛选条件明确提到行业（如"半导体"、"新能源"等），而该股票行业不匹配，必须给出观望或卖出信号\n- ' : ''}
+- **🚨 止损价和目标价必须基于上述计算的支撑阻力位，不可随意编造！**
+- 止损价：选择第1或第2支撑位，或第1支撑位下方2-3%
+- 目标价：选择第1或第2阻力位，或第1阻力位下方1-2%
+- **必须先计算盈亏比，如果<2:1，必须调整或改为观望信号！**
 - 置信度基于多个指标的一致性${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件的匹配度（包括行业匹配）' : ''}
 - 理由要简洁明了，50-100字，突出核心逻辑${filterCriteria != null && filterCriteria.isNotEmpty ? '和筛选条件匹配情况（如果行业不匹配，必须在理由中说明）' : ''}
 - **所有分析必须基于最近几天（标记【最新】）的数据，而不是30天前的旧数据！**
-- **🚨 如果计算出的盈亏比<2:1，必须给出观望信号，不要勉强给买入！**
 
 请用以下JSON格式回复（只返回JSON，不要有其他文字）：
 {
@@ -472,18 +478,16 @@ $filterSection【交易指导原则】
 2. reason要简洁，突出核心技术逻辑
 3. stop_loss和take_profit必须是数字，不能为null
 4. 即使是观望信号，也要给出合理的止损价和目标价供参考
-5. **🚨 止损价计算**：
-   - 基于支撑位¥${support.toStringAsFixed(2)}
-   - 止损 = 支撑位 × 0.97 或 当前价 × 0.92~0.95
-   - 确保止损幅度在3-8%之间
-6. **🚨 目标价计算**：
-   - 优先基于阻力位¥${resistance.toStringAsFixed(2)}
-   - 目标 = 阻力位 × 0.98
-   - 如果盈亏比<2:1，调整为：目标 = 当前价 + (当前价 - 止损价) × 2
-7. **🚨 盈亏比验证**：
-   - 必须计算盈亏比 = 盈利空间 / 风险空间
-   - 如果盈亏比<2:1，必须改为观望信号或调整目标价！
-8. **不要随意设置价格，必须基于支撑阻力位计算！**
+5. **🚨 最重要：止损价和目标价必须基于上述计算的支撑阻力位！**
+6. **禁止随意编造价格，必须从提供的支撑阻力位中选择！**
+7. **先计算盈亏比，如果<2:1，必须调整价格或改为观望信号！**
+8. **止损幅度通常3-8%，目标盈利必须≥止损的2倍**
+
+📌 **价格选择参考**：
+- 激进止损：第1支撑位（风险较小，但容易被扫）
+- 稳健止损：第1支撑位下方2-3%，或第2支撑位
+- 激进目标：第1阻力位（容易达到，但盈利有限）
+- 稳健目标：第2阻力位（盈利更大，但需要更强趋势）
 ''';
   }
   

@@ -315,26 +315,136 @@ class TechnicalIndicators {
   /// [lows] 最低价列表
   /// [period] 回溯周期，默认20
   /// 返回 {support, resistance}
+  /// 计算支撑阻力位（专业版）
+  /// 基于多种方法综合判断，返回多个关键价位
+  /// [highs] 最高价列表
+  /// [lows] 最低价列表
+  /// [closes] 收盘价列表
+  /// [period] 计算周期
+  /// 返回: {support1, support2, support3, resistance1, resistance2, resistance3}
   static Map<String, double> calculateSupportResistance(
     List<double> highs,
     List<double> lows, {
+    List<double>? closes,
     int period = 20,
   }) {
-    if (highs.isEmpty || lows.isEmpty) {
-      return {'support': 0, 'resistance': 0};
+    if (highs.isEmpty || lows.isEmpty || highs.length < period) {
+      return {
+        'support': 0,
+        'resistance': 0,
+        'support1': 0,
+        'support2': 0,
+        'support3': 0,
+        'resistance1': 0,
+        'resistance2': 0,
+        'resistance3': 0,
+      };
     }
     
+    final currentPrice = closes != null && closes.isNotEmpty ? closes.last : (highs.last + lows.last) / 2;
+    
+    // 方法1：寻找局部高低点（波峰波谷）
+    final pivotHighs = _findPivotPoints(highs, period, true);
+    final pivotLows = _findPivotPoints(lows, period, false);
+    
+    // 方法2：基于最近的高低点
     final start = max(0, highs.length - period);
     final recentHighs = highs.sublist(start);
     final recentLows = lows.sublist(start);
     
-    final resistance = recentHighs.reduce(max);
-    final support = recentLows.reduce(min);
+    // 收集所有可能的阻力位（高于当前价）
+    final resistanceCandidates = <double>[];
+    resistanceCandidates.addAll(pivotHighs.where((h) => h > currentPrice));
+    resistanceCandidates.add(recentHighs.reduce(max)); // 最近最高价
+    
+    // 收集所有可能的支撑位（低于当前价）
+    final supportCandidates = <double>[];
+    supportCandidates.addAll(pivotLows.where((l) => l < currentPrice));
+    supportCandidates.add(recentLows.reduce(min)); // 最近最低价
+    
+    // 如果有收盘价，加入均线作为动态支撑阻力
+    if (closes != null && closes.length >= 20) {
+      final ma20 = calculateSMA(closes, 20);
+      final ma60 = calculateSMA(closes, 60);
+      
+      if (ma20.last != null) {
+        final ma20Value = ma20.last!;
+        if (ma20Value > currentPrice) {
+          resistanceCandidates.add(ma20Value);
+        } else if (ma20Value < currentPrice) {
+          supportCandidates.add(ma20Value);
+        }
+      }
+      
+      if (ma60.last != null) {
+        final ma60Value = ma60.last!;
+        if (ma60Value > currentPrice) {
+          resistanceCandidates.add(ma60Value);
+        } else if (ma60Value < currentPrice) {
+          supportCandidates.add(ma60Value);
+        }
+      }
+    }
+    
+    // 去重并排序
+    final uniqueResistances = resistanceCandidates.toSet().toList()..sort();
+    final uniqueSupports = supportCandidates.toSet().toList()..sort((a, b) => b.compareTo(a)); // 降序
+    
+    // 选择最近的3个阻力位和支撑位
+    final resistance1 = uniqueResistances.isNotEmpty ? uniqueResistances.first : currentPrice * 1.05;
+    final resistance2 = uniqueResistances.length > 1 ? uniqueResistances[1] : currentPrice * 1.10;
+    final resistance3 = uniqueResistances.length > 2 ? uniqueResistances[2] : currentPrice * 1.15;
+    
+    final support1 = uniqueSupports.isNotEmpty ? uniqueSupports.first : currentPrice * 0.95;
+    final support2 = uniqueSupports.length > 1 ? uniqueSupports[1] : currentPrice * 0.90;
+    final support3 = uniqueSupports.length > 2 ? uniqueSupports[2] : currentPrice * 0.85;
     
     return {
-      'support': support,
-      'resistance': resistance,
+      'support': support1, // 最近支撑位（兼容旧版）
+      'resistance': resistance1, // 最近阻力位（兼容旧版）
+      'support1': support1,
+      'support2': support2,
+      'support3': support3,
+      'resistance1': resistance1,
+      'resistance2': resistance2,
+      'resistance3': resistance3,
     };
+  }
+  
+  /// 寻找局部高低点（波峰波谷）
+  /// [prices] 价格列表
+  /// [period] 左右查看的周期
+  /// [findHighs] true=寻找波峰，false=寻找波谷
+  static List<double> _findPivotPoints(List<double> prices, int period, bool findHighs) {
+    final pivots = <double>[];
+    final lookback = min(5, period ~/ 4); // 左右各看5根K线
+    
+    for (int i = lookback; i < prices.length - lookback; i++) {
+      bool isPivot = true;
+      
+      // 检查左右是否形成波峰或波谷
+      for (int j = 1; j <= lookback; j++) {
+        if (findHighs) {
+          // 寻找波峰：当前价格应该高于左右的价格
+          if (prices[i] <= prices[i - j] || prices[i] <= prices[i + j]) {
+            isPivot = false;
+            break;
+          }
+        } else {
+          // 寻找波谷：当前价格应该低于左右的价格
+          if (prices[i] >= prices[i - j] || prices[i] >= prices[i + j]) {
+            isPivot = false;
+            break;
+          }
+        }
+      }
+      
+      if (isPivot) {
+        pivots.add(prices[i]);
+      }
+    }
+    
+    return pivots;
   }
 }
 

@@ -533,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               showAboutDialog(
                 context: context,
                 applicationName: '交易大陆',
-                applicationVersion: 'v1.2.10+2',
+                applicationVersion: 'v1.2.11+2',
                 applicationIcon: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -825,7 +825,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // 应用版本
                     _buildSettingItem(
                       title: '版本',
-                      subtitle: 'v1.2.10+2',
+                      subtitle: 'v1.2.11+2',
                       trailing: const Icon(Icons.info_outline, color: Colors.grey),
                     ),
                     
