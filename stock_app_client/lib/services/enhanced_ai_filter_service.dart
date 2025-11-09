@@ -4,6 +4,7 @@
 library;
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../utils/technical_indicators.dart';
 import 'ai_config_service.dart';
@@ -330,16 +331,26 @@ class EnhancedAIFilterService {
             resultJson['resistance'] = resistance;
           }
           
-          // 如果没有盈亏比，尝试计算
+          // 如果没有盈亏比，尝试计算（修复计算逻辑）
           if (!resultJson.containsKey('risk_reward_ratio') || resultJson['risk_reward_ratio'] == null) {
             final stopLoss = resultJson['stop_loss'];
             final takeProfit = resultJson['take_profit'];
             if (stopLoss != null && takeProfit != null) {
-              final risk = ((currentPrice - stopLoss) / currentPrice * 100).abs();
-              final reward = ((takeProfit - currentPrice) / currentPrice * 100).abs();
+              // 修复：确保stopLoss和takeProfit是数字类型
+              final stopLossPrice = (stopLoss is num) ? stopLoss.toDouble() : double.tryParse(stopLoss.toString()) ?? 0;
+              final takeProfitPrice = (takeProfit is num) ? takeProfit.toDouble() : double.tryParse(takeProfit.toString()) ?? 0;
+              
+              // 计算风险和收益（绝对值）
+              final risk = ((currentPrice - stopLossPrice) / currentPrice * 100).abs();
+              final reward = ((takeProfitPrice - currentPrice) / currentPrice * 100).abs();
+              
               if (risk > 0) {
                 final ratio = (reward / risk).toStringAsFixed(1);
                 resultJson['risk_reward_ratio'] = '$ratio:1';
+                
+                // 调试日志
+                debugPrint('📊 盈亏比计算: 当前价=$currentPrice, 止损=$stopLossPrice, 目标=$takeProfitPrice');
+                debugPrint('   风险=${risk.toStringAsFixed(2)}%, 收益=${reward.toStringAsFixed(2)}%, 盈亏比=$ratio:1');
               }
             }
           }
