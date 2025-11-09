@@ -904,7 +904,7 @@ class CandlestickChartPainter extends CustomPainter {
     canvas.drawPath(path, paint);
   }
   
-  // 绘制交易标记
+  // 绘制交易标记（优化版：无背景填充，三角形在外侧）
   void _drawTradeMarkers(Canvas canvas, Size size) {
     if (trades == null || trades!.isEmpty) return;
     
@@ -926,73 +926,88 @@ class CandlestickChartPainter extends CustomPainter {
       final x = tradeIndex * candleSpacing + candleSpacing / 2;
       final priceY = _priceToY(trade.price, chartHeight);
       
-      // 根据交易类型选择颜色和图标
+      // 根据交易类型选择颜色和位置
       final isBuy = trade.action == 'buy';
       final color = isBuy ? Colors.red : Colors.green;
-      final iconSize = 24.0;
+      final triangleSize = 10.0;
+      final textOffset = 18.0; // 文字距离K线的偏移
       
-      // 绘制圆形背景
-      final circlePaint = Paint()
+      // 先绘制三角形（在外侧，不遮挡K线）
+      final trianglePath = Path();
+      final trianglePaint = Paint()
         ..color = color
         ..style = PaintingStyle.fill;
       
-      canvas.drawCircle(
-        Offset(x, priceY),
-        iconSize / 2,
-        circlePaint,
-      );
-      
-      // 绘制白色边框
-      final borderPaint = Paint()
+      final triangleBorderPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
+        ..strokeWidth = 1.5;
       
-      canvas.drawCircle(
-        Offset(x, priceY),
-        iconSize / 2,
-        borderPaint,
-      );
-      
-      // 绘制文字标记（买、卖）
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: isBuy ? '买' : '卖',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        textDirection: ui.TextDirection.ltr,
-      );
-      
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(
-          x - textPainter.width / 2,
-          priceY - textPainter.height / 2,
-        ),
-      );
-      
-      // 绘制指向价格的小三角形
-      final trianglePath = Path();
       if (isBuy) {
-        // 买入：三角形在下方指向上
-        trianglePath.moveTo(x, priceY + iconSize / 2);
-        trianglePath.lineTo(x - 6, priceY + iconSize / 2 + 8);
-        trianglePath.lineTo(x + 6, priceY + iconSize / 2 + 8);
+        // 买入：三角形在下方指向上，文字在三角形下方
+        final triangleY = priceY + textOffset;
+        trianglePath.moveTo(x, triangleY);
+        trianglePath.lineTo(x - triangleSize, triangleY + triangleSize);
+        trianglePath.lineTo(x + triangleSize, triangleY + triangleSize);
+        trianglePath.close();
+        
+        canvas.drawPath(trianglePath, trianglePaint);
+        canvas.drawPath(trianglePath, triangleBorderPaint);
+        
+        // 绘制文字（在三角形下方）
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: '买',
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          textDirection: ui.TextDirection.ltr,
+        );
+        
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(
+            x - textPainter.width / 2,
+            triangleY + triangleSize + 2,
+          ),
+        );
       } else {
-        // 卖出：三角形在上方指向下
-        trianglePath.moveTo(x, priceY - iconSize / 2);
-        trianglePath.lineTo(x - 6, priceY - iconSize / 2 - 8);
-        trianglePath.lineTo(x + 6, priceY - iconSize / 2 - 8);
+        // 卖出：三角形在上方指向下，文字在三角形上方
+        final triangleY = priceY - textOffset;
+        trianglePath.moveTo(x, triangleY);
+        trianglePath.lineTo(x - triangleSize, triangleY - triangleSize);
+        trianglePath.lineTo(x + triangleSize, triangleY - triangleSize);
+        trianglePath.close();
+        
+        canvas.drawPath(trianglePath, trianglePaint);
+        canvas.drawPath(trianglePath, triangleBorderPaint);
+        
+        // 绘制文字（在三角形上方）
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: '卖',
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          textDirection: ui.TextDirection.ltr,
+        );
+        
+        textPainter.layout();
+        textPainter.paint(
+          canvas,
+          Offset(
+            x - textPainter.width / 2,
+            triangleY - triangleSize - textPainter.height - 2,
+          ),
+        );
       }
-      trianglePath.close();
-      
-      canvas.drawPath(trianglePath, circlePaint);
-      canvas.drawPath(trianglePath, borderPaint);
     }
   }
   

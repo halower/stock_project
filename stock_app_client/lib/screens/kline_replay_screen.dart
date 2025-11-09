@@ -249,49 +249,35 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
               child: Row(
                 children: [
                   // 当前资金
-            _buildInfoCard(
-              '当前资金',
-                    '¥${(_session!.currentCapital / 10000).toStringAsFixed(2)}万',
-              Icons.account_balance_wallet,
-              _session!.currentCapital >= _session!.initialCapital
-                        ? Colors.red
-                        : Colors.green,
+                  Expanded(
+                    child: _buildInfoCard(
+                      '当前资金',
+                      '¥${(_session!.currentCapital / 10000).toStringAsFixed(2)}万',
+                      Icons.account_balance_wallet,
+                      Colors.blue,
+                    ),
                   ),
-            const SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   
-                  // 盈亏
-            _buildInfoCard(
-              '总盈亏',
-                    '${_session!.totalProfitLoss >= 0 ? '+' : ''}¥${_session!.totalProfitLoss.toStringAsFixed(0)}',
-                    Icons.trending_up,
-              _session!.totalProfitLoss >= 0 ? Colors.red : Colors.green,
+                  // 总盈亏
+                  Expanded(
+                    child: _buildInfoCard(
+                      '总盈亏',
+                      '${_session!.totalProfitLoss >= 0 ? '+' : ''}¥${_session!.totalProfitLoss.toStringAsFixed(0)}',
+                      Icons.trending_up,
+                      _session!.totalProfitLoss >= 0 ? Colors.red : Colors.green,
+                    ),
                   ),
-            const SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   
-                  // 盈亏率
-            _buildInfoCard(
-                    '收益率',
-                    '${_session!.profitLossRate >= 0 ? '+' : ''}${_session!.profitLossRate.toStringAsFixed(2)}%',
-              Icons.show_chart,
-              _session!.profitLossRate >= 0 ? Colors.red : Colors.green,
-                  ),
-            const SizedBox(width: 8),
-                  
-            // 交易次数
-            _buildInfoCard(
-                    '交易',
-                    '${_session!.totalTrades}次',
-              Icons.swap_horiz,
-              Colors.blue,
-                  ),
-            const SizedBox(width: 8),
-                  
-            // 胜率
-            _buildInfoCard(
-                    '胜率',
-                    '${_session!.winRate.toStringAsFixed(1)}%',
-                    Icons.emoji_events,
-              _session!.winRate >= 50 ? Colors.amber : Colors.grey,
+                  // 收益率
+                  Expanded(
+                    child: _buildInfoCard(
+                      '收益率',
+                      '${_session!.profitLossRate >= 0 ? '+' : ''}${_session!.profitLossRate.toStringAsFixed(2)}%',
+                      Icons.show_chart,
+                      _session!.profitLossRate >= 0 ? Colors.red : Colors.green,
+                    ),
                   ),
                 ],
               ),
