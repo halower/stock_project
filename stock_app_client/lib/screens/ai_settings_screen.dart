@@ -503,20 +503,6 @@ class _AISettingsScreenState extends State<AISettingsScreen> with SingleTickerPr
                   
                   const SizedBox(height: 20),
                   
-                  // 最大Token数
-                  _buildInputField(
-                    label: '最大Token数',
-                    hint: '1-4096之间的数值',
-                    controller: _maxTokensController,
-                    icon: Icons.format_list_numbered,
-                    isPassword: false,
-                    helpText: 'AI响应的最大token数量，建议设置在4000以下以避免API限制',
-                    keyboardType: TextInputType.number,
-                    isDarkMode: isDarkMode,
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
                   // API密钥
                   _buildInputField(
                     label: 'API密钥 *',
