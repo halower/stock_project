@@ -30,7 +30,7 @@ async def get_redis_client():
             async with _client_lock:
                 if _redis_client is None:
                     _redis_client = await _create_redis_client()
-        else:
+                    else:
             _redis_client = await _create_redis_client()
     
     return _redis_client
@@ -40,12 +40,12 @@ async def _create_redis_client():
     try:
         # 创建简单的Redis客户端
         client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD,
-            db=settings.REDIS_DB,
-            decode_responses=True,
-            retry_on_timeout=True,
+                        host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT,
+                        password=settings.REDIS_PASSWORD,
+                        db=settings.REDIS_DB,
+                        decode_responses=True,
+                        retry_on_timeout=True,
             socket_connect_timeout=5,  # 减少连接超时
             socket_timeout=5,          # 减少操作超时
             max_connections=100,       # 增加连接池大小以支持并发访问
@@ -57,11 +57,11 @@ async def _create_redis_client():
         logger.info("Redis客户端连接成功")
         
         return client
-        
-    except Exception as e:
+            
+        except Exception as e:
         logger.error(f"Redis客户端连接失败: {e}")
-        raise
-
+            raise
+    
 
 async def close_redis_client():
     """关闭Redis客户端"""

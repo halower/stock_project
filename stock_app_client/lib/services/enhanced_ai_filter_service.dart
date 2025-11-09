@@ -321,6 +321,29 @@ class EnhancedAIFilterService {
         if (jsonMatch != null) {
           final jsonStr = jsonMatch.group(0)!;
           final resultJson = jsonDecode(jsonStr) as Map<String, dynamic>;
+          
+          // 确保支撑阻力位数据存在（如果AI没有返回，则使用计算的值）
+          if (!resultJson.containsKey('support') || resultJson['support'] == null) {
+            resultJson['support'] = support;
+          }
+          if (!resultJson.containsKey('resistance') || resultJson['resistance'] == null) {
+            resultJson['resistance'] = resistance;
+          }
+          
+          // 如果没有盈亏比，尝试计算
+          if (!resultJson.containsKey('risk_reward_ratio') || resultJson['risk_reward_ratio'] == null) {
+            final stopLoss = resultJson['stop_loss'];
+            final takeProfit = resultJson['take_profit'];
+            if (stopLoss != null && takeProfit != null) {
+              final risk = ((currentPrice - stopLoss) / currentPrice * 100).abs();
+              final reward = ((takeProfit - currentPrice) / currentPrice * 100).abs();
+              if (risk > 0) {
+                final ratio = (reward / risk).toStringAsFixed(1);
+                resultJson['risk_reward_ratio'] = '$ratio:1';
+              }
+            }
+          }
+          
           return resultJson;
         }
       }
@@ -474,18 +497,23 @@ $filterSection【交易指导原则】
   "reason": "简要分析理由(50-100字)",
   "stop_loss": 具体价格数字,
   "take_profit": 具体价格数字,
-  "confidence": "高|中|低"
+  "confidence": "高|中|低",
+  "support": ${support.toStringAsFixed(2)},
+  "resistance": ${resistance.toStringAsFixed(2)},
+  "risk_reward_ratio": "盈亏比（如2.5:1或2.5）"
 }
 
 重要提示：
 1. signal字段必须是"买入"、"观望"或"卖出"之一
 2. reason要简洁，突出核心技术逻辑
 3. stop_loss和take_profit必须是数字，不能为null
-4. 即使是观望信号，也要给出合理的止损价和目标价供参考
-5. **🚨 最重要：止损价和目标价必须基于上述计算的支撑阻力位！**
-6. **禁止随意编造价格，必须从提供的支撑阻力位中选择！**
-7. **先计算盈亏比，如果<2:1，必须调整价格或改为观望信号！**
-8. **止损幅度通常3-8%，目标盈利必须≥止损的2倍**
+4. support和resistance必须使用上面提供的支撑阻力位数值（${support.toStringAsFixed(2)}和${resistance.toStringAsFixed(2)}）
+5. risk_reward_ratio必须计算并填写实际的盈亏比（格式如"2.5:1"或"2.5"）
+6. 即使是观望信号，也要给出合理的止损价和目标价供参考
+7. **🚨 最重要：止损价和目标价必须基于上述计算的支撑阻力位！**
+8. **禁止随意编造价格，必须从提供的支撑阻力位中选择！**
+9. **先计算盈亏比，如果<2:1，必须调整价格或改为观望信号！**
+10. **止损幅度通常3-8%，目标盈利必须≥止损的2倍**
 
 📌 **价格选择参考**：
 - 激进止损：第1支撑位（风险较小，但容易被扫）

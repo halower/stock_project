@@ -878,7 +878,7 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                 
                     if (analysisData['stop_loss'] != null && analysisData['take_profit'] != null)
                       const SizedBox(width: 8),
-                    
+                
                 // 目标价
                     if (analysisData['take_profit'] != null)
                       Expanded(

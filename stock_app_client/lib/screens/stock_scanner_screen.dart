@@ -750,24 +750,77 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
           
           const SizedBox(height: 10),
           
-          // 处理数量信息
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // 处理数量信息（优化版）
+          Column(
             children: [
-              Text(
-                '已处理: ${result.processedCount}/${result.totalCount}',
-                style: const TextStyle(fontSize: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.analytics_outlined,
+                        size: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '已分析: ${result.processedCount}/${result.totalCount}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 14,
+                        color: Colors.green.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '符合: ${result.stocks.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              Text(
-                '剩余: ${result.totalCount - result.processedCount}',
-                style: const TextStyle(fontSize: 12),
-              ),
-              Text(
-                '符合条件: ${result.stocks.length}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700,
+              const SizedBox(height: 6),
+              // 添加说明文字
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: Colors.orange.shade200,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 12,
+                      color: Colors.orange.shade700,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '只保留"买入"信号的股票，其他信号已过滤',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

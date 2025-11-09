@@ -133,6 +133,18 @@ class AIStockFilterService {
       // 创建汇总报告
       final summary = await _generateSummary(matchedStocks, filterCriteria);
       
+      // 输出筛选统计
+      debugPrint('');
+      debugPrint('=' * 60);
+      debugPrint('📊 AI筛选完成统计：');
+      debugPrint('  原始股票数量: ${stocks.length} 只');
+      debugPrint('  预筛选后数量: ${filteredStocks.length} 只');
+      debugPrint('  实际分析数量: $processedCount 只');
+      debugPrint('  符合条件数量: ${matchedStocks.length} 只');
+      debugPrint('  过滤原因: 只保留"买入"信号的股票');
+      debugPrint('=' * 60);
+      debugPrint('');
+      
       // 创建完成结果
       final finalResult = AIFilterResult.completed(
         originalFilter: filterCriteria,
@@ -174,6 +186,9 @@ class AIStockFilterService {
     List<StockIndicator> stocks, 
     String filterCriteria
   ) async {
+    final originalCount = stocks.length;
+    List<StockIndicator> filtered = stocks;
+    
     // 示例：如果筛选条件包含"成交量"或"量能"关键词，可以预先筛选出成交量较大的股票
     if (filterCriteria.contains('成交量') || 
         filterCriteria.contains('量能') || 
@@ -184,7 +199,9 @@ class AIStockFilterService {
       
       // 取前70%的数据 - 这个比例可以调整
       final int count = (sortedByVolume.length * 0.7).ceil();
-      return sortedByVolume.take(count).toList();
+      filtered = sortedByVolume.take(count).toList();
+      debugPrint('📊 预筛选：根据成交量筛选，从 $originalCount 只股票中保留前 ${filtered.length} 只');
+      return filtered;
     }
     
     // 如果筛选条件包含"上涨"或"涨幅"关键词，可以预先筛选出涨幅大的股票
@@ -197,10 +214,13 @@ class AIStockFilterService {
       
       // 取前70%的数据
       final int count = (sortedByChange.length * 0.7).ceil();
-      return sortedByChange.take(count).toList();
+      filtered = sortedByChange.take(count).toList();
+      debugPrint('📊 预筛选：根据涨跌幅筛选，从 $originalCount 只股票中保留前 ${filtered.length} 只');
+      return filtered;
     }
     
     // 默认情况，返回原始列表
+    debugPrint('📊 预筛选：无特定条件，将分析全部 $originalCount 只股票');
     return stocks;
   }
   
@@ -315,9 +335,12 @@ class AIStockFilterService {
       
       // 只保留"买入"信号的股票（不再保留观望）
       if (signal != '买入') {
-        debugPrint('股票 ${stock.code} ${stock.name} 信号为 $signal，跳过（只保留买入信号）');
+        debugPrint('📉 股票 ${stock.code} ${stock.name} 信号为 $signal，跳过（只保留买入信号）');
         return null;
       }
+      
+      debugPrint('✅ 股票 ${stock.code} ${stock.name} 符合条件，信号: $signal');
+
       
       // 创建带有AI分析结果的股票对象
       return _createMatchedStockWithAnalysis(stock, analysisResult);
