@@ -294,10 +294,7 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                             ],
                           ),
                         )
-                      : Markdown(
-                          data: _analysisResult,
-                          selectable: true,
-                        ),
+                      : _buildBeautifulAnalysisView(_analysisResult),
         ],
       ),
     );
@@ -604,6 +601,253 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
       ],
     );
   }
+
+  // 构建美化的AI分析视图
+  Widget _buildBeautifulAnalysisView(String analysisContent) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return SingleChildScrollView(
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDarkMode
+                ? [
+                    const Color(0xFF1E1E1E).withOpacity(0.8),
+                    const Color(0xFF2A2A2A).withOpacity(0.8),
+                  ]
+                : [
+                    Colors.white.withOpacity(0.9),
+                    const Color(0xFFF8F9FA).withOpacity(0.9),
+                  ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDarkMode 
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.2),
+              blurRadius: 15,
+              spreadRadius: 0,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(
+            color: isDarkMode 
+                ? Colors.white.withOpacity(0.1)
+                : Colors.grey.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 标题区域
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF1565C0),
+                    const Color(0xFF0D47A1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1565C0).withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.analytics_outlined,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Text(
+                          '消息面AI分析报告',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          '专业版',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '生成时间: ${DateTime.now().toString().substring(0, 19)}',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // 分析内容区域
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: MarkdownBody(
+                data: analysisContent,
+                styleSheet: MarkdownStyleSheet(
+                  // 标题样式
+                  h1: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : const Color(0xFF1565C0),
+                    height: 1.3,
+                  ),
+                  h2: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white70 : const Color(0xFF1976D2),
+                    height: 1.3,
+                  ),
+                  h3: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode ? Colors.white60 : const Color(0xFF2196F3),
+                    height: 1.3,
+                  ),
+                  // 段落样式
+                  p: TextStyle(
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white70 : Colors.black87,
+                    height: 1.6,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  // 列表样式
+                  listBullet: TextStyle(
+                    color: isDarkMode ? Colors.white60 : const Color(0xFF1565C0),
+                    fontSize: 16,
+                  ),
+                  // 代码块样式
+                  codeblockDecoration: BoxDecoration(
+                    color: isDarkMode 
+                        ? const Color(0xFF2D2D2D) 
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDarkMode 
+                          ? Colors.white.withOpacity(0.1) 
+                          : Colors.grey.withOpacity(0.3),
+                    ),
+                  ),
+                  code: TextStyle(
+                    backgroundColor: isDarkMode 
+                        ? const Color(0xFF3D3D3D) 
+                        : Colors.grey.shade200,
+                    color: isDarkMode 
+                        ? const Color(0xFFBB86FC) 
+                        : const Color(0xFF6A1B9A),
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                  ),
+                  // 引用块样式
+                  blockquote: TextStyle(
+                    color: isDarkMode ? Colors.white60 : Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 15,
+                  ),
+                  blockquoteDecoration: BoxDecoration(
+                    color: isDarkMode 
+                        ? Colors.white.withOpacity(0.05) 
+                        : Colors.blue.shade50,
+                    border: Border(
+                      left: BorderSide(
+                        color: isDarkMode 
+                            ? Colors.blue.withOpacity(0.5) 
+                            : Colors.blue.shade300,
+                        width: 4,
+                      ),
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                  ),
+                  // 表格样式
+                  tableHead: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: 15,
+                  ),
+                  tableBody: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black87,
+                    fontSize: 14,
+                  ),
+                  tableBorder: TableBorder.all(
+                    color: isDarkMode 
+                        ? Colors.white.withOpacity(0.2) 
+                        : Colors.grey.shade300,
+                    width: 1,
+                  ),
+                  // 分隔线样式
+                  blockSpacing: 16,
+                  listIndent: 24,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
 
   // 构建重要性标签
 }
