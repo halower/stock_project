@@ -116,6 +116,7 @@ class EnhancedAIFilterService {
         macdDirection: macdDirection,
         support: supportResistance['support']!,
         resistance: supportResistance['resistance']!,
+        supportResistance: supportResistance, // 传递完整的支撑阻力位数据
       );
       
       return result;
@@ -258,6 +259,7 @@ class EnhancedAIFilterService {
     required String macdDirection,
     required double support,
     required double resistance,
+    required Map<String, double> supportResistance, // 添加完整的支撑阻力位参数
   }) async {
     // 加载AI配置
     final config = await AIConfigService.loadConfig();
@@ -286,6 +288,7 @@ class EnhancedAIFilterService {
       macdDirection: macdDirection,
       support: support,
       resistance: resistance,
+      supportResistance: supportResistance, // 传递完整的支撑阻力位数据
     );
     
     // 调用AI API
@@ -344,6 +347,7 @@ class EnhancedAIFilterService {
     required String macdDirection,
     required double support,
     required double resistance,
+    required Map<String, double> supportResistance, // 添加完整的支撑阻力位参数
   }) {
     // 构建筛选条件部分
     final filterSection = filterCriteria != null && filterCriteria.isNotEmpty
@@ -402,13 +406,13 @@ $technicalText
 
 🔴 阻力位（由近到远）：
   第1阻力：¥${resistance.toStringAsFixed(2)} (+${((resistance - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
-  第2阻力：¥${(supportResistance['resistance2'] ?? resistance * 1.05).toStringAsFixed(2)} (+${(((supportResistance['resistance2'] ?? resistance * 1.05) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
-  第3阻力：¥${(supportResistance['resistance3'] ?? resistance * 1.10).toStringAsFixed(2)} (+${(((supportResistance['resistance3'] ?? resistance * 1.10) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第2阻力：¥${(resistance * 1.05).toStringAsFixed(2)} (+${((resistance * 1.05 - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第3阻力：¥${(resistance * 1.10).toStringAsFixed(2)} (+${((resistance * 1.10 - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
 
 🟢 支撑位（由近到远）：
   第1支撑：¥${support.toStringAsFixed(2)} (${((support - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
-  第2支撑：¥${(supportResistance['support2'] ?? support * 0.95).toStringAsFixed(2)} (${(((supportResistance['support2'] ?? support * 0.95) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
-  第3支撑：¥${(supportResistance['support3'] ?? support * 0.90).toStringAsFixed(2)} (${(((supportResistance['support3'] ?? support * 0.90) - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第2支撑：¥${(support * 0.95).toStringAsFixed(2)} (${((support * 0.95 - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
+  第3支撑：¥${(support * 0.90).toStringAsFixed(2)} (${((support * 0.90 - currentPrice) / currentPrice * 100).toStringAsFixed(2)}%)
 
 $filterSection【交易指导原则】
 1. **技术分析主导** (权重70%)：趋势、支撑阻力、K线形态是主要依据

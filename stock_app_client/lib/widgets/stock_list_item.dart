@@ -861,25 +861,51 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 关键价位区域
+                Row(
+                  children: [
                 // 止损价
                 if (analysisData['stop_loss'] != null)
-                  _buildInfoRow(
-                    '止损价',
+                      Expanded(
+                        child: _buildPriceCard(
+                          '止损',
                     '¥${analysisData['stop_loss']}',
-                    const Color(0xFFEF4444),  // 鲜艳的红色
+                          const Color(0xFFEF4444),
+                          Icons.shield_outlined,
                     isDarkMode,
-                    Icons.trending_down,
+                        ),
                   ),
                 
+                    if (analysisData['stop_loss'] != null && analysisData['take_profit'] != null)
+                      const SizedBox(width: 8),
+                    
                 // 目标价
-                if (analysisData['take_profit'] != null) ...[
-                  const SizedBox(height: 4),
-                  _buildInfoRow(
-                    '目标价',
+                    if (analysisData['take_profit'] != null)
+                      Expanded(
+                        child: _buildPriceCard(
+                          '目标',
                     '¥${analysisData['take_profit']}',
-                    const Color(0xFF10B981),  // 鲜艳的绿色
+                          const Color(0xFF10B981),
+                          Icons.flag_outlined,
                     isDarkMode,
-                    Icons.trending_up,
+                        ),
+                      ),
+                  ],
+                ),
+                
+                // 盈亏比（如果有）
+                if (analysisData['risk_reward_ratio'] != null) ...[
+                  const SizedBox(height: 6),
+                  _buildRiskRewardRatio(analysisData['risk_reward_ratio'], isDarkMode),
+                ],
+                
+                // 支撑阻力位（如果有）
+                if (analysisData['support'] != null || analysisData['resistance'] != null) ...[
+                  const SizedBox(height: 8),
+                  _buildSupportResistance(
+                    analysisData['support'],
+                    analysisData['resistance'],
+                    isDarkMode,
                   ),
                 ],
                 
@@ -905,50 +931,259 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     );
   }
   
-  // 构建信息行（带图标）
-  Widget _buildInfoRow(String label, String value, Color valueColor, bool isDarkMode, [IconData? icon]) {
-    return Row(
+  // 构建价格卡片（止损/目标）
+  Widget _buildPriceCard(String label, String value, Color color, IconData icon, bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.4),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (icon != null) ...[
+          Row(
+            children: [
           Icon(
             icon,
-            size: 14,
-            color: valueColor,
+                size: 12,
+                color: color,
           ),
           const SizedBox(width: 4),
-        ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
         Text(
-          '$label: ',
+            value,
           style: TextStyle(
-            fontSize: 11,
+              fontSize: 13,
+              color: color,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // 构建盈亏比显示
+  Widget _buildRiskRewardRatio(dynamic ratio, bool isDarkMode) {
+    final ratioStr = ratio.toString();
+    final isGoodRatio = _parseRatio(ratioStr) >= 2.0;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isGoodRatio
+              ? [
+                  const Color(0xFF10B981).withOpacity(0.15),
+                  const Color(0xFF10B981).withOpacity(0.08),
+                ]
+              : [
+                  const Color(0xFFF59E0B).withOpacity(0.15),
+                  const Color(0xFFF59E0B).withOpacity(0.08),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: (isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.4),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isGoodRatio ? Icons.check_circle_outline : Icons.warning_amber_outlined,
+            size: 14,
+            color: isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '盈亏比: ',
+            style: TextStyle(
+              fontSize: 10,
             color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
             fontWeight: FontWeight.w500,
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: valueColor,
-            borderRadius: BorderRadius.circular(5),
-            boxShadow: [
-              BoxShadow(
-                color: valueColor.withOpacity(0.3),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
+          Text(
+            ratioStr,
+            style: TextStyle(
+              fontSize: 11,
+              color: isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isGoodRatio ? '(优秀)' : '(一般)',
+            style: TextStyle(
+              fontSize: 9,
+              color: (isGoodRatio ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // 解析盈亏比字符串为数字
+  double _parseRatio(String ratioStr) {
+    try {
+      // 支持 "2:1" 或 "2.5" 格式
+      if (ratioStr.contains(':')) {
+        final parts = ratioStr.split(':');
+        if (parts.length == 2) {
+          final numerator = double.tryParse(parts[0].trim()) ?? 0;
+          final denominator = double.tryParse(parts[1].trim()) ?? 1;
+          return denominator > 0 ? numerator / denominator : 0;
+        }
+      }
+      return double.tryParse(ratioStr) ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+  
+  // 构建支撑阻力位显示
+  Widget _buildSupportResistance(dynamic support, dynamic resistance, bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: const Color(0xFF4F46E5).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.analytics_outlined,
+                size: 12,
+                color: const Color(0xFF4F46E5),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '关键价位',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
-          child: Text(
-            value,
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              // 支撑位
+              if (support != null)
+                Expanded(
+                  child: Row(
+                    children: [
+        Container(
+                        width: 3,
+                        height: 16,
+          decoration: BoxDecoration(
+                          color: const Color(0xFF10B981),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '支撑',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.black.withOpacity(0.6),
+                            ),
+                          ),
+                          Text(
+                            '¥${support}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF10B981),
+                              fontWeight: FontWeight.bold,
+                            ),
+              ),
+            ],
+          ),
+                    ],
+                  ),
+                ),
+              
+              const SizedBox(width: 12),
+              
+              // 阻力位
+              if (resistance != null)
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 3,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '阻力',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.black.withOpacity(0.6),
+                            ),
+                          ),
+                          Text(
+                            '¥${resistance}',
             style: const TextStyle(
               fontSize: 11,
-              color: Colors.white,
+                              color: Color(0xFFEF4444),
               fontWeight: FontWeight.bold,
-              letterSpacing: 0.2,
-            ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
   
@@ -1126,9 +1361,6 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
 
   // 构建备选池按钮（金融风格）
   Widget _buildWatchlistButton() {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final buttonColor = _isInWatchlist ? const Color(0xFFFF9800) : themeProvider.upColor;
-    
     return GestureDetector(
       onTap: _toggleWatchlist,
       child: AnimatedContainer(
