@@ -910,6 +910,7 @@ class CandlestickChartPainter extends CustomPainter {
     
     final double chartHeight = size.height;
     final double candleSpacing = size.width / candleData.length;
+    final priceLabelHeight = 30.0; // 为价格标签预留空间
     
     for (final trade in trades!) {
       // 查找交易对应的K线索引（使用date字段）
@@ -924,16 +925,33 @@ class CandlestickChartPainter extends CustomPainter {
       if (tradeIndex == -1) continue;
       
       final x = tradeIndex * candleSpacing + candleSpacing / 2;
-      final priceY = _priceToY(trade.price, chartHeight);
+      // 调整Y坐标，将买卖信号移到K线上方，避免遮住K线
+      final priceY = _priceToY(trade.price, chartHeight) - priceLabelHeight - 20.0;
       
       // 根据交易类型选择颜色和图标
       final isBuy = trade.action == 'buy';
       final color = isBuy ? Colors.red : Colors.green;
       final iconSize = 24.0;
       
-      // 绘制圆形背景
-      final circlePaint = Paint()
+      // 绘制连接线到价格点
+      final connectorPaint = Paint()
         ..color = color
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..isAntiAlias = true;
+        
+      // 从买卖标记中心连接到对应价格点
+      final connectorY = _priceToY(trade.price, chartHeight) - priceLabelHeight;
+      canvas.drawLine(
+        Offset(x, priceY + iconSize),
+        Offset(x, connectorY),
+        connectorPaint,
+      );
+      
+      // 绘制圆形背景（略微透明，避免完全遮住K线）
+      final circlePaint = Paint()
+        ..color = color.withOpacity(0.8)
         ..style = PaintingStyle.fill;
       
       canvas.drawCircle(
@@ -991,7 +1009,6 @@ class CandlestickChartPainter extends CustomPainter {
       }
       trianglePath.close();
       
-      canvas.drawPath(trianglePath, circlePaint);
       canvas.drawPath(trianglePath, borderPaint);
     }
   }
