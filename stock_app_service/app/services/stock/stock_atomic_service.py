@@ -238,26 +238,85 @@ class StockAtomicService:
                 max_concurrent=max_concurrent
             )
             
-            # 4. 失败补偿：对失败的股票重试一次
+            # 4. 失败补偿：对失败的股票进行3轮重试
             if result['failed_count'] > 0 and result.get('failed_stocks'):
-                logger.warning(f"检测到 {result['failed_count']} 只股票获取失败，开始补偿重试...")
-                compensation_result = await self._compensate_failed_stocks(
-                    result['failed_stocks'],
-                    days=days,
-                    max_concurrent=max_concurrent
-                )
+                logger.warning("=" * 80)
+                logger.warning(f"⚠️  检测到 {result['failed_count']} 只股票获取失败（失败率 {result['failed_count']/result['total_count']*100:.2f}%）")
+                logger.warning(f"⚠️  开始多轮补偿重试机制...")
+                logger.warning("=" * 80)
                 
-                # 更新统计
-                result['success_count'] += compensation_result['success_count']
-                result['failed_count'] = compensation_result['failed_count']
-                result['compensation_attempted'] = compensation_result['total_count']
-                result['compensation_success'] = compensation_result['success_count']
+                # 进行3轮补偿重试
+                retry_attempts = [
+                    {'concurrent': 5, 'delay': 10},   # 第1轮：降低并发，延迟10秒
+                    {'concurrent': 3, 'delay': 20},   # 第2轮：进一步降低并发，延迟20秒
+                    {'concurrent': 1, 'delay': 30},   # 第3轮：单线程，延迟30秒
+                ]
                 
-                logger.info(
-                    f"补偿完成: 重试 {compensation_result['total_count']} 只, "
-                    f"成功 {compensation_result['success_count']} 只, "
-                    f"最终失败 {compensation_result['failed_count']} 只"
-                )
+                failed_stocks_to_retry = result['failed_stocks']
+                total_compensation_success = 0
+                
+                for round_num, config in enumerate(retry_attempts, 1):
+                    if not failed_stocks_to_retry:
+                        logger.info(f"✅ 第{round_num}轮前已全部成功，无需继续重试")
+                        break
+                    
+                    logger.info(f"🔄 第{round_num}轮补偿重试: 待重试 {len(failed_stocks_to_retry)} 只股票")
+                    logger.info(f"   并发数={config['concurrent']}, 延迟={config['delay']}秒")
+                    
+                    # 等待
+                    logger.info(f"   ⏳ 等待 {config['delay']} 秒，让API限制恢复...")
+                    await asyncio.sleep(config['delay'])
+                    
+                    # 执行补偿
+                    compensation_result = await self._compensate_failed_stocks(
+                        failed_stocks_to_retry,
+                        days=days,
+                        max_concurrent=config['concurrent'],
+                        round_num=round_num
+                    )
+                    
+                    round_success = compensation_result['success_count']
+                    round_failed = compensation_result['failed_count']
+                    total_compensation_success += round_success
+                    
+                    logger.info(
+                        f"   第{round_num}轮完成: 成功 {round_success} 只, "
+                        f"失败 {round_failed} 只, "
+                        f"成功率 {round_success/(round_success+round_failed)*100:.2f}%" if (round_success+round_failed) > 0 else "   第{round_num}轮完成: 无数据"
+                    )
+                    
+                    # 更新失败列表为下一轮重试
+                    if round_failed > 0 and compensation_result.get('failed_stocks'):
+                        failed_stocks_to_retry = compensation_result['failed_stocks']
+                        logger.warning(f"   ⚠️  仍有 {len(failed_stocks_to_retry)} 只股票失败，准备下一轮")
+                    else:
+                        failed_stocks_to_retry = []
+                
+                # 更新最终统计
+                result['success_count'] += total_compensation_success
+                result['failed_count'] = len(failed_stocks_to_retry)
+                result['compensation_attempted'] = len(result['failed_stocks'])
+                result['compensation_success'] = total_compensation_success
+                result['compensation_rounds'] = round_num
+                result['final_success_rate'] = round(result['success_count'] / result['total_count'] * 100, 2)
+                
+                logger.warning("=" * 80)
+                if failed_stocks_to_retry:
+                    logger.error(f"❌ 补偿完成但仍有失败: 重试 {result['compensation_attempted']} 只, "
+                               f"成功 {total_compensation_success} 只, "
+                               f"最终失败 {result['failed_count']} 只 "
+                               f"(最终成功率 {result['final_success_rate']:.2f}%)")
+                    
+                    # 记录最终失败的股票代码（最多前20个）
+                    failed_codes = [s.get('ts_code', 'unknown') for s in failed_stocks_to_retry[:20]]
+                    logger.error(f"❌ 最终失败的股票代码（前20个）: {', '.join(failed_codes)}")
+                    if len(failed_stocks_to_retry) > 20:
+                        logger.error(f"   ... 还有 {len(failed_stocks_to_retry)-20} 只未列出")
+                else:
+                    logger.info(f"✅ 补偿成功: 重试 {result['compensation_attempted']} 只, "
+                               f"全部成功, "
+                               f"最终成功率 {result['final_success_rate']:.2f}%")
+                logger.warning("=" * 80)
             
             elapsed = (datetime.now() - start_time).total_seconds()
             result['elapsed_seconds'] = round(elapsed, 2)
@@ -344,8 +403,23 @@ class StockAtomicService:
                     batch_failed += 1
                     failed_stocks.append(batch[idx])
             
-            # 输出批次汇总日志
-            logger.info(f"第 {batch_num} 批完成: 成功 {batch_success}/{len(batch)}, 失败 {batch_failed}/{len(batch)}, 累计成功 {success_count}/{total_count}")
+            # 输出批次汇总日志（增强）
+            batch_success_rate = round(batch_success / len(batch) * 100, 2) if len(batch) > 0 else 0
+            total_success_rate = round(success_count / (success_count + failed_count) * 100, 2) if (success_count + failed_count) > 0 else 0
+            
+            log_msg = (f"第 {batch_num} 批完成 | "
+                      f"本批: 成功 {batch_success}/{len(batch)} ({batch_success_rate}%), 失败 {batch_failed}/{len(batch)} | "
+                      f"累计: 成功 {success_count}, 失败 {failed_count} ({total_success_rate}%成功率)")
+            
+            if batch_failed > 0:
+                logger.warning(log_msg)
+                # 记录前3个失败的股票代码
+                batch_failed_codes = [batch[i].get('ts_code', 'unknown') for i, r in enumerate(results) 
+                                     if (isinstance(r, Exception) or not r)][:3]
+                if batch_failed_codes:
+                    logger.warning(f"   失败示例: {', '.join(batch_failed_codes)}")
+            else:
+                logger.info(log_msg)
             
             # 避免频繁请求
             await asyncio.sleep(0.5)
@@ -407,7 +481,8 @@ class StockAtomicService:
         self,
         failed_stocks: List[Dict[str, Any]],
         days: int = 180,
-        max_concurrent: int = 5
+        max_concurrent: int = 5,
+        round_num: int = 1
     ) -> Dict[str, Any]:
         """
         补偿失败的股票数据获取
@@ -416,6 +491,7 @@ class StockAtomicService:
             failed_stocks: 失败的股票列表
             days: 获取天数
             max_concurrent: 最大并发数（补偿时使用较小的并发数）
+            round_num: 当前重试轮次
             
         Returns:
             补偿结果统计
@@ -423,11 +499,7 @@ class StockAtomicService:
         total_count = len(failed_stocks)
         success_count = 0
         failed_count = 0
-        
-        logger.info(f"开始补偿 {total_count} 只失败股票...")
-        
-        # 等待5秒，让API限制恢复
-        await asyncio.sleep(5)
+        still_failed_stocks = []  # 记录仍然失败的股票
         
         # 并发重试
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -442,18 +514,22 @@ class StockAtomicService:
         for idx, result in enumerate(results):
             if isinstance(result, Exception):
                 failed_count += 1
+                still_failed_stocks.append(failed_stocks[idx])
+                ts_code = failed_stocks[idx].get('ts_code', 'unknown')
+                logger.debug(f"   [{round_num}轮] 补偿失败(异常): {ts_code}")
             elif result:
                 success_count += 1
             else:
                 failed_count += 1
-                # 记录最终失败的股票代码
+                still_failed_stocks.append(failed_stocks[idx])
                 ts_code = failed_stocks[idx].get('ts_code', 'unknown')
-                logger.warning(f"补偿失败: {ts_code}")
+                logger.debug(f"   [{round_num}轮] 补偿失败(无数据): {ts_code}")
         
         return {
             'total_count': total_count,
             'success_count': success_count,
-            'failed_count': failed_count
+            'failed_count': failed_count,
+            'failed_stocks': still_failed_stocks  # 返回仍然失败的股票列表
         }
     
     def _sync_fetch_kline(self, ts_code: str, days: int) -> List[Dict[str, Any]]:
