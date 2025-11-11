@@ -102,7 +102,7 @@ async def get_stock_history_data(
         logger.info(f"获取股票 {stock_code} 的历史数据")
         
         # 首先尝试从Redis缓存获取
-        from app.services.scheduler.stock_scheduler import STOCK_KEYS
+        from app.api.data_validation import STOCK_KEYS
         
         # 构造ts_code
         if stock_code.startswith('6'):
