@@ -422,7 +422,8 @@ class SignalManager:
                     kline_date = str(trade_date)
             
             signal_data = {
-                'code': clean_code,
+                'code': clean_code,  # 不带后缀的代码，用于前端显示（如 "510300"）
+                'ts_code': ts_code,  # 完整代码，用于查询K线数据（如 "510300.SH"）
                 'name': stock.get('name', ''),
                 'industry': stock.get('industry', ''),  # 行业字段（ETF 为 T+0交易/T+1交易）
                 'market': stock.get('market', ''),  # 市场字段（ETF 为 'ETF'）
@@ -454,13 +455,42 @@ class SignalManager:
         """更新信号中的实时价格数据"""
         try:
             updated_count = 0
+            fallback_count = 0  # 从K线获取的数量
+            
             for signal in signals:
                 code = signal.get('code', '')
+                ts_code = signal.get('ts_code', '')  # 获取完整ts_code
+                
                 if not code:
                     continue
                 
-                # 尝试获取实时价格数据
+                # 1. 优先尝试获取实时价格数据
                 realtime_data = await self._get_realtime_price_data(code, redis_client)
+                
+                # 2. 如果没有实时数据且有ts_code，从K线数据获取
+                if not realtime_data and ts_code:
+                    kline_key = f"stock_trend:{ts_code}"
+                    kline_data_str = await redis_client.get(kline_key)
+                    
+                    if kline_data_str:
+                        try:
+                            trend_data = json.loads(kline_data_str)
+                            kline_list = trend_data.get('data', [])
+                            if kline_list and len(kline_list) > 0:
+                                # 获取最后一条K线数据
+                                last_kline = kline_list[-1]
+                                realtime_data = {
+                                    'price': last_kline.get('close', 0),
+                                    'pct_chg': 0,  # K线中没有当日涨跌幅
+                                    'volume': last_kline.get('volume', 0),
+                                    'update_time': last_kline.get('date', '')
+                                }
+                                fallback_count += 1
+                                logger.debug(f"从K线获取{ts_code}的价格: {realtime_data.get('price', 0)}")
+                        except json.JSONDecodeError as e:
+                            logger.error(f"解析K线数据失败: {ts_code}, {e}")
+                
+                # 3. 更新价格信息
                 if realtime_data:
                     # 更新价格相关字段
                     original_price = signal.get('price', 0)
@@ -488,7 +518,7 @@ class SignalManager:
                     updated_count += 1
             
             if updated_count > 0:
-                logger.debug(f"已更新 {updated_count}/{len(signals)} 个信号的实时价格")
+                logger.debug(f"已更新 {updated_count}/{len(signals)} 个信号的价格（实时: {updated_count-fallback_count}, K线: {fallback_count}）")
         except Exception as e:
             logger.error(f"更新信号实时价格失败: {str(e)}")
 

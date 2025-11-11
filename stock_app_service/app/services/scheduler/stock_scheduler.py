@@ -244,11 +244,13 @@ class StartupTasks:
             elapsed = (datetime.now() - start_time).total_seconds()
             logger.info(f">>> 任务完成: 计算信号完成，耗时 {elapsed:.2f}秒")
             
+            # 从result中排除status字段，避免参数冲突
+            result_data = {k: v for k, v in result.items() if k != 'status'}
             add_job_log(
                 'calculate_signals',
-                'success' if result.get('success') else 'error',
+                'success' if result.get('success') or result.get('status') == 'success' else 'error',
                 f"计算信号完成",
-                **result
+                **result_data
             )
             
         except Exception as e:
@@ -348,12 +350,14 @@ class RuntimeTasks:
                 elapsed = (datetime.now() - start_time).total_seconds()
                 logger.info(f"========== 信号计算完成（仅股票），耗时 {elapsed:.2f}秒 ==========")
                 
+                # 从result中排除status字段，避免参数冲突
+                result_data = {k: v for k, v in result.items() if k != 'status'}
                 add_job_log(
                     'signal_calculation',
-                    'success',
+                    'success' if result.get('success') or result.get('status') == 'success' else 'warning',
                     f'信号计算完成',
                     elapsed_seconds=round(elapsed, 2),
-                    **result
+                    **result_data
                 )
                 
             finally:
