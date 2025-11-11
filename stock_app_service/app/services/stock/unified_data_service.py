@@ -450,10 +450,10 @@ class UnifiedDataService:
                     logger.error(f"{'ETF' if is_etf else '股票'} {ts_code} K线数据格式错误")
                     return False
             
-            # 如果没有历史数据，创建空列表（后面会新增今日数据）
+            # 如果没有历史数据，跳过（实时更新不应该创建首条K线）
             if not kline_list:
-                logger.info(f"{'ETF' if is_etf else '股票'} {ts_code} 没有历史K线数据，将创建今日K线数据")
-                kline_list = []
+                logger.warning(f"{'ETF' if is_etf else '股票'} {ts_code} 没有历史K线数据，跳过实时更新")
+                return False
             
             # 3. 构造今日K线数据（格式与Tushare历史数据完全一致）
             today = datetime.now().strftime('%Y%m%d')
@@ -488,23 +488,18 @@ class UnifiedDataService:
                 'amount': float(realtime_data.get('成交额', realtime_data.get('amount', 0))),  # 成交额（千元）
             }
             
-            # 4. 检查是否已有今日数据
-            if kline_list:
-                last_kline = kline_list[-1]
-                last_trade_date = str(last_kline.get('trade_date', ''))
-                
-                if last_trade_date == today:
-                    # 更新今日数据
-                    kline_list[-1] = new_kline
-                    logger.debug(f"✓ 更新 {'ETF' if is_etf else '股票'} {ts_code} 今日K线: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
-                else:
-                    # 新增今日数据
-                    kline_list.append(new_kline)
-                    logger.info(f"✓ 新增 {'ETF' if is_etf else '股票'} {ts_code} 今日K线: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
+            # 4. 检查是否已有今日数据（此时kline_list必然有数据，因为前面已经检查过了）
+            last_kline = kline_list[-1]
+            last_trade_date = str(last_kline.get('trade_date', ''))
+            
+            if last_trade_date == today:
+                # 更新今日数据
+                kline_list[-1] = new_kline
+                logger.debug(f"✓ 更新 {'ETF' if is_etf else '股票'} {ts_code} 今日K线: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
             else:
-                # 没有历史数据，直接新增今日数据
+                # 新增今日数据
                 kline_list.append(new_kline)
-                logger.info(f"✓ 创建 {'ETF' if is_etf else '股票'} {ts_code} 首条K线（今日）: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
+                logger.info(f"✓ 新增 {'ETF' if is_etf else '股票'} {ts_code} 今日K线: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
             
             # 5. 保持最近180天的数据
             if len(kline_list) > 180:
