@@ -179,10 +179,13 @@ class StartupTasks:
         start_time = datetime.now()
         
         try:
+            # 🔧 优化：降低并发以避免触发API限制
+            # Tushare限制: 每分钟500次，每天20000次
+            # 推荐配置: batch_size=30, max_concurrent=5 → ~300次/分钟
             result = await stock_atomic_service.full_update_all_stocks(
                 days=180,
-                batch_size=50,
-                max_concurrent=5  # 降低并发数，从10降到5，减少API限流
+                batch_size=30,       # 从50降低至30，减少单批次压力
+                max_concurrent=5     # 从10降低至5，减少API限流
             )
             
             elapsed = (datetime.now() - start_time).total_seconds()
