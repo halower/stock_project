@@ -82,27 +82,8 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # 历史数据记录数量限制（用于数据库模式，Redis模式不需要）
 MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "1000"))
 
-# 实时行情配置（股票）
-REALTIME_DATA_PROVIDER = os.getenv("REALTIME_DATA_PROVIDER", "tushare")  # tushare, eastmoney, sina, auto
-REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "1"))  # 股票实时更新周期，单位：分钟，默认1分钟
-REALTIME_AUTO_SWITCH = os.getenv("REALTIME_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # 数据源自动切换
-REALTIME_UPDATE_ENABLED = os.getenv("REALTIME_UPDATE_ENABLED", "false").lower() in ("true", "1", "yes")  # 是否启用实时更新
-
-# ETF实时行情配置
-ETF_REALTIME_PROVIDER = os.getenv("ETF_REALTIME_PROVIDER", "eastmoney")  # eastmoney, sina, auto
-ETF_UPDATE_INTERVAL = int(os.getenv("ETF_UPDATE_INTERVAL", "30"))  # ETF更新周期，单位：分钟（默认30分钟）
-ETF_AUTO_SWITCH = os.getenv("ETF_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # ETF数据源自动切换
-ETF_RETRY_TIMES = int(os.getenv("ETF_RETRY_TIMES", "2"))  # ETF请求重试次数
-ETF_MIN_REQUEST_INTERVAL = float(os.getenv("ETF_MIN_REQUEST_INTERVAL", "3.0"))  # ETF最小请求间隔（秒）
-
-# 动态代理IP配置（实时服务V2）
-PROXY_ENABLED = os.getenv("PROXY_ENABLED", "false").lower() in ("true", "1", "yes")  # 是否启用代理
-PROXY_API_URL = os.getenv("PROXY_API_URL", "https://share.proxy.qg.net/get")  # 代理API地址
-PROXY_API_KEY = os.getenv("PROXY_API_KEY", "")  # 代理API密钥
-PROXY_AUTH_PASSWORD = os.getenv("PROXY_AUTH_PASSWORD", "")  # 代理认证密码（Authpwd）
-PROXY_POOL_SIZE = int(os.getenv("PROXY_POOL_SIZE", "1"))  # 代理池大小（默认1个，按需获取）
-PROXY_REFRESH_INTERVAL = int(os.getenv("PROXY_REFRESH_INTERVAL", "300"))  # 代理刷新间隔（秒）
-PROXY_MAX_FAIL_COUNT = int(os.getenv("PROXY_MAX_FAIL_COUNT", "3"))  # 代理最大失败次数
+# 实时行情配置（仅Tushare）
+REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "1"))  # 实时更新周期，单位：分钟，默认1分钟
 
 
 class Settings(BaseModel):
@@ -135,26 +116,8 @@ class Settings(BaseModel):
     DEFAULT_AI_API_KEY: str = DEFAULT_AI_API_KEY
     DEFAULT_AI_MODEL: str = DEFAULT_AI_MODEL
     
-    # 实时行情配置（股票）
-    REALTIME_DATA_PROVIDER: str = REALTIME_DATA_PROVIDER
+    # 实时行情配置（仅Tushare）
     REALTIME_UPDATE_INTERVAL: int = REALTIME_UPDATE_INTERVAL
-    REALTIME_AUTO_SWITCH: bool = REALTIME_AUTO_SWITCH
-    REALTIME_UPDATE_ENABLED: bool = REALTIME_UPDATE_ENABLED
-    
-    # ETF实时行情配置
-    ETF_REALTIME_PROVIDER: str = ETF_REALTIME_PROVIDER
-    ETF_UPDATE_INTERVAL: int = ETF_UPDATE_INTERVAL
-    ETF_AUTO_SWITCH: bool = ETF_AUTO_SWITCH
-    ETF_RETRY_TIMES: int = ETF_RETRY_TIMES
-    ETF_MIN_REQUEST_INTERVAL: float = ETF_MIN_REQUEST_INTERVAL
-    
-    # 动态代理IP配置
-    PROXY_ENABLED: bool = PROXY_ENABLED
-    PROXY_API_URL: str = PROXY_API_URL
-    PROXY_API_KEY: str = PROXY_API_KEY
-    PROXY_POOL_SIZE: int = PROXY_POOL_SIZE
-    PROXY_REFRESH_INTERVAL: int = PROXY_REFRESH_INTERVAL
-    PROXY_MAX_FAIL_COUNT: int = PROXY_MAX_FAIL_COUNT
     
     class Config:
         case_sensitive = True
