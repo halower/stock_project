@@ -16,7 +16,7 @@ from app.core.etf_config import get_etf_list
 router = APIRouter()
 redis_cache = RedisCache()
 
-# Redis键名规则
+# Redis键名规则（ETF也是一种特殊的股票，统一使用stock_trend）
 STOCK_KEYS = {
     'stock_codes': 'stocks:codes:all',
     'stock_kline': 'stock_trend:{}',
@@ -24,7 +24,7 @@ STOCK_KEYS = {
 
 ETF_KEYS = {
     'etf_codes': 'etf:codes:all',
-    'etf_kline': 'etf_trend:{}',
+    'etf_kline': 'stock_trend:{}',  # ETF也使用stock_trend前缀
 }
 
 

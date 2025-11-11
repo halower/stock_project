@@ -344,18 +344,27 @@ class StockAtomicService:
             }
     
     async def _clear_all_kline_data(self, stock_list: List[Dict[str, Any]]):
-        """清空所有股票的K线数据"""
-        logger.info("开始清空所有股票K线数据...")
-        cleared_count = 0
+        """清空所有股票和ETF的K线数据"""
+        logger.info("开始清空所有股票和ETF的K线数据...")
+        cleared_stock_count = 0
+        cleared_etf_count = 0
         
         for stock in stock_list:
             ts_code = stock.get('ts_code')
+            market = stock.get('market', '')
+            
             if ts_code:
+                # ETF和股票统一使用stock_trend前缀
                 key = self.stock_keys['stock_kline'].format(ts_code)
                 self.redis_cache.delete_cache(key)
-                cleared_count += 1
+                
+                if market == 'ETF':
+                    cleared_etf_count += 1
+                else:
+                    cleared_stock_count += 1
         
-        logger.info(f"清空K线数据完成，共清空 {cleared_count} 只股票")
+        total_cleared = cleared_stock_count + cleared_etf_count
+        logger.info(f"清空K线数据完成，共清空 {total_cleared} 只（股票 {cleared_stock_count} 只，ETF {cleared_etf_count} 只）")
     
     async def _batch_fetch_kline_data(
         self,
