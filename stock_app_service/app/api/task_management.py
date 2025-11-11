@@ -49,7 +49,7 @@ async def trigger_signal_calculation(
     stock_only: bool = True
 ):
     """
-    手动触发策略信号计算
+    手动触发策略信号计算（在后台线程中执行，不阻塞API）
     
     Args:
         stock_only: 是否仅计算股票信号（默认True，盘中建议仅计算股票）
@@ -60,11 +60,30 @@ async def trigger_signal_calculation(
     try:
         logger.info(f"手动触发信号计算，stock_only={stock_only}")
         
-        # 调用原子服务的信号计算方法
-        result = await stock_atomic_service.calculate_strategy_signals(
-            force_recalculate=False,
-            stock_only=stock_only
-        )
+        # 在线程池中执行，避免阻塞主事件循环
+        import asyncio
+        import concurrent.futures
+        
+        def _run_signal_calculation():
+            """在独立线程中运行信号计算"""
+            # 创建新的事件循环
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    stock_atomic_service.calculate_strategy_signals(
+                        force_recalculate=False,
+                        stock_only=stock_only
+                    )
+                )
+                return result
+            finally:
+                loop.close()
+        
+        # 在线程池中执行
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            result = await loop.run_in_executor(executor, _run_signal_calculation)
         
         if result.get('success'):
             return SignalCalculationResponse(
