@@ -34,13 +34,14 @@ class RealtimeService:
             'total_requests': 0,
             'proxy_used': 0,
             'direct_used': 0,
+            'tushare': {'success': 0, 'failed': 0, 'last_success_time': None},
             'eastmoney': {'success': 0, 'failed': 0, 'last_success_time': None},
             'sina': {'success': 0, 'failed': 0, 'last_success_time': None},
             'last_provider': None,
             'last_update': None
         }
         
-        logger.info(f"实时行情服务初始化: provider={self.config.default_provider.value}, 直连模式")
+        logger.info(f"实时行情服务初始化: provider={self.config.default_provider.value}, 实时更新={'启用' if self.config.enable_realtime_update else '禁用'}")
     
     def get_all_stocks_realtime(
         self, 
@@ -71,19 +72,25 @@ class RealtimeService:
         
         # 定义尝试顺序
         if use_provider == DataProvider.AUTO:
-            # 根据成功率排序
-            if self.stats['eastmoney']['success'] >= self.stats['sina']['success']:
-                providers_to_try = [DataProvider.EASTMONEY, DataProvider.SINA]
-            else:
-                providers_to_try = [DataProvider.SINA, DataProvider.EASTMONEY]
+            # 根据成功率排序，优先使用Tushare
+            providers_stats = [
+                (DataProvider.TUSHARE, self.stats['tushare']['success']),
+                (DataProvider.EASTMONEY, self.stats['eastmoney']['success']),
+                (DataProvider.SINA, self.stats['sina']['success'])
+            ]
+            # 按成功率降序排序
+            providers_stats.sort(key=lambda x: x[1], reverse=True)
+            providers_to_try = [p[0] for p in providers_stats]
         else:
             providers_to_try = [use_provider]
             if self.config.auto_switch:
                 # 添加备用数据源
-                if use_provider == DataProvider.EASTMONEY:
-                    providers_to_try.append(DataProvider.SINA)
+                if use_provider == DataProvider.TUSHARE:
+                    providers_to_try.extend([DataProvider.EASTMONEY, DataProvider.SINA])
+                elif use_provider == DataProvider.EASTMONEY:
+                    providers_to_try.extend([DataProvider.TUSHARE, DataProvider.SINA])
                 else:
-                    providers_to_try.append(DataProvider.EASTMONEY)
+                    providers_to_try.extend([DataProvider.TUSHARE, DataProvider.EASTMONEY])
         
         # 尝试各个数据源
         last_error = None
@@ -95,7 +102,9 @@ class RealtimeService:
             for retry in range(self.config.retry_times):
                 try:
                     # 调用对应数据源
-                    if prov == DataProvider.EASTMONEY:
+                    if prov == DataProvider.TUSHARE:
+                        result = self._fetch_tushare_spot(include_etf)
+                    elif prov == DataProvider.EASTMONEY:
                         result = self._fetch_eastmoney_spot(include_etf)
                     elif prov == DataProvider.SINA:
                         result = self._fetch_sina_spot(include_etf)
@@ -172,6 +181,151 @@ class RealtimeService:
     def _is_etf(self, code: str) -> bool:
         """判断是否为ETF（代码以5或1开头）"""
         return code.startswith(('5', '1'))
+    
+    def _fetch_tushare_spot(self, include_etf: bool = False) -> Dict[str, Any]:
+        """
+        从Tushare获取实时行情
+        
+        使用Tushare的rt_k和rt_etf_k接口获取实时日线数据
+        
+        Args:
+            include_etf: 是否包含ETF
+            
+        Returns:
+            标准化数据格式
+        """
+        try:
+            import tushare as ts
+            from app.core.config import TUSHARE_TOKEN
+            
+            if not TUSHARE_TOKEN:
+                return {'success': False, 'error': 'Tushare Token未配置', 'data': [], 'count': 0, 'source': 'tushare'}
+            
+            logger.info("使用Tushare获取实时数据")
+            
+            # 初始化Tushare Pro API
+            pro = ts.pro_api(TUSHARE_TOKEN)
+            
+            formatted_data = []
+            
+            # 获取股票实时数据
+            try:
+                # 获取沪深京三个市场的股票
+                # 6*.SH: 上海主板, 0*.SZ: 深圳主板, 3*.SZ: 创业板, 9*.BJ: 北交所
+                stock_patterns = ['6*.SH', '0*.SZ', '3*.SZ', '9*.BJ']
+                
+                for pattern in stock_patterns:
+                    try:
+                        df = pro.rt_k(ts_code=pattern)
+                        if df is not None and not df.empty:
+                            for _, row in df.iterrows():
+                                code = str(row.get('ts_code', ''))
+                                # 移除后缀，只保留代码
+                                code_only = code.split('.')[0] if '.' in code else code
+                                
+                                # 计算涨跌额和涨跌幅
+                                close_price = float(row.get('close', 0))
+                                pre_close_price = float(row.get('pre_close', 0))
+                                change = close_price - pre_close_price
+                                change_pct = (change / pre_close_price * 100) if pre_close_price > 0 else 0
+                                
+                                formatted_data.append({
+                                    'code': code_only,
+                                    'name': row.get('name', ''),
+                                    'price': close_price,  # 最新价
+                                    'change': change,  # 涨跌额
+                                    'change_pct': change_pct,  # 涨跌幅
+                                    'volume': float(row.get('vol', 0)),  # 成交量（股）
+                                    'amount': float(row.get('amount', 0)),  # 成交额（元）
+                                    'high': float(row.get('high', 0)),
+                                    'low': float(row.get('low', 0)),
+                                    'open': float(row.get('open', 0)),
+                                    'pre_close': pre_close_price
+                                })
+                        time.sleep(0.2)  # 避免请求过快
+                    except Exception as e:
+                        logger.warning(f"获取{pattern}数据失败: {e}")
+                        continue
+                
+                logger.info(f"成功从Tushare获取 {len(formatted_data)} 只股票实时数据")
+            except Exception as e:
+                logger.error(f"Tushare股票数据获取失败: {e}")
+                return {'success': False, 'error': str(e), 'data': [], 'count': 0, 'source': 'tushare'}
+            
+            # 获取ETF实时数据（如果需要）
+            if include_etf:
+                try:
+                    # 获取深市ETF: 1*.SZ
+                    df_sz = pro.rt_etf_k(ts_code='1*.SZ')
+                    if df_sz is not None and not df_sz.empty:
+                        for _, row in df_sz.iterrows():
+                            code = str(row.get('ts_code', ''))
+                            code_only = code.split('.')[0] if '.' in code else code
+                            
+                            # 计算涨跌额和涨跌幅
+                            close_price = float(row.get('close', 0))
+                            pre_close_price = float(row.get('pre_close', 0))
+                            change = close_price - pre_close_price
+                            change_pct = (change / pre_close_price * 100) if pre_close_price > 0 else 0
+                            
+                            formatted_data.append({
+                                'code': code_only,
+                                'name': row.get('name', ''),
+                                'price': close_price,
+                                'change': change,
+                                'change_pct': change_pct,
+                                'volume': float(row.get('vol', 0)),
+                                'amount': float(row.get('amount', 0)),
+                                'high': float(row.get('high', 0)),
+                                'low': float(row.get('low', 0)),
+                                'open': float(row.get('open', 0)),
+                                'pre_close': pre_close_price
+                            })
+                    
+                    time.sleep(0.2)
+                    
+                    # 获取沪市ETF: 5*.SH (需要topic参数)
+                    df_sh = pro.rt_etf_k(ts_code='5*.SH', topic='HQ_FND_TICK')
+                    if df_sh is not None and not df_sh.empty:
+                        for _, row in df_sh.iterrows():
+                            code = str(row.get('ts_code', ''))
+                            code_only = code.split('.')[0] if '.' in code else code
+                            
+                            # 计算涨跌额和涨跌幅
+                            close_price = float(row.get('close', 0))
+                            pre_close_price = float(row.get('pre_close', 0))
+                            change = close_price - pre_close_price
+                            change_pct = (change / pre_close_price * 100) if pre_close_price > 0 else 0
+                            
+                            formatted_data.append({
+                                'code': code_only,
+                                'name': row.get('name', ''),
+                                'price': close_price,
+                                'change': change,
+                                'change_pct': change_pct,
+                                'volume': float(row.get('vol', 0)),
+                                'amount': float(row.get('amount', 0)),
+                                'high': float(row.get('high', 0)),
+                                'low': float(row.get('low', 0)),
+                                'open': float(row.get('open', 0)),
+                                'pre_close': pre_close_price
+                            })
+                    
+                    logger.info(f"成功从Tushare获取 {len(formatted_data)} 只股票+ETF实时数据")
+                except Exception as e:
+                    logger.warning(f"Tushare ETF数据获取失败（不影响股票数据）: {e}")
+            
+            return {
+                'success': True,
+                'data': formatted_data,
+                'count': len(formatted_data),
+                'source': 'tushare',
+                'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+        except Exception as e:
+            logger.error(f"Tushare数据获取失败: {e}")
+            return {'success': False, 'error': str(e), 'data': [], 'count': 0, 'source': 'tushare'}
     
     def _fetch_eastmoney_spot(self, include_etf: bool = False) -> Dict[str, Any]:
         """从东方财富获取实时行情（使用akshare）"""
@@ -283,6 +437,7 @@ class RealtimeService:
             'total_requests': 0,
             'proxy_used': 0,
             'direct_used': 0,
+            'tushare': {'success': 0, 'failed': 0, 'last_success_time': None},
             'eastmoney': {'success': 0, 'failed': 0, 'last_success_time': None},
             'sina': {'success': 0, 'failed': 0, 'last_success_time': None},
             'last_provider': None,

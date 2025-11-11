@@ -83,9 +83,10 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "1000"))
 
 # 实时行情配置（股票）
-REALTIME_DATA_PROVIDER = os.getenv("REALTIME_DATA_PROVIDER", "eastmoney")  # eastmoney, sina, auto
+REALTIME_DATA_PROVIDER = os.getenv("REALTIME_DATA_PROVIDER", "tushare")  # tushare, eastmoney, sina, auto
 REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "20"))  # 股票实时更新周期，单位：分钟
 REALTIME_AUTO_SWITCH = os.getenv("REALTIME_AUTO_SWITCH", "true").lower() in ("true", "1", "yes")  # 数据源自动切换
+REALTIME_UPDATE_ENABLED = os.getenv("REALTIME_UPDATE_ENABLED", "false").lower() in ("true", "1", "yes")  # 是否启用实时更新
 
 # ETF实时行情配置
 ETF_REALTIME_PROVIDER = os.getenv("ETF_REALTIME_PROVIDER", "eastmoney")  # eastmoney, sina, auto
@@ -138,6 +139,7 @@ class Settings(BaseModel):
     REALTIME_DATA_PROVIDER: str = REALTIME_DATA_PROVIDER
     REALTIME_UPDATE_INTERVAL: int = REALTIME_UPDATE_INTERVAL
     REALTIME_AUTO_SWITCH: bool = REALTIME_AUTO_SWITCH
+    REALTIME_UPDATE_ENABLED: bool = REALTIME_UPDATE_ENABLED
     
     # ETF实时行情配置
     ETF_REALTIME_PROVIDER: str = ETF_REALTIME_PROVIDER

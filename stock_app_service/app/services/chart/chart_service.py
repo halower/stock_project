@@ -120,7 +120,7 @@ def prepare_stock_data(db: Session, stock_code: str, strategy: str = 'volume_wav
         print(f"准备股票数据时出错: {str(e)}")
         return None
 
-def generate_chart(db: Session, stock_code: str, strategy: str = 'volume_wave') -> Optional[str]:
+def generate_chart(db: Session, stock_code: str, strategy: str = 'volume_wave', theme: str = 'dark') -> Optional[str]:
     """
     生成图表并返回访问URL
     
@@ -128,6 +128,7 @@ def generate_chart(db: Session, stock_code: str, strategy: str = 'volume_wave') 
         db: 数据库会话
         stock_code: 股票代码
         strategy: 使用的策略类型，可选 'volume_wave' 或 'trend_continuation'
+        theme: 图表主题，可选 'light' 或 'dark'，默认 'dark'
     """
     try:
         # 准备数据
@@ -154,12 +155,12 @@ def generate_chart(db: Session, stock_code: str, strategy: str = 'volume_wave') 
             print(f"不支持的图表策略: {strategy_type}")
             return None
         
-        # 生成唯一文件名
-        chart_file = f"{stock.code}_{strategy_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.html"
+        # 生成唯一文件名（包含主题信息）
+        chart_file = f"{stock.code}_{strategy_type}_{theme}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.html"
         chart_path = os.path.join(CHART_DIR, chart_file)
         
-        # 使用新的图表策略模式生成HTML内容
-        html_content = generate_chart_html(strategy_type, stock_data)
+        # 使用新的图表策略模式生成HTML内容，传递主题参数
+        html_content = generate_chart_html(strategy_type, stock_data, theme=theme)
         
         if not html_content:
             print(f"无法生成股票 {stock_code} 的图表HTML内容")

@@ -182,7 +182,7 @@ class StartupTasks:
             result = await stock_atomic_service.full_update_all_stocks(
                 days=180,
                 batch_size=50,
-                max_concurrent=10
+                max_concurrent=5  # 降低并发数，从10降到5，减少API限流
             )
             
             elapsed = (datetime.now() - start_time).total_seconds()
@@ -387,9 +387,13 @@ class RuntimeTasks:
             asyncio.set_event_loop(loop)
             
             try:
-                # 1. 全量更新
+                # 1. 全量更新（降低并发数）
                 update_result = loop.run_until_complete(
-                    stock_atomic_service.full_update_all_stocks(days=180)
+                    stock_atomic_service.full_update_all_stocks(
+                        days=180,
+                        batch_size=50,
+                        max_concurrent=5  # 降低并发数，减少API限流
+                    )
                 )
                 
                 logger.info(f"全量更新完成: 成功={update_result['success_count']}, 失败={update_result['failed_count']}")
