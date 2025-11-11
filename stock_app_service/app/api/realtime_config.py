@@ -9,7 +9,7 @@ from typing import Optional, Literal
 
 from app.core.logging import logger
 from app.core.config import settings
-from app.services.realtime import get_stock_realtime_service_v2
+from app.services.realtime import get_realtime_service
 from app.api.dependencies import verify_token
 
 router = APIRouter()

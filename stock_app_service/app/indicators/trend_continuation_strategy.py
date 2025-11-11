@@ -5,6 +5,11 @@
 原指标基于123价格延续模式，提供入场、止损和止盈价格参考点
 适配A股市场特性：主要做多，卖出信号表示减仓或空仓等待
 针对日线级别优化止损幅度
+
+性能优化：
+1. 使用numpy数组替代DataFrame频繁索引
+2. 向量化计算替代嵌套循环
+3. 一次性赋值减少DataFrame操作
 """
 
 import pandas as pd
@@ -30,7 +35,7 @@ class TrendContinuationStrategy(BaseStrategy):
                        use_close_candle: bool = False,
                        stop_loss_ratio: float = 0.05) -> Tuple[pd.DataFrame, List[Dict]]:
         """
-        应用123趋势延续模式策略
+        应用123趋势延续模式策略（性能优化版）
         
         Args:
             df: 包含OHLCV数据的DataFrame
@@ -48,166 +53,181 @@ class TrendContinuationStrategy(BaseStrategy):
             if len(df) < length * 2 + 1:
                 return df, []
 
-            # 计算周期内的最高点和最低点
-            def rolling_highest(series, window):
-                return series.rolling(window=window).max()
+            # 转换为numpy数组以提高性能
+            n = len(df)
+            high = df['high'].values
+            low = df['low'].values
+            close = df['close'].values
             
-            def rolling_lowest(series, window):
-                return series.rolling(window=window).min()
+            # 计算滚动窗口的最高点和最低点（向量化操作）
+            window = length * 2 + 1
+            h = pd.Series(high).rolling(window=window, center=True).max().values
+            l = pd.Series(low).rolling(window=window, center=True).min().values
             
-            h = rolling_highest(df['high'], length * 2 + 1)
-            l = rolling_lowest(df['low'], length * 2 + 1)
+            # 检测局部极值点（向量化）
+            is_max = np.zeros(n, dtype=bool)
+            is_min = np.zeros(n, dtype=bool)
             
-            # 检测是否为局部最高点或最低点
-            def is_max(i, window):
-                if i < window:
-                    return False
-                return df['high'].iloc[i] == h.iloc[i]
+            for i in range(length, n - length):
+                # 检查是否为窗口内最高点
+                if high[i] == h[i]:
+                    is_max[i] = True
+                # 检查是否为窗口内最低点
+                if low[i] == l[i]:
+                    is_min[i] = True
+            
+            # 初始化数组
+            last_high = np.zeros(n)
+            last_low = np.zeros(n)
+            time_high = np.zeros(n, dtype=int)
+            time_low = np.zeros(n, dtype=int)
+            dir_up = np.zeros(n, dtype=bool)
+            
+            # 初始值
+            current_dir_up = False
+            current_low = low[0]
+            current_high = high[0]
+            current_time_low = 0
+            current_time_high = 0
+            
+            # 单次遍历计算趋势方向和关键点
+            for i in range(length, n):
+                check_idx = i - length
                 
-            def is_min(i, window):
-                if i < window:
-                    return False
-                return df['low'].iloc[i] == l.iloc[i]
-            
-            # 初始化方向和关键点
-            dir_up = False
-            last_low = df['low'].iloc[0] if len(df) > 0 else 0
-            last_high = df['high'].iloc[0] if len(df) > 0 else 0
-            time_low = 0
-            time_high = 0
-            
-            # 存储每个K线的最高点和最低点
-            df['last_high'] = np.nan
-            df['last_low'] = np.nan
-            df['time_high'] = np.nan
-            df['time_low'] = np.nan
-            df['dir_up'] = False
-            
-            # 迭代计算趋势方向和关键点
-            for i in range(length, len(df)):
-                is_min_point = is_min(i-length, length)
-                is_max_point = is_max(i-length, length)
-                
-                if dir_up:
-                    if is_min_point and df['low'].iloc[i-length] < last_low:
-                        last_low = df['low'].iloc[i-length]
-                        time_low = i-length
+                if current_dir_up:
+                    # 趋势向上时更新最低点
+                    if is_min[check_idx] and low[check_idx] < current_low:
+                        current_low = low[check_idx]
+                        current_time_low = check_idx
                     
-                    if is_max_point and df['high'].iloc[i-length] > last_low:
-                        last_high = df['high'].iloc[i-length]
-                        time_high = i-length
-                        dir_up = False
+                    # 检测是否转为下降趋势
+                    if is_max[check_idx] and high[check_idx] > current_low:
+                        current_high = high[check_idx]
+                        current_time_high = check_idx
+                        current_dir_up = False
                 else:
-                    if is_max_point and df['high'].iloc[i-length] > last_high:
-                        last_high = df['high'].iloc[i-length]
-                        time_high = i-length
+                    # 趋势向下时更新最高点
+                    if is_max[check_idx] and high[check_idx] > current_high:
+                        current_high = high[check_idx]
+                        current_time_high = check_idx
                     
-                    if is_min_point and df['low'].iloc[i-length] < last_high:
-                        last_low = df['low'].iloc[i-length]
-                        time_low = i-length
-                        dir_up = True
+                    # 检测是否转为上升趋势
+                    if is_min[check_idx] and low[check_idx] < current_high:
+                        current_low = low[check_idx]
+                        current_time_low = check_idx
+                        current_dir_up = True
                         
-                        if is_max_point and df['high'].iloc[i-length] > last_low:
-                            last_high = df['high'].iloc[i-length]
-                            time_high = i-length
-                            dir_up = False
+                        # 同时检测最高点
+                        if is_max[check_idx] and high[check_idx] > current_low:
+                            current_high = high[check_idx]
+                            current_time_high = check_idx
+                            current_dir_up = False
                 
-                # 记录当前状态
-                df.loc[df.index[i], 'last_high'] = last_high
-                df.loc[df.index[i], 'last_low'] = last_low
-                df.loc[df.index[i], 'time_high'] = time_high
-                df.loc[df.index[i], 'time_low'] = time_low
-                df.loc[df.index[i], 'dir_up'] = dir_up
+                # 存储当前状态
+                last_high[i] = current_high
+                last_low[i] = current_low
+                time_high[i] = current_time_high
+                time_low[i] = current_time_low
+                dir_up[i] = current_dir_up
             
-            # 检测是否最近触及关键水平
-            def check_recent_touch(i):
-                if i < 10:
-                    return False
-                    
-                for j in range(1, 10):
+            # 向量化检测最近触及关键水平
+            recent_touch = np.zeros(n, dtype=bool)
+            look_back = 10
+            
+            for i in range(look_back, n):
+                # 向量化检查最近10个K线是否触及关键水平
+                for j in range(1, look_back):
                     idx = i - j
-                    idx_next = i - j - 1
-                    if idx < 0 or idx_next < 0:
-                        continue
-                        
+                    idx_next = idx - 1
+                    
+                    if idx_next < 0:
+                        break
+                    
                     # 检查是否触碰到最低点或最高点
-                    if ((df['low'].iloc[idx] <= df['last_low'].iloc[idx] and 
-                         df['low'].iloc[idx_next] > df['last_low'].iloc[idx_next]) or 
-                        (df['high'].iloc[idx] >= df['last_high'].iloc[idx] and 
-                         df['high'].iloc[idx_next] < df['last_high'].iloc[idx_next])):
-                        return True
-                return False
+                    touch_low = (low[idx] <= last_low[idx] and low[idx_next] > last_low[idx_next])
+                    touch_high = (high[idx] >= last_high[idx] and high[idx_next] < last_high[idx_next])
+                    
+                    if touch_low or touch_high:
+                        recent_touch[i] = True
+                        break
             
-            # 计算交易信号
-            df['long_condition'] = False
-            df['short_condition'] = False
-            df['recent_touch'] = False
+            # 计算买卖条件（向量化）
+            entry_price_long = close if use_close_candle else high
+            entry_price_short = close if use_close_candle else low
             
-            for i in range(length, len(df)):
-                if i <= 0:
-                    continue
-                
-                # 检查是否最近触及关键水平
-                df.loc[df.index[i], 'recent_touch'] = check_recent_touch(i)
-                
-                # 买入信号：价格突破阻力位（last_high）
-                entry_price = df['close'].iloc[i] if use_close_candle else df['high'].iloc[i]
-                if (entry_price >= df['last_high'].iloc[i] and 
-                    df['high'].iloc[i-1] < df['last_high'].iloc[i-1] and 
-                    not df['recent_touch'].iloc[i]):
-                    df.loc[df.index[i], 'long_condition'] = True
-                
-                # 卖出信号：价格跌破支撑位（last_low），表示减仓或空仓等待
-                entry_price = df['close'].iloc[i] if use_close_candle else df['low'].iloc[i]
-                if (entry_price <= df['last_low'].iloc[i] and 
-                    df['low'].iloc[i-1] > df['last_low'].iloc[i-1] and 
-                    not df['recent_touch'].iloc[i]):
-                    df.loc[df.index[i], 'short_condition'] = True
+            # 买入条件：价格突破阻力位
+            long_condition = np.zeros(n, dtype=bool)
+            for i in range(length + 1, n):
+                if (entry_price_long[i] >= last_high[i] and 
+                    high[i-1] < last_high[i-1] and 
+                    not recent_touch[i]):
+                    long_condition[i] = True
+            
+            # 卖出条件：价格跌破支撑位
+            short_condition = np.zeros(n, dtype=bool)
+            for i in range(length + 1, n):
+                if (entry_price_short[i] <= last_low[i] and 
+                    low[i-1] > last_low[i-1] and 
+                    not recent_touch[i]):
+                    short_condition[i] = True
+            
+            # 一次性赋值到DataFrame（避免频繁操作）
+            df['last_high'] = last_high
+            df['last_low'] = last_low
+            df['time_high'] = time_high
+            df['time_low'] = time_low
+            df['dir_up'] = dir_up
+            df['long_condition'] = long_condition
+            df['short_condition'] = short_condition
+            df['recent_touch'] = recent_touch
             
             # 构建信号列表
             signals = []
             
-            for i in range(length, len(df)):
-                if df['long_condition'].iloc[i]:
-                    # 买入信号的止损止盈逻辑（适合A股做多，日线级别）
-                    entry_price = df['last_high'].iloc[i]  # 突破阻力位入场
-                    
-                    # 日线级别止损策略：
-                    # 1. 使用支撑位作为基础止损
-                    # 2. 但限制最大止损幅度为5%（可配置）
-                    support_stop = df['last_low'].iloc[i]
-                    ratio_stop = entry_price * (1 - stop_loss_ratio)  # 按比例止损
-                    
-                    # 选择更保守的止损位（离入场价更近的）
-                    stop_loss = max(support_stop, ratio_stop)
-                    
-                    # 止盈位：基于风险回报比，通常1:1.5或1:2
-                    risk = entry_price - stop_loss
-                    take_profit = entry_price + risk * 1.5  # 1:1.5的风险回报比
-                    
-                    signals.append({
-                        'type': 'buy',
-                        'index': i,
-                        'price': entry_price,
-                        'stop_loss': stop_loss,
-                        'take_profit': take_profit,
-                        'strategy': cls.STRATEGY_CODE
-                    })
-                    
-                elif df['short_condition'].iloc[i]:
-                    # 卖出信号：表示减仓或空仓等待，不设置止损止盈（因为不是做空）
-                    # 或者可以理解为持仓的止损信号
-                    entry_price = df['last_low'].iloc[i]   # 跌破支撑位
-                    
-                    signals.append({
-                        'type': 'sell',
-                        'index': i,
-                        'price': entry_price,
-                        'stop_loss': None,  # 卖出信号不设置止损
-                        'take_profit': None,  # 卖出信号不设置止盈
-                        'strategy': cls.STRATEGY_CODE,
-                        'note': '减仓或空仓等待信号'
-                    })
+            # 找出所有买入信号
+            buy_indices = np.where(long_condition)[0]
+            for i in buy_indices:
+                # 买入信号的止损止盈逻辑（适合A股做多，日线级别）
+                entry_price = last_high[i]  # 突破阻力位入场
+                
+                # 日线级别止损策略：
+                # 1. 使用支撑位作为基础止损
+                # 2. 但限制最大止损幅度为5%（可配置）
+                support_stop = last_low[i]
+                ratio_stop = entry_price * (1 - stop_loss_ratio)  # 按比例止损
+                
+                # 选择更保守的止损位（离入场价更近的）
+                stop_loss = max(support_stop, ratio_stop)
+                
+                # 止盈位：基于风险回报比，通常1:1.5或1:2
+                risk = entry_price - stop_loss
+                take_profit = entry_price + risk * 1.5  # 1:1.5的风险回报比
+                
+                signals.append({
+                    'type': 'buy',
+                    'index': int(i),
+                    'price': float(entry_price),
+                    'stop_loss': float(stop_loss),
+                    'take_profit': float(take_profit),
+                    'strategy': cls.STRATEGY_CODE
+                })
+            
+            # 找出所有卖出信号
+            sell_indices = np.where(short_condition)[0]
+            for i in sell_indices:
+                # 卖出信号：表示减仓或空仓等待，不设置止损止盈（因为不是做空）
+                # 或者可以理解为持仓的止损信号
+                entry_price = last_low[i]   # 跌破支撑位
+                
+                signals.append({
+                    'type': 'sell',
+                    'index': int(i),
+                    'price': float(entry_price),
+                    'stop_loss': None,  # 卖出信号不设置止损
+                    'take_profit': None,  # 卖出信号不设置止盈
+                    'strategy': cls.STRATEGY_CODE,
+                    'note': '减仓或空仓等待信号'
+                })
             
             return df, signals
                     

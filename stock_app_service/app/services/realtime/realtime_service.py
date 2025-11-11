@@ -300,14 +300,3 @@ def get_realtime_service() -> RealtimeService:
         _realtime_service = RealtimeService()
     
     return _realtime_service
-
-
-# 兼容旧接口
-def get_stock_realtime_service_v2() -> RealtimeService:
-    """获取股票实时服务（兼容旧接口）"""
-    return get_realtime_service()
-
-
-def get_etf_realtime_service_v2() -> RealtimeService:
-    """获取ETF实时服务（兼容旧接口）"""
-    return get_realtime_service()
