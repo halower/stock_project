@@ -558,23 +558,31 @@ class StockAtomicService:
     
     # ==================== 1.3 实时更新所有股票数据方法 ====================
     
-    async def realtime_update_all_stocks(self) -> Dict[str, Any]:
+    async def realtime_update_all_stocks(self, include_etf: bool = False) -> Dict[str, Any]:
         """
-        实时更新所有股票数据（包括ETF）
-        1. 获取所有股票和ETF的实时数据
+        实时更新所有股票数据（盘中默认不包括ETF）
+        1. 获取所有股票的实时数据
         2. 更新到历史K线数据（当日有则更新，无则新增）
+        
+        Args:
+            include_etf: 是否包含ETF，默认False（盘中不更新ETF，仅全量更新时更新）
         
         Returns:
             更新结果统计
         """
-        logger.info("开始实时更新所有股票数据（包括ETF）...")
+        logger.info(f"开始实时更新所有股票数据（包含ETF={include_etf}）...")
         start_time = datetime.now()
         
         try:
             # 1. 获取实时数据
             from app.services.stock.unified_data_service import unified_data_service
             
-            realtime_result = await unified_data_service.async_fetch_all_realtime_data()
+            if include_etf:
+                # 全量更新：包含股票和ETF
+                realtime_result = await unified_data_service.async_fetch_all_realtime_data()
+            else:
+                # 盘中更新：仅股票
+                realtime_result = await unified_data_service.async_fetch_stock_realtime_data_only()
             
             if not realtime_result['success']:
                 logger.error("获取实时数据失败")
@@ -588,14 +596,14 @@ class StockAtomicService:
             
             logger.info(
                 f"成功获取实时数据: "
-                f"股票 {realtime_result['stock_count']} 只, "
-                f"ETF {realtime_result['etf_count']} 只"
+                f"股票 {realtime_result['stock_count']} 只"
+                + (f", ETF {realtime_result['etf_count']} 只" if include_etf else "")
             )
             
             # 2. 批量更新K线数据
             update_result = await unified_data_service.async_batch_update_klines_with_realtime(
                 stock_df=realtime_result['stock_data'],
-                etf_df=realtime_result['etf_data']
+                etf_df=realtime_result.get('etf_data') if include_etf else None
             )
             
             elapsed = (datetime.now() - start_time).total_seconds()
@@ -604,12 +612,12 @@ class StockAtomicService:
                 'success': True,
                 'message': '实时更新完成',
                 'stock_count': realtime_result['stock_count'],
-                'etf_count': realtime_result['etf_count'],
-                'total_count': realtime_result['total_count'],
+                'etf_count': realtime_result.get('etf_count', 0),
+                'total_count': realtime_result['stock_count'] + realtime_result.get('etf_count', 0),
                 'stock_updated': update_result['stock_updated'],
                 'stock_failed': update_result['stock_failed'],
-                'etf_updated': update_result['etf_updated'],
-                'etf_failed': update_result['etf_failed'],
+                'etf_updated': update_result.get('etf_updated', 0),
+                'etf_failed': update_result.get('etf_failed', 0),
                 'total_updated': update_result['total_updated'],
                 'total_failed': update_result['total_failed'],
                 'elapsed_seconds': round(elapsed, 2),
@@ -639,18 +647,20 @@ class StockAtomicService:
     
     async def calculate_strategy_signals(
         self,
-        force_recalculate: bool = False
+        force_recalculate: bool = False,
+        stock_only: bool = False
     ) -> Dict[str, Any]:
         """
         计算所有股票的策略信号
         
         Args:
             force_recalculate: 是否强制重新计算
+            stock_only: 是否仅计算股票信号（不计算ETF），默认False（盘中为True，全量更新为False）
             
         Returns:
             计算结果统计
         """
-        logger.info(f"开始计算策略信号，强制重算={force_recalculate}")
+        logger.info(f"开始计算策略信号，强制重算={force_recalculate}, 仅股票={stock_only}")
         start_time = datetime.now()
         
         try:
@@ -662,7 +672,8 @@ class StockAtomicService:
             
             # 计算信号
             result = await signal_manager.calculate_buy_signals(
-                force_recalculate=force_recalculate
+                force_recalculate=force_recalculate,
+                stock_only=stock_only
             )
             
             elapsed = (datetime.now() - start_time).total_seconds()

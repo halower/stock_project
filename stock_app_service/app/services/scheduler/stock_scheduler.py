@@ -291,16 +291,16 @@ class RuntimeTasks:
                 elapsed = (datetime.now() - start_time).total_seconds()
                 logger.info(f"========== 实时数据更新完成，耗时 {elapsed:.2f}秒 ==========")
                 
+                # result 中已包含 message 和 elapsed_seconds，直接使用
                 add_job_log(
                     'realtime_update',
                     'success',
-                    f'实时数据更新完成',
-                    elapsed_seconds=round(elapsed, 2),
-                    **result
+                    result.get('message', '实时数据更新完成'),
+                    **{k: v for k, v in result.items() if k != 'message'}  # 排除message避免重复
                 )
                 
-                # 实时更新后自动触发信号计算
-                RuntimeTasks.job_calculate_signals_after_update()
+                # 注意：实时更新和信号计算已分离，不再自动触发信号计算
+                # 信号计算由独立的定时任务触发
                 
             finally:
                 loop.close()
@@ -309,20 +309,29 @@ class RuntimeTasks:
             logger.error(f"实时数据更新失败: {e}")
             import traceback
             logger.error(traceback.format_exc())
-            add_job_log('realtime_update', 'error', f'实时数据更新失败: {str(e)}')
+            add_job_log(
+                'realtime_update',
+                'error',
+                f'实时数据更新异常: {str(e)}'  # 使用不同的消息，避免与result中的message冲突
+            )
         finally:
             _task_locks['realtime_update'].release()
     
     @staticmethod
-    def job_calculate_signals_after_update():
-        """实时更新后自动触发信号计算"""
+    def job_calculate_signals():
+        """定时任务：计算策略信号（盘中仅计算股票信号，不计算ETF）"""
+        # 检查是否为交易时间
+        if not is_trading_time():
+            logger.debug("非交易时间，跳过信号计算")
+            return
+        
         # 防止重复执行
         if not _task_locks['signal_calculation'].acquire(blocking=False):
             logger.warning("信号计算任务正在执行中，跳过本次")
             return
         
         try:
-            logger.info(">>> 实时更新后触发信号计算")
+            logger.info("========== 开始计算策略信号（仅股票） ==========")
             start_time = datetime.now()
             
             loop = asyncio.new_event_loop()
@@ -330,17 +339,35 @@ class RuntimeTasks:
             
             try:
                 result = loop.run_until_complete(
-                    stock_atomic_service.calculate_strategy_signals(force_recalculate=False)
+                    stock_atomic_service.calculate_strategy_signals(
+                        force_recalculate=False,
+                        stock_only=True  # 盘中仅计算股票信号
+                    )
                 )
                 
                 elapsed = (datetime.now() - start_time).total_seconds()
-                logger.info(f">>> 信号计算完成，耗时 {elapsed:.2f}秒")
+                logger.info(f"========== 信号计算完成（仅股票），耗时 {elapsed:.2f}秒 ==========")
+                
+                add_job_log(
+                    'signal_calculation',
+                    'success',
+                    f'信号计算完成',
+                    elapsed_seconds=round(elapsed, 2),
+                    **result
+                )
                 
             finally:
                 loop.close()
                 
         except Exception as e:
             logger.error(f"信号计算失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            add_job_log(
+                'signal_calculation',
+                'error',
+                f'信号计算失败: {str(e)}'
+            )
         finally:
             _task_locks['signal_calculation'].release()
     
@@ -390,7 +417,7 @@ class RuntimeTasks:
             asyncio.set_event_loop(loop)
             
             try:
-                # 1. 全量更新（降低并发数）
+                # 1. 全量更新（包含股票和ETF，降低并发数）
                 update_result = loop.run_until_complete(
                     stock_atomic_service.full_update_all_stocks(
                         days=180,
@@ -399,11 +426,14 @@ class RuntimeTasks:
                     )
                 )
                 
-                logger.info(f"全量更新完成: 成功={update_result['success_count']}, 失败={update_result['failed_count']}")
+                logger.info(f"全量更新完成（包含ETF）: 成功={update_result['success_count']}, 失败={update_result['failed_count']}")
                 
-                # 2. 计算信号
+                # 2. 计算信号（包含股票和ETF）
                 signal_result = loop.run_until_complete(
-                    stock_atomic_service.calculate_strategy_signals(force_recalculate=True)
+                    stock_atomic_service.calculate_strategy_signals(
+                        force_recalculate=True,
+                        stock_only=False  # 全量更新包含ETF信号
+                    )
                 )
                 
                 elapsed = (datetime.now() - start_time).total_seconds()
@@ -499,14 +529,42 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
     
     # 3. 添加运行时任务
     
-    # 实时数据更新：交易时间+盘后30分钟内每20分钟执行一次
+    # 实时数据更新：每分钟执行一次（可通过环境变量REALTIME_UPDATE_INTERVAL配置）
+    realtime_interval = settings.REALTIME_UPDATE_INTERVAL
     scheduler.add_job(
         func=RuntimeTasks.job_realtime_update,
-        trigger=IntervalTrigger(minutes=20),
+        trigger=IntervalTrigger(minutes=realtime_interval),
         id='realtime_update',
         name='实时数据更新',
         replace_existing=True
     )
+    logger.info(f"实时数据更新任务已添加，间隔: {realtime_interval}分钟")
+    
+    # 信号计算：固定时间点触发（保持原有逻辑）
+    # 9:30, 9:50, 10:10, 10:30, 10:50, 11:10, 11:30
+    # 13:00, 13:20, 13:40, 14:00, 14:20, 14:40, 15:00, 15:20
+    from datetime import datetime
+    now = datetime.now()
+    
+    # 如果是交易时间且启动时计算信号，立即执行一次
+    if is_trading_time() and calculate_signals:
+        logger.info("启动时立即执行一次信号计算，确保有最新信号...")
+        import threading
+        # 在后台线程中执行，不阻塞启动
+        threading.Thread(target=RuntimeTasks.job_calculate_signals, daemon=True).start()
+    
+    scheduler.add_job(
+        func=RuntimeTasks.job_calculate_signals,
+        trigger=CronTrigger(
+            day_of_week='mon-fri',
+            hour='9-11,13-15',
+            minute='0,10,20,30,40,50'
+        ),
+        id='signal_calculation',
+        name='策略信号计算',
+        replace_existing=True
+    )
+    logger.info("信号计算任务已添加，固定时间点触发（约每20分钟）")
     
     # 新闻爬取：每2小时执行一次
     scheduler.add_job(
@@ -539,7 +597,8 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
     scheduler.start()
     logger.info("========== 股票调度器启动完成 ==========")
     logger.info("定时任务:")
-    logger.info("  - 实时数据更新: 每20分钟（交易时间+盘后30分钟）")
+    logger.info(f"  - 实时数据更新: 每{realtime_interval}分钟（交易时间）")
+    logger.info("  - 策略信号计算: 固定时间点（9:30/9:50/10:10/10:30/10:50/11:10/11:30/13:00/13:20/13:40/14:00/14:20/14:40/15:00/15:20，独立任务）")
     logger.info("  - 新闻爬取: 每2小时")
     logger.info("  - 全量更新并计算信号: 每个交易日17:35")
     logger.info("  - 图表文件清理: 每天00:00")

@@ -232,23 +232,61 @@ class UnifiedDataService:
     def fetch_stock_realtime_data(self) -> Optional[pd.DataFrame]:
         """
         获取所有股票的实时数据
-        使用akshare的新浪接口（已验证有效）
+        优先使用配置的数据源（如Tushare），失败时尝试akshare
         
         Returns:
             包含所有股票实时数据的DataFrame
         """
         try:
-            import akshare as ak
+            # 优先使用RealtimeService（支持Tushare等多数据源）
+            from app.services.realtime.realtime_service import get_realtime_service
             
             logger.info("开始获取股票实时数据...")
+            service = get_realtime_service()
+            
+            # 获取实时数据（不包含ETF）
+            result = service.get_all_stocks_realtime(include_etf=False)
+            
+            if result.get('success') and result.get('data'):
+                # 转换为DataFrame
+                df = pd.DataFrame(result['data'])
+                
+                # 标准化字段名（RealtimeService返回的字段名）
+                # code, name, price, change, change_pct, volume, amount, high, low, open, pre_close
+                if not df.empty:
+                    df['update_time'] = result.get('update_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                    df['data_source'] = result.get('source', 'unknown')
+                    
+                    # 重命名字段以匹配后续处理
+                    rename_map = {
+                        'code': '代码',
+                        'name': '名称',
+                        'price': '最新价',
+                        'change': '涨跌额',
+                        'change_pct': '涨跌幅',
+                        'volume': '成交量',
+                        'amount': '成交额',
+                        'high': '最高',
+                        'low': '最低',
+                        'open': '今开',
+                        'pre_close': '昨收'
+                    }
+                    df = df.rename(columns=rename_map)
+                    
+                    logger.info(f"成功获取 {len(df)} 只股票的实时数据（数据源: {result.get('source')}）")
+                    return df
+            
+            # 如果RealtimeService失败，尝试akshare作为备用
+            logger.warning("RealtimeService获取失败，尝试使用akshare备用方案...")
+            import akshare as ak
+            
             df = ak.stock_zh_a_spot()
             
             if df is not None and not df.empty:
-                # 添加获取时间和数据来源
                 df['update_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                df['data_source'] = 'sina'
+                df['data_source'] = 'sina_backup'
                 
-                logger.info(f"成功获取 {len(df)} 只股票的实时数据")
+                logger.info(f"成功获取 {len(df)} 只股票的实时数据（备用数据源: sina）")
                 return df
             else:
                 logger.warning("获取的股票实时数据为空")
@@ -351,6 +389,32 @@ class UnifiedDataService:
         
         return result
     
+    async def async_fetch_stock_realtime_data_only(self) -> Dict[str, Any]:
+        """
+        异步版本：仅获取股票的实时数据（不包含ETF）
+        
+        用于盘中实时更新，不更新ETF
+        """
+        import concurrent.futures
+        
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            result = await loop.run_in_executor(
+                executor,
+                self.fetch_stock_realtime_data
+            )
+        
+        # 构造返回格式与async_fetch_all_realtime_data一致
+        return {
+            'success': result is not None and not result.empty,
+            'stock_data': result,
+            'etf_data': None,
+            'stock_count': len(result) if result is not None else 0,
+            'etf_count': 0,
+            'total_count': len(result) if result is not None else 0,
+            'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+    
     # ==================== 3. 实时数据更新到历史K线 ====================
     
     def update_kline_with_realtime(
@@ -375,22 +439,21 @@ class UnifiedDataService:
             key = self.kline_key_template.format(ts_code)
             cached_data = self.redis_cache.get_cache(key)
             
-            if not cached_data:
-                logger.warning(f"{'ETF' if is_etf else '股票'} {ts_code} 没有历史K线数据，跳过实时更新")
-                return False
-            
             # 2. 解析K线数据
-            if isinstance(cached_data, dict):
-                kline_list = cached_data.get('data', [])
-            elif isinstance(cached_data, list):
-                kline_list = cached_data
-            else:
-                logger.error(f"{'ETF' if is_etf else '股票'} {ts_code} K线数据格式错误")
-                return False
+            kline_list = []
+            if cached_data:
+                if isinstance(cached_data, dict):
+                    kline_list = cached_data.get('data', [])
+                elif isinstance(cached_data, list):
+                    kline_list = cached_data
+                else:
+                    logger.error(f"{'ETF' if is_etf else '股票'} {ts_code} K线数据格式错误")
+                    return False
             
+            # 如果没有历史数据，创建空列表（后面会新增今日数据）
             if not kline_list:
-                logger.warning(f"{'ETF' if is_etf else '股票'} {ts_code} K线数据为空")
-                return False
+                logger.info(f"{'ETF' if is_etf else '股票'} {ts_code} 没有历史K线数据，将创建今日K线数据")
+                kline_list = []
             
             # 3. 构造今日K线数据（格式与Tushare历史数据完全一致）
             today = datetime.now().strftime('%Y%m%d')
@@ -403,11 +466,13 @@ class UnifiedDataService:
             # 获取昨收价，用于计算change
             pre_close = float(realtime_data.get('昨收', realtime_data.get('pre_close', current_price)))
             
-            # 计算涨跌额
-            change = current_price - pre_close if pre_close > 0 else 0.0
+            # 获取或计算涨跌额（优先使用实时数据中的change字段）
+            change = float(realtime_data.get('change', 0))
+            if change == 0 and pre_close > 0:
+                change = current_price - pre_close
             
-            # 获取涨跌幅（百分比）
-            pct_chg = float(realtime_data.get('涨跌幅', realtime_data.get('change_percent', 0)))
+            # 获取涨跌幅（百分比）- 兼容多种字段名
+            pct_chg = float(realtime_data.get('涨跌幅', realtime_data.get('change_pct', realtime_data.get('change_percent', 0))))
             
             new_kline = {
                 'ts_code': ts_code,
@@ -424,17 +489,22 @@ class UnifiedDataService:
             }
             
             # 4. 检查是否已有今日数据
-            last_kline = kline_list[-1]
-            last_trade_date = str(last_kline.get('trade_date', ''))
-            
-            if last_trade_date == today:
-                # 更新今日数据
-                kline_list[-1] = new_kline
-                logger.debug(f"更新 {'ETF' if is_etf else '股票'} {ts_code} 今日K线数据")
+            if kline_list:
+                last_kline = kline_list[-1]
+                last_trade_date = str(last_kline.get('trade_date', ''))
+                
+                if last_trade_date == today:
+                    # 更新今日数据
+                    kline_list[-1] = new_kline
+                    logger.debug(f"✓ 更新 {'ETF' if is_etf else '股票'} {ts_code} 今日K线: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
+                else:
+                    # 新增今日数据
+                    kline_list.append(new_kline)
+                    logger.info(f"✓ 新增 {'ETF' if is_etf else '股票'} {ts_code} 今日K线: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
             else:
-                # 新增今日数据
+                # 没有历史数据，直接新增今日数据
                 kline_list.append(new_kline)
-                logger.debug(f"新增 {'ETF' if is_etf else '股票'} {ts_code} 今日K线数据")
+                logger.info(f"✓ 创建 {'ETF' if is_etf else '股票'} {ts_code} 首条K线（今日）: close={current_price}, change={change:.2f}, pct_chg={pct_chg:.2f}%")
             
             # 5. 保持最近180天的数据
             if len(kline_list) > 180:

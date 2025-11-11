@@ -41,7 +41,7 @@ class RealtimeService:
             'last_update': None
         }
         
-        logger.info(f"实时行情服务初始化: provider={self.config.default_provider.value}, 实时更新={'启用' if self.config.enable_realtime_update else '禁用'}")
+        logger.info(f"实时行情服务初始化: provider={self.config.default_provider}, 实时更新={'启用' if self.config.enable_realtime_update else '禁用'}")
     
     def get_all_stocks_realtime(
         self, 
@@ -96,7 +96,7 @@ class RealtimeService:
         last_error = None
         for idx, prov in enumerate(providers_to_try):
             if idx > 0:
-                logger.warning(f"主数据源失败，切换到备用源: {prov.value}")
+                logger.warning(f"主数据源失败，切换到备用源: {prov}")
             
             # 重试机制
             for retry in range(self.config.retry_times):
@@ -114,21 +114,22 @@ class RealtimeService:
                     # 成功
                     if result.get('success'):
                         self._mark_success(prov)
-                        logger.info(f"成功从{prov.value}获取{result.get('count', 0)}只{'股票+ETF' if include_etf else '股票'}实时数据")
+                        logger.info(f"成功从{prov}获取{result.get('count', 0)}只{'股票+ETF' if include_etf else '股票'}实时数据")
                         return result
                     
                     last_error = result.get('error', '未知错误')
                     
                 except Exception as e:
                     last_error = str(e)
-                    logger.warning(f"获取实时数据失败 (provider={prov.value}, retry={retry+1}): {e}")
+                    logger.warning(f"获取实时数据失败 (provider={prov}, retry={retry+1}): {e}")
                     
                     # 重试前等待
                     if retry < self.config.retry_times - 1:
                         time.sleep(random.uniform(1.0, 2.0))
             
             # 记录失败
-            self.stats[prov.value]['failed'] += 1
+            provider_str = prov if isinstance(prov, str) else prov.value
+            self.stats[provider_str]['failed'] += 1
         
         # 所有数据源都失败
         error_msg = f"所有数据源均失败: {last_error}"
@@ -172,9 +173,11 @@ class RealtimeService:
     
     def _mark_success(self, provider: DataProvider):
         """标记成功"""
-        self.stats[provider.value]['success'] += 1
-        self.stats[provider.value]['last_success_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.stats['last_provider'] = provider.value
+        # provider 可能是字符串或DataProvider枚举，统一处理
+        provider_str = provider if isinstance(provider, str) else provider.value
+        self.stats[provider_str]['success'] += 1
+        self.stats[provider_str]['last_success_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.stats['last_provider'] = provider_str
         self.stats['last_update'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.stats['direct_used'] += 1
     

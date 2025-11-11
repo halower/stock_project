@@ -18,6 +18,111 @@ import json
 router = APIRouter()
 
 
+async def _update_signals_with_latest_price(signals: List[Dict]) -> None:
+    """
+    更新信号中的价格为最新价格
+    
+    从Redis缓存中获取最新K线数据，更新信号中的价格、涨跌幅等信息
+    """
+    if not signals:
+        return
+    
+    try:
+        from app.db.session import RedisCache
+        redis_cache = RedisCache()
+        
+        # 用于记录样本日志
+        sample_count = 0
+        max_samples = 3
+        
+        for signal in signals:
+            try:
+                code = signal.get('code')
+                if not code:
+                    continue
+                
+                # 构造ts_code
+                if code.startswith('6'):
+                    ts_code = f"{code}.SH"
+                elif code.startswith(('43', '83', '87', '88')):
+                    ts_code = f"{code}.BJ"
+                else:
+                    ts_code = f"{code}.SZ"
+                
+                # 从Redis获取K线数据
+                cache_key = f"stock_trend:{ts_code}"
+                cached_data = redis_cache.get_cache(cache_key)
+                
+                if not cached_data:
+                    if sample_count < max_samples:
+                        logger.info(f"[样本{sample_count+1}] 股票 {ts_code} 没有缓存数据")
+                        sample_count += 1
+                    continue
+                
+                # 解析缓存数据
+                kline_data = None
+                if isinstance(cached_data, list):
+                    kline_data = cached_data
+                elif isinstance(cached_data, dict):
+                    kline_data = cached_data.get('data', [])
+                
+                if not kline_data or len(kline_data) == 0:
+                    if sample_count < max_samples:
+                        logger.info(f"[样本{sample_count+1}] 股票 {ts_code} K线数据为空")
+                        sample_count += 1
+                    continue
+                
+                # 获取最新一条K线数据
+                latest = kline_data[-1]
+                trade_date = latest.get('trade_date', '')
+                
+                if sample_count < max_samples:
+                    logger.info(f"[样本{sample_count+1}] 股票 {ts_code} 最新K线日期: {trade_date}, close={latest.get('close')}, pre_close={latest.get('pre_close')}")
+                
+                # 更新价格信息
+                close_price = float(latest.get('close', 0))
+                pre_close = float(latest.get('pre_close', 0))
+                
+                # 更新K线日期（格式：20251111 -> 2025-11-11）
+                if trade_date and len(str(trade_date)) == 8:
+                    trade_date_str = str(trade_date)
+                    formatted_date = f"{trade_date_str[:4]}-{trade_date_str[4:6]}-{trade_date_str[6:8]}"
+                    signal['kline_date'] = formatted_date
+                
+                # 计算涨跌
+                if close_price > 0:
+                    old_price = signal.get('price', 0)
+                    signal['price'] = close_price
+                    
+                    if pre_close > 0:
+                        change = close_price - pre_close
+                        change_pct = (change / pre_close) * 100
+                        signal['change'] = round(change, 2)
+                        signal['change_percent'] = round(change_pct, 2)
+                    
+                    if sample_count < max_samples:
+                        logger.info(f"[样本{sample_count+1}] 股票 {ts_code} 价格更新: {old_price} -> {close_price}, change={signal.get('change')}, pct={signal.get('change_percent')}%, kline_date={signal.get('kline_date')}")
+                        sample_count += 1
+                
+                # 更新成交量
+                vol = latest.get('vol', 0)
+                if vol:
+                    # Tushare的vol单位是手，需要乘以100转为股
+                    signal['volume'] = float(vol) * 100
+                
+                # 标记为已更新最新价格
+                signal['price_updated'] = True
+                
+            except Exception as e:
+                logger.warning(f"更新股票 {signal.get('code')} 最新价格失败: {e}")
+                continue
+        
+        logger.info(f"成功更新 {sum(1 for s in signals if s.get('price_updated'))} 个信号的最新价格")
+        
+    except Exception as e:
+        logger.error(f"批量更新信号价格失败: {e}")
+
+
 @router.get("/api/stocks/signal/buy", summary="获取买入信号", tags=["买入信号"], dependencies=[Depends(verify_token)])
 async def get_buy_signals(
     strategy: Optional[str] = Query(None, description="策略名称（可选）：volume_wave, trend_continuation")
@@ -93,6 +198,13 @@ async def get_buy_signals(
         # 获取信号（不再传递limit参数）
         signals = await signal_manager.get_buy_signals(strategy=strategy)
         
+        logger.info(f"获取到 {len(signals)} 个信号，开始更新最新价格...")
+        
+        # 更新信号中的价格为最新价格
+        await _update_signals_with_latest_price(signals)
+        
+        logger.info(f"价格更新完成")
+        
         def clean_numeric_value(value, default=0):
             """清理数值，确保JSON序列化兼容"""
             import math
@@ -129,6 +241,7 @@ async def get_buy_signals(
                 return f"{yi:.2f}亿股"
         
         # 清理信号数据中的无效数值
+        sample_logged = 0
         for signal in signals:
             # 清理所有数值字段
             for key in ['price', 'volume', 'volume_ratio', 'change_percent', 'confidence']:
@@ -138,6 +251,11 @@ async def get_buy_signals(
                 # 添加人性化成交量显示
                 volume = signal.get('volume', 0)
                 signal['volume_display'] = format_volume_humanized(volume)
+            
+            # 记录前3个信号的最终价格
+            if sample_logged < 3:
+                logger.info(f"[返回样本{sample_logged+1}] {signal.get('code')} 最终price={signal.get('price')}, change={signal.get('change')}, change_percent={signal.get('change_percent')}%")
+                sample_logged += 1
         
         return {
             "code": 200,

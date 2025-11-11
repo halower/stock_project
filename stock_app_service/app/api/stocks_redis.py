@@ -30,6 +30,23 @@ class StockHistoryResponse(BaseModel):
     data: List[StockHistoryData]
     total: int
 
+class StockPriceData(BaseModel):
+    """股票价格数据"""
+    code: str
+    name: Optional[str] = None
+    price: Optional[float] = None
+    change: Optional[float] = None
+    change_percent: Optional[float] = None  # 前端期望的字段名是 change_percent
+    volume: Optional[float] = None  # 添加成交量字段
+    error: Optional[str] = None
+
+class BatchPriceResponse(BaseModel):
+    """批量价格响应"""
+    success: bool
+    total: int
+    data: List[StockPriceData]
+    timestamp: str
+
 @router.get("/api/stocks", summary="获取所有股票清单", dependencies=[Depends(verify_token)])
 async def get_stocks_list() -> Dict[str, Any]:
     """
@@ -276,4 +293,141 @@ async def get_stock_history_data(
         
     except Exception as e:
         logger.error(f"获取股票历史数据失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"获取股票历史数据失败: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"获取股票历史数据失败: {str(e)}")
+
+
+@router.get("/api/stocks/batch-price",
+           response_model=BatchPriceResponse,
+           summary="批量获取股票最新价格",
+           dependencies=[Depends(verify_token)])
+async def get_batch_stock_price(
+    codes: str = Query(..., description="股票代码列表，逗号分隔，如: 000001,600000,300001")
+) -> BatchPriceResponse:
+    """
+    批量获取股票最新价格
+    
+    从Redis缓存中获取股票的最新K线数据，返回最新价格信息
+    
+    Args:
+        codes: 股票代码列表，逗号分隔
+    
+    Returns:
+        批量价格数据
+    """
+    try:
+        # 解析股票代码列表
+        code_list = [code.strip() for code in codes.split(',') if code.strip()]
+        
+        if not code_list:
+            raise HTTPException(status_code=400, detail="股票代码列表不能为空")
+        
+        if len(code_list) > 100:
+            raise HTTPException(status_code=400, detail="单次最多查询100只股票")
+        
+        logger.info(f"批量获取 {len(code_list)} 只股票的价格: {code_list}")
+        
+        # 使用Redis缓存获取数据
+        from app.db.session import RedisCache
+        redis_cache = RedisCache()
+        
+        result_data = []
+        
+        for code in code_list:
+            try:
+                # 构造ts_code
+                if code.startswith('6'):
+                    ts_code = f"{code}.SH"
+                elif code.startswith(('43', '83', '87', '88')):
+                    ts_code = f"{code}.BJ"
+                else:
+                    ts_code = f"{code}.SZ"
+                
+                # 从Redis获取K线数据
+                cache_key = f"stock_trend:{ts_code}"
+                cached_data = redis_cache.get_cache(cache_key)
+                
+                if not cached_data:
+                    result_data.append(StockPriceData(
+                        code=code,
+                        error="暂无数据"
+                    ))
+                    continue
+                
+                # 解析缓存数据
+                kline_data = None
+                if isinstance(cached_data, list):
+                    kline_data = cached_data
+                elif isinstance(cached_data, dict):
+                    kline_data = cached_data.get('data', [])
+                
+                if not kline_data or len(kline_data) == 0:
+                    result_data.append(StockPriceData(
+                        code=code,
+                        error="K线数据为空"
+                    ))
+                    continue
+                
+                # 获取最新一条K线数据
+                latest = kline_data[-1]
+                
+                # 提取价格信息
+                close_price = float(latest.get('close', 0))
+                pre_close = float(latest.get('pre_close', 0))
+                
+                # 计算涨跌
+                change = 0.0
+                change_percent = 0.0
+                if pre_close > 0:
+                    change = close_price - pre_close
+                    change_percent = (change / pre_close) * 100
+                
+                # 获取成交量
+                volume = float(latest.get('vol', 0)) * 100  # vol是手，转为股
+                
+                # 获取股票名称（从股票列表中查找）
+                stock_name = None
+                try:
+                    stock_codes_data = redis_cache.get_cache("stocks:codes:all")
+                    if stock_codes_data:
+                        if isinstance(stock_codes_data, str):
+                            stock_codes = json.loads(stock_codes_data)
+                        else:
+                            stock_codes = stock_codes_data
+                        
+                        for stock in stock_codes:
+                            if stock.get('symbol') == code or stock.get('ts_code') == ts_code:
+                                stock_name = stock.get('name')
+                                break
+                except Exception as e:
+                    logger.warning(f"获取股票名称失败: {e}")
+                
+                result_data.append(StockPriceData(
+                    code=code,
+                    name=stock_name,
+                    price=close_price,
+                    change=round(change, 2),
+                    change_percent=round(change_percent, 2),
+                    volume=volume if volume > 0 else None
+                ))
+                
+            except Exception as e:
+                logger.error(f"获取股票 {code} 价格失败: {e}")
+                result_data.append(StockPriceData(
+                    code=code,
+                    error=str(e)
+                ))
+        
+        logger.info(f"批量获取价格完成，成功 {sum(1 for d in result_data if d.price is not None)} 只")
+        
+        return BatchPriceResponse(
+            success=True,
+            total=len(result_data),
+            data=result_data,
+            timestamp=datetime.now().isoformat()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"批量获取股票价格失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"批量获取股票价格失败: {str(e)}") 
