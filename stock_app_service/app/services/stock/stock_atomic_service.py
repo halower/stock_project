@@ -593,20 +593,34 @@ class StockAtomicService:
                 # 盘中更新：仅股票
                 realtime_result = await unified_data_service.async_fetch_stock_realtime_data_only()
             
-            if not realtime_result['success']:
-                logger.error("获取实时数据失败")
+            # 检查是否有数据
+            stock_count = realtime_result.get('stock_count', 0)
+            etf_count = realtime_result.get('etf_count', 0)
+            total_count = stock_count + etf_count
+            
+            if total_count == 0:
+                logger.info("获取到的实时数据为空（可能是非交易时间），跳过更新")
+                elapsed = (datetime.now() - start_time).total_seconds()
                 return {
-                    'success': False,
-                    'message': '获取实时数据失败',
+                    'success': True,
+                    'message': '无实时数据需要更新（非交易时间）',
                     'stock_count': 0,
                     'etf_count': 0,
-                    'total_count': 0
+                    'total_count': 0,
+                    'stock_updated': 0,
+                    'stock_failed': 0,
+                    'etf_updated': 0,
+                    'etf_failed': 0,
+                    'total_updated': 0,
+                    'total_failed': 0,
+                    'elapsed_seconds': round(elapsed, 2),
+                    'update_time': realtime_result['update_time']
                 }
             
             logger.info(
                 f"成功获取实时数据: "
-                f"股票 {realtime_result['stock_count']} 只"
-                + (f", ETF {realtime_result['etf_count']} 只" if include_etf else "")
+                f"股票 {stock_count} 只"
+                + (f", ETF {etf_count} 只" if include_etf else "")
             )
             
             # 2. 批量更新K线数据

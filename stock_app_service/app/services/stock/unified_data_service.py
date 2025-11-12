@@ -238,24 +238,32 @@ class UnifiedDataService:
             包含所有股票实时数据的DataFrame
         """
         try:
-            # 优先使用RealtimeService（支持Tushare等多数据源）
+            # 只使用Tushare数据源
             from app.services.realtime.realtime_service import get_realtime_service
             
-            logger.info("开始获取股票实时数据...")
+            logger.info("开始获取股票实时数据（仅Tushare）...")
             service = get_realtime_service()
             
             # 获取实时数据（不包含ETF）
             result = service.get_all_stocks_realtime(include_etf=False)
             
-            if result.get('success') and result.get('data'):
+            # 检查是否成功
+            if result.get('success'):
+                data = result.get('data', [])
+                
+                # 如果返回空数据，可能是非交易时间
+                if not data:
+                    logger.info("Tushare返回空数据（可能是非交易时间或无数据）")
+                    return None
+                
                 # 转换为DataFrame
-                df = pd.DataFrame(result['data'])
+                df = pd.DataFrame(data)
                 
                 # 标准化字段名（RealtimeService返回的字段名）
                 # code, name, price, change, change_pct, volume, amount, high, low, open, pre_close
                 if not df.empty:
                     df['update_time'] = result.get('update_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                    df['data_source'] = result.get('source', 'unknown')
+                    df['data_source'] = result.get('source', 'tushare')
                     
                     # 重命名字段以匹配后续处理
                     rename_map = {
@@ -273,23 +281,12 @@ class UnifiedDataService:
                     }
                     df = df.rename(columns=rename_map)
                     
-                    logger.info(f"成功获取 {len(df)} 只股票的实时数据（数据源: {result.get('source')}）")
+                    logger.info(f"成功获取 {len(df)} 只股票的实时数据（数据源: Tushare）")
                     return df
-            
-            # 如果RealtimeService失败，尝试akshare作为备用
-            logger.warning("RealtimeService获取失败，尝试使用akshare备用方案...")
-            import akshare as ak
-            
-            df = ak.stock_zh_a_spot()
-            
-            if df is not None and not df.empty:
-                df['update_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                df['data_source'] = 'sina_backup'
-                
-                logger.info(f"成功获取 {len(df)} 只股票的实时数据（备用数据源: sina）")
-                return df
             else:
-                logger.warning("获取的股票实时数据为空")
+                # Tushare调用失败
+                error_msg = result.get('message', '未知错误')
+                logger.error(f"Tushare获取实时数据失败: {error_msg}")
                 return None
                 
         except Exception as e:
@@ -405,13 +402,16 @@ class UnifiedDataService:
             )
         
         # 构造返回格式与async_fetch_all_realtime_data一致
+        # 注意：result为None（非交易时间）也视为成功，只是没有数据需要更新
+        has_data = result is not None and not result.empty
+        
         return {
-            'success': result is not None and not result.empty,
+            'success': True,  # 总是返回成功，由stock_count判断是否有数据
             'stock_data': result,
             'etf_data': None,
-            'stock_count': len(result) if result is not None else 0,
+            'stock_count': len(result) if has_data else 0,
             'etf_count': 0,
-            'total_count': len(result) if result is not None else 0,
+            'total_count': len(result) if has_data else 0,
             'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
     
@@ -474,6 +474,15 @@ class UnifiedDataService:
             # 获取涨跌幅（百分比）- 兼容多种字段名
             pct_chg = float(realtime_data.get('涨跌幅', realtime_data.get('change_pct', realtime_data.get('change_percent', 0))))
             
+            # 注意：rt_k接口返回的成交量单位是"股"，需要转换为"手"以保持与历史数据一致
+            # 历史数据存储的是"手"，读取时会 * 100 转换为股
+            volume_in_shares = float(realtime_data.get('成交量', realtime_data.get('volume', 0)))
+            volume_in_hands = volume_in_shares / 100  # 股 → 手
+            
+            # 注意：rt_k接口返回的成交额单位是"元"，需要转换为"千元"以保持与历史数据一致
+            amount_in_yuan = float(realtime_data.get('成交额', realtime_data.get('amount', 0)))
+            amount_in_thousand_yuan = amount_in_yuan / 1000  # 元 → 千元
+            
             new_kline = {
                 'ts_code': ts_code,
                 'trade_date': today,  # 格式：20241108，与Tushare一致
@@ -484,8 +493,8 @@ class UnifiedDataService:
                 'pre_close': pre_close,
                 'change': change,
                 'pct_chg': pct_chg,
-                'vol': float(realtime_data.get('成交量', realtime_data.get('volume', 0))),  # 成交量（手）
-                'amount': float(realtime_data.get('成交额', realtime_data.get('amount', 0))),  # 成交额（千元）
+                'vol': volume_in_hands,  # 成交量（手），与历史数据格式一致
+                'amount': amount_in_thousand_yuan,  # 成交额（千元），与历史数据格式一致
             }
             
             # 4. 检查是否已有今日数据（此时kline_list必然有数据，因为前面已经检查过了）

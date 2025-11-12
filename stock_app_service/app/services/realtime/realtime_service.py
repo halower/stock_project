@@ -163,44 +163,56 @@ class RealtimeService:
             
             # 获取股票实时数据
             try:
-                logger.debug("获取股票市场数据...")
+                logger.debug("获取股票实时日K线数据...")
                 
-                # 获取今日股票数据（沪深京三个市场）
-                # trade_date参数使用今天的日期
-                df_stocks = pro.daily(trade_date=today)
+                # 使用rt_k接口获取实时日K线（盘中数据）
+                # 使用通配符一次性获取全市场：3*.SZ（创业板）,6*.SH（沪市）,0*.SZ（深市主板）,9*.BJ（北交所）
+                # 注意：单次最大6000条，等同于全市场
+                logger.info("使用通配符获取全市场实时数据...")
+                df_stocks = pro.rt_k(ts_code='3*.SZ,6*.SH,0*.SZ,9*.BJ')
                 
                 if df_stocks is not None and not df_stocks.empty:
+                    logger.info(f"Tushare rt_k接口返回 {len(df_stocks)} 条实时数据")
+                    
                     for _, row in df_stocks.iterrows():
                         ts_code = str(row.get('ts_code', ''))
                         code_only = ts_code.split('.')[0] if '.' in ts_code else ts_code
                         
-                        # 计算涨跌额和涨跌幅
+                        # rt_k接口字段：ts_code, name, pre_close, high, open, low, close, vol, amount, num, trade_time
+                        # 注意：这是实时日K线，不是分钟K线
                         close_price = float(row.get('close', 0))
+                        open_price = float(row.get('open', 0))
+                        high_price = float(row.get('high', 0))
+                        low_price = float(row.get('low', 0))
                         pre_close_price = float(row.get('pre_close', 0))
-                        change = float(row.get('change', 0))
-                        pct_chg = float(row.get('pct_chg', 0))
+                        
+                        # 计算涨跌额和涨跌幅
+                        change = close_price - pre_close_price
+                        pct_chg = (change / pre_close_price * 100) if pre_close_price > 0 else 0
                         
                         formatted_data.append({
                             'code': code_only,
-                            'name': '',  # daily接口不返回名称
+                            'name': str(row.get('name', '')),  # rt_k接口返回name字段
                             'price': close_price,
                             'change': change,
                             'change_pct': pct_chg,
-                            'volume': float(row.get('vol', 0)),  # 成交量（手）
-                            'amount': float(row.get('amount', 0)),  # 成交额（千元）
-                            'high': float(row.get('high', 0)),
-                            'low': float(row.get('low', 0)),
-                            'open': float(row.get('open', 0)),
+                            'volume': float(row.get('vol', 0)),  # 成交量（股）
+                            'amount': float(row.get('amount', 0)),  # 成交额（元）
+                            'high': high_price,
+                            'low': low_price,
+                            'open': open_price,
                             'pre_close': pre_close_price,
                             'ts_code': ts_code
                         })
                     
                     logger.info(f"成功从Tushare获取 {len(formatted_data)} 只股票实时数据")
                 else:
-                    logger.warning(f"Tushare返回空数据，可能今日非交易日")
+                    logger.warning(f"Tushare rt_k接口返回空数据（可能非交易时间或权限不足）")
                 
             except Exception as e:
                 logger.error(f"Tushare股票数据获取失败: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
                 return {
                     'success': False, 
                     'error': f'股票数据获取失败: {str(e)}', 
@@ -209,50 +221,10 @@ class RealtimeService:
                     'source': 'tushare'
                 }
             
-            # 获取ETF实时数据（如果需要）
+            # ETF盘中不需要实时更新，只在全量更新（17:00）时更新
+            # include_etf参数保留用于全量更新，但盘中实时更新不处理ETF
             if include_etf:
-                try:
-                    logger.debug("获取ETF市场数据...")
-                    
-                    # 获取今日ETF数据
-                    df_etf = pro.fund_daily(trade_date=today)
-                    
-                    if df_etf is not None and not df_etf.empty:
-                        for _, row in df_etf.iterrows():
-                            ts_code = str(row.get('ts_code', ''))
-                            code_only = ts_code.split('.')[0] if '.' in ts_code else ts_code
-                            
-                            # 只保留场内ETF（代码以5或1开头）
-                            if not self._is_etf(code_only):
-                                continue
-                            
-                            # 计算涨跌额和涨跌幅
-                            close_price = float(row.get('close', 0))
-                            pre_close_price = float(row.get('pre_close', 0))
-                            change = close_price - pre_close_price
-                            pct_chg = (change / pre_close_price * 100) if pre_close_price > 0 else 0
-                            
-                            formatted_data.append({
-                                'code': code_only,
-                                'name': '',
-                                'price': close_price,
-                                'change': change,
-                                'change_pct': pct_chg,
-                                'volume': float(row.get('vol', 0)),
-                                'amount': float(row.get('amount', 0)),
-                                'high': float(row.get('high', 0)),
-                                'low': float(row.get('low', 0)),
-                                'open': float(row.get('open', 0)),
-                                'pre_close': pre_close_price,
-                                'ts_code': ts_code
-                            })
-                        
-                        logger.info(f"成功从Tushare获取 {len(formatted_data)} 只股票+ETF实时数据")
-                    else:
-                        logger.info(f"Tushare返回 {len(formatted_data)} 只股票实时数据（ETF数据为空）")
-                        
-                except Exception as e:
-                    logger.warning(f"Tushare ETF数据获取失败（不影响股票数据）: {e}")
+                logger.info("注意：ETF盘中不进行实时更新，仅在全量更新时更新")
             
             return {
                 'success': True,

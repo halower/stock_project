@@ -333,47 +333,35 @@ class SignalManager:
                     vol_value = df.iloc[signal_index]['vol']
                     volume = float(vol_value) if not pd.isna(vol_value) else 0
                 
-                # 计算量能比值：当前成交量/过去20日平均成交量（修复：使用平均值而不是前一根K线）
-                # 至少需要20根K线来计算平均成交量
-                if signal_index >= 20 and volume > 0:
-                    # 计算过去20日的平均成交量（不包括当前K线）
-                    # 取信号索引之前的20根K线
-                    start_idx = max(0, signal_index - 20)
-                    end_idx = signal_index  # 不包括当前K线
+                # 计算放量比值：今日成交量 / 昨日成交量
+                # 至少需要2根K线（今日和昨日）
+                if signal_index >= 1 and volume > 0:
+                    # 获取昨日成交量（前一根K线）
+                    prev_idx = signal_index - 1
+                    prev_volume = df.iloc[prev_idx]['volume']
+                    prev_vol = float(prev_volume) if not pd.isna(prev_volume) else 0
                     
-                    volume_list = []
-                    for i in range(start_idx, end_idx):
-                        v = df.iloc[i]['volume']
-                        v_val = float(v) if not pd.isna(v) else 0
-                        # 如果volume为0，尝试从vol字段获取
-                        if v_val == 0 and 'vol' in df.columns:
-                            v_from_vol = df.iloc[i]['vol']
-                            v_val = float(v_from_vol) if not pd.isna(v_from_vol) else 0
-                        if v_val > 0:  # 只统计有效的成交量
-                            volume_list.append(v_val)
+                    # 如果昨日成交量为0，尝试从vol字段获取
+                    if prev_vol == 0 and 'vol' in df.columns:
+                        prev_vol_value = df.iloc[prev_idx]['vol']
+                        prev_vol = float(prev_vol_value) if not pd.isna(prev_vol_value) else 0
                     
-                    # 计算平均成交量
-                    if len(volume_list) >= 10:  # 至少要有10个有效数据点
-                        avg_volume = sum(volume_list) / len(volume_list)
-                        
-                        # 计算量能比值
-                        if avg_volume > 0:
-                            ratio = volume / avg_volume
-                            # 确保比值是有效数值
-                            if not math.isnan(ratio) and not math.isinf(ratio) and ratio > 0:
-                                volume_ratio = round(ratio, 2)
-                                logger.debug(f"    {ts_code} 量能比值计算: 当前量 {volume}, 20日均量 {avg_volume:.2f}, 比值 {volume_ratio}")
-                            else:
-                                logger.debug(f"    {ts_code} 量能比值计算异常: 当前量 {volume}, 20日均量 {avg_volume}, 比值 {ratio}")
+                    # 计算放量比值
+                    if prev_vol > 0:
+                        ratio = volume / prev_vol
+                        # 确保比值是有效数值
+                        if not math.isnan(ratio) and not math.isinf(ratio) and ratio > 0:
+                            volume_ratio = round(ratio, 2)
+                            logger.debug(f"    {ts_code} 放量比值计算: 今日量 {volume}, 昨日量 {prev_vol:.2f}, 比值 {volume_ratio}")
                         else:
-                            logger.debug(f"    {ts_code} 20日平均成交量为0: 当前量 {volume}, 有效数据点 {len(volume_list)}")
+                            logger.debug(f"    {ts_code} 放量比值计算异常: 今日量 {volume}, 昨日量 {prev_vol}, 比值 {ratio}")
                     else:
-                        logger.debug(f"    {ts_code} 有效成交量数据不足: 当前量 {volume}, 有效数据点 {len(volume_list)}")
+                        logger.debug(f"    {ts_code} 昨日成交量为0，无法计算放量比值")
                 else:
                     if volume == 0:
-                        logger.debug(f"    {ts_code} 当前成交量为0，无法计算量能比值")
-                    elif signal_index < 20:
-                        logger.debug(f"    {ts_code} K线数据不足20根（{signal_index}根），无法计算量能比值")
+                        logger.debug(f"    {ts_code} 今日成交量为0，无法计算放量比值")
+                    elif signal_index < 1:
+                        logger.debug(f"    {ts_code} K线数据不足（需要至少2根K线）")
             else:
                 logger.debug(f"    {ts_code} 缺少成交量数据列，无法计算量能比值")
             
