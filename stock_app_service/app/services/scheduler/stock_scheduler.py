@@ -351,12 +351,12 @@ class RuntimeTasks:
                 logger.info(f"========== 信号计算完成（仅股票），耗时 {elapsed:.2f}秒 ==========")
                 
                 # 从result中排除status字段，避免参数冲突
+                # result中已包含elapsed_seconds，不需要再传
                 result_data = {k: v for k, v in result.items() if k != 'status'}
                 add_job_log(
                     'signal_calculation',
                     'success' if result.get('success') or result.get('status') == 'success' else 'warning',
                     f'信号计算完成',
-                    elapsed_seconds=round(elapsed, 2),
                     **result_data
                 )
                 
