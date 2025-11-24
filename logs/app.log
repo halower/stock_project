@@ -1,0 +1,13 @@
+2025-11-24 23:49:05 - stock_app - INFO - 日志系统启动 - 自动轮转和清理已启用
+2025-11-24 23:49:05 - stock_app - INFO - 📁 日志目录: /Users/hsb/Downloads/stock_project/logs
+2025-11-24 23:49:05 - stock_app - INFO - 轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转
+2025-11-24 23:49:05 - stock_app - INFO - 清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周
+2025-11-24 23:49:05 - stock_app - INFO - 数据存储架构: 完全基于Redis，无关系数据库依赖
+2025-11-24 23:49:06 - stock_app - INFO - Redis客户端连接成功
+2025-11-24 23:49:54 - stock_app - INFO - 日志系统启动 - 自动轮转和清理已启用
+2025-11-24 23:49:54 - stock_app - INFO - 📁 日志目录: /Users/hsb/Downloads/stock_project/logs
+2025-11-24 23:49:54 - stock_app - INFO - 轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转
+2025-11-24 23:49:54 - stock_app - INFO - 清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周
+2025-11-24 23:49:54 - stock_app - INFO - 数据存储架构: 完全基于Redis，无关系数据库依赖
+2025-11-24 23:49:54 - stock_app - INFO - Redis客户端连接成功
+2025-11-24 23:49:54 - stock_app - INFO - Redis客户端连接成功

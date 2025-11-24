@@ -37,19 +37,32 @@ async def _update_signals_with_latest_price(signals: List[Dict]) -> None:
                 if not code:
                     continue
                 
-                # 构造ts_code
-                if code.startswith('6'):
-                    ts_code = f"{code}.SH"
-                elif code.startswith(('43', '83', '87', '88')):
-                    ts_code = f"{code}.BJ"
-                else:
-                    ts_code = f"{code}.SZ"
+                # 优先使用信号中存储的ts_code，否则根据code和market重建
+                ts_code = signal.get('ts_code')
+                if not ts_code:
+                    # 获取市场信息，用于ETF判断
+                    market = signal.get('market', '')
+                    
+                    # 构造ts_code
+                    if code.startswith('6'):
+                        ts_code = f"{code}.SH"  # 上海主板/科创板
+                    elif code.startswith('5'):
+                        ts_code = f"{code}.SH"  # 上海ETF（5开头）
+                    elif code.startswith('1') and len(code) == 6:
+                        ts_code = f"{code}.SZ"  # 深圳ETF（15/16开头）
+                    elif code.startswith(('0', '3')):
+                        ts_code = f"{code}.SZ"  # 深圳主板/创业板
+                    elif code.startswith(('43', '83', '87', '88')):
+                        ts_code = f"{code}.BJ"  # 北交所
+                    else:
+                        ts_code = f"{code}.SZ"  # 默认深圳
                 
                 # 从Redis获取K线数据
                 cache_key = f"stock_trend:{ts_code}"
                 cached_data = redis_cache.get_cache(cache_key)
                 
                 if not cached_data:
+                    logger.debug(f"未找到K线缓存: {ts_code} ({signal.get('name', 'unknown')})")
                     continue
                 
                 # 解析缓存数据
@@ -86,6 +99,18 @@ async def _update_signals_with_latest_price(signals: List[Dict]) -> None:
                         change_pct = (change / pre_close) * 100
                         signal['change'] = round(change, 2)
                         signal['change_percent'] = round(change_pct, 2)
+                    else:
+                        # pre_close为0时，记录警告并尝试其他方法
+                        logger.warning(f"股票 {ts_code} ({signal.get('name', 'unknown')}) pre_close为0，无法计算涨跌幅。K线数据: close={close_price}, pre_close={pre_close}")
+                        # 尝试使用前一天的收盘价
+                        if len(kline_data) >= 2:
+                            prev_close = float(kline_data[-2].get('close', 0))
+                            if prev_close > 0:
+                                change = close_price - prev_close
+                                change_pct = (change / prev_close) * 100
+                                signal['change'] = round(change, 2)
+                                signal['change_percent'] = round(change_pct, 2)
+                                logger.info(f"使用前一天收盘价计算: {ts_code} 涨跌幅={change_pct:.2f}%")
                 
                 # 更新成交量
                 vol = latest.get('vol', 0)

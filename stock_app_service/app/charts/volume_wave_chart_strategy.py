@@ -50,12 +50,22 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             ema144_data = cls._prepare_ema_data(df, 'ema144')
             ema169_data = cls._prepare_ema_data(df, 'ema169')
             
+            # 计算 Volume Profile
+            from app.indicators.volume_profile import calculate_volume_profile
+            volume_profile = calculate_volume_profile(df, num_bars=150, row_size=24, percent=70.0)
+            
             # 生成EMA系列和Vegas隧道的JavaScript代码
-            additional_series = cls._generate_enhanced_ema_series_code(
+            ema_series_code = cls._generate_enhanced_ema_series_code(
                 ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, colors
             )
             
-            # 生成增强的图例代码
+            # 生成 Volume Profile 覆盖层代码
+            volume_profile_code = cls._generate_volume_profile_overlay(volume_profile, colors, chart_data)
+            
+            # 合并所有附加系列代码
+            additional_series = ema_series_code + volume_profile_code
+            
+            # 生成增强的图例代码（已隐藏）
             additional_scripts = cls._generate_enhanced_legend_code()
             
             return cls._generate_base_html_template(
@@ -275,56 +285,140 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
     @classmethod
     def _generate_enhanced_legend_code(cls) -> str:
         """
-        生成增强的图例JavaScript代码（包含Vegas隧道）
+        生成增强的图例JavaScript代码
+        
+        显示战场态势和战术标记的统一说明框
         
         Returns:
             JavaScript代码字符串
         """
-        return """
-                // 添加增强的EMA图例
-                const legend = document.createElement('div');
-                legend.style = 'position: absolute; left: 12px; top: 12px; z-index: 100; font-size: 11px; background: rgba(21, 25, 36, 0.85); padding: 8px; border-radius: 4px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
-                legend.innerHTML = `
-                    <div style="margin-bottom: 6px; font-weight: bold; color: #fff; font-size: 12px;">技术指标</div>
-                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                        <span style="display: inline-block; width: 12px; height: 2px; background: #2196F3; margin-right: 6px;"></span>
-                        <span style="color: #ccc;">EMA6</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                        <span style="display: inline-block; width: 12px; height: 2px; background: #00BCD4; margin-right: 6px;"></span>
-                        <span style="color: #ccc;">EMA12</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                        <span style="display: inline-block; width: 12px; height: 2px; background: #FF9800; margin-right: 6px;"></span>
-                        <span style="color: #ccc;">EMA18</span>
-                    </div>
-                    <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0;"></div>
-                    <div style="margin-bottom: 3px; color: #aaa; font-size: 10px;">趋势隧道</div>
-                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                        <span style="display: inline-block; width: 12px; height: 2px; background: #9C27B0; margin-right: 6px;"></span>
-                        <span style="color: #ccc;">EMA144</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                        <span style="display: inline-block; width: 12px; height: 2px; background: #673AB7; margin-right: 6px;"></span>
-                        <span style="color: #ccc;">EMA169</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                        <span style="display: inline-block; width: 12px; height: 8px; background: rgba(76, 175, 80, 0.3); border: 1px solid rgba(76, 175, 80, 0.5); margin-right: 6px;"></span>
-                        <span style="color: #ccc; font-size: 10px;">上升趋势</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 6px;">
-                        <span style="display: inline-block; width: 12px; height: 8px; background: rgba(244, 67, 54, 0.3); border: 1px solid rgba(244, 67, 54, 0.5); margin-right: 6px;"></span>
-                        <span style="color: #ccc; font-size: 10px;">下降趋势</span>
-                    </div>
-                    <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0;"></div>
-                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                        <span style="display: inline-block; width: 12px; height: 2px; background: #4CAF50; margin-right: 6px;"></span>
-                        <span style="color: #ccc;">买入信号</span>
+        # 战术信息将在 volume_profile_overlay 中统一显示
+        return ""
+    
+    @classmethod
+    def _generate_volume_profile_overlay(cls, volume_profile: Dict, colors: dict, chart_data: list) -> str:
+        """
+        生成 Volume Profile 覆盖层的 JavaScript 代码
+        
+        显示内容:
+        - POC 线（Point of Control）: 成交量最大的价格水平线
+        - Value Area 上界和下界: 包含70%成交量的价格区间
+        
+        Args:
+            volume_profile: Volume Profile 计算结果
+            colors: 主题配色字典
+            chart_data: K线数据（用于获取时间范围）
+        
+        Returns:
+            JavaScript代码字符串
+        """
+        if not volume_profile or not chart_data:
+            return ""
+        
+        try:
+            poc_price = volume_profile['poc_price']
+            va_high = volume_profile['value_area_high']
+            va_low = volume_profile['value_area_low']
+            
+            # 获取时间范围（使用最后150根K线的时间范围）
+            num_bars = min(150, len(chart_data))
+            first_time = chart_data[-num_bars]['time'] if len(chart_data) >= num_bars else chart_data[0]['time']
+            last_time = chart_data[-1]['time']
+            
+            return f"""
+                // ==================== 战术标记线 ====================
+                
+                // 主战线（火力集中区）- 原 POC 线
+                const mainBattleLineSeries = chart.addLineSeries({{
+                    color: '#FF5252',  // 红色
+                    lineWidth: 2,
+                    lineStyle: 0,  // 实线
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: '',
+                    crosshairMarkerVisible: false
+                }});
+                
+                // 设置主战线数据（水平线，从分析开始到结束）
+                mainBattleLineSeries.setData([
+                    {{ time: '{first_time}', value: {poc_price} }},
+                    {{ time: '{last_time}', value: {poc_price} }}
+                ]);
+                
+                // 高地防线（战区上界）- 原 Value Area 上界，加粗
+                const highGroundLineSeries = chart.addLineSeries({{
+                    color: '#2196F3',  // 蓝色
+                    lineWidth: 2,      // 加粗到2px
+                    lineStyle: 2,  // 虚线
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: '',
+                    crosshairMarkerVisible: false
+                }});
+                
+                highGroundLineSeries.setData([
+                    {{ time: '{first_time}', value: {va_high} }},
+                    {{ time: '{last_time}', value: {va_high} }}
+                ]);
+                
+                // 低地防线（战区下界）- 原 Value Area 下界，加粗
+                const lowGroundLineSeries = chart.addLineSeries({{
+                    color: '#2196F3',  // 蓝色
+                    lineWidth: 2,      // 加粗到2px
+                    lineStyle: 2,  // 虚线
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: '',
+                    crosshairMarkerVisible: false
+                }});
+                
+                lowGroundLineSeries.setData([
+                    {{ time: '{first_time}', value: {va_low} }},
+                    {{ time: '{last_time}', value: {va_low} }}
+                ]);
+                
+                // 添加统一的战术信息框（更窄、更透明）
+                const tacticalInfoDiv = document.createElement('div');
+                tacticalInfoDiv.style.cssText = `
+                    position: absolute;
+                    left: 8px;
+                    top: 35%;
+                    transform: translateY(-50%);
+                    z-index: 100;
+                    font-size: 10px;
+                    background: rgba(21, 25, 36, 0.75);
+                    color: #ccc;
+                    padding: 6px 8px;
+                    border-radius: 3px;
+                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                    line-height: 1.4;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+                    max-width: 100px;
+                `;
+                tacticalInfoDiv.innerHTML = `
+                    <div style="color: #FF5252; font-weight: bold; margin-bottom: 1px; font-size: 10px;">⚔️ 主战线</div>
+                    <div style="color: #fff; margin-bottom: 4px; padding-left: 4px; font-size: 10px;">{poc_price:.2f}</div>
+                    
+                    <div style="color: #2196F3; font-weight: bold; margin-bottom: 1px; font-size: 10px;">🛡️ 战区</div>
+                    <div style="color: #fff; font-size: 9px; margin-bottom: 5px; padding-left: 4px;">{va_low:.2f}-{va_high:.2f}</div>
+                    
+                    <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px; margin-top: 1px;">
+                        <div style="color: #ddd; font-weight: bold; margin-bottom: 3px; font-size: 10px;">态势</div>
+                        <div style="display: flex; align-items: center; margin-bottom: 2px;">
+                            <span style="display: inline-block; width: 12px; height: 8px; background: rgba(76, 175, 80, 0.35); border: 1px solid rgba(76, 175, 80, 0.5); margin-right: 4px;"></span>
+                            <span style="color: #ccc; font-size: 9px;">进攻</span>
                     </div>
                     <div style="display: flex; align-items: center;">
-                        <span style="display: inline-block; width: 12px; height: 2px; background: #FF5252; margin-right: 6px;"></span>
-                        <span style="color: #ccc;">卖出信号</span>
+                            <span style="display: inline-block; width: 12px; height: 8px; background: rgba(244, 67, 54, 0.35); border: 1px solid rgba(244, 67, 54, 0.5); margin-right: 4px;"></span>
+                            <span style="color: #ccc; font-size: 9px;">防守</span>
+                        </div>
                     </div>
                 `;
-                chartContainer.appendChild(legend);
+                document.getElementById('chart-container').appendChild(tacticalInfoDiv);
+                
+                console.log('战术标记已添加: 主战线={poc_price:.2f}, 战区=[{va_low:.2f}, {va_high:.2f}]');
         """ 
+            
+        except Exception as e:
+            logger.error(f"生成 Volume Profile 覆盖层失败: {str(e)}")
+            return "" 
