@@ -5,12 +5,12 @@ from typing import Dict, Type, Optional, List, Any
 
 from app.indicators.base_strategy import BaseStrategy
 from app.indicators.volume_wave_strategy import VolumeWaveStrategy
-from app.indicators.trend_continuation_strategy import TrendContinuationStrategy
+from app.indicators.volume_wave_enhanced_strategy import VolumeWaveEnhancedStrategy
 
 # 注册所有可用的策略
 REGISTERED_STRATEGIES: Dict[str, Type[BaseStrategy]] = {
     VolumeWaveStrategy.STRATEGY_CODE: VolumeWaveStrategy,
-    TrendContinuationStrategy.STRATEGY_CODE: TrendContinuationStrategy
+    VolumeWaveEnhancedStrategy.STRATEGY_CODE: VolumeWaveEnhancedStrategy
 }
 
 def get_strategy_by_code(strategy_code: str) -> Optional[Type[BaseStrategy]]:
@@ -65,8 +65,8 @@ def apply_strategy(strategy_code: str, df: Any, **kwargs) -> Any:
 # 导出的API
 __all__ = [
     "BaseStrategy",
-    "VolumeWaveStrategy", 
-    "TrendContinuationStrategy",
+    "VolumeWaveStrategy",
+    "VolumeWaveEnhancedStrategy",
     "get_strategy_by_code",
     "get_all_strategies",
     "apply_strategy",

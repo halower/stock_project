@@ -14,7 +14,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
     # 策略元数据
     STRATEGY_CODE = "volume_wave"
     STRATEGY_NAME = "动量守恒"
-    STRATEGY_DESCRIPTION = "基于动量守恒的短线交易策略"
+    STRATEGY_DESCRIPTION = ""  # 隐藏策略描述
     
     @classmethod
     def generate_chart_html(cls, stock_data: Dict[str, Any], **kwargs) -> str:

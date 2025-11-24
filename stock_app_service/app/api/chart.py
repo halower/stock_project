@@ -26,7 +26,7 @@ os.makedirs(CHART_DIR, exist_ok=True)
 @router.get("/api/stocks/{stock_code}/chart", summary="生成股票K线图表", dependencies=[Depends(verify_token)])
 async def generate_stock_chart(
     stock_code: str,
-    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 trend_continuation(趋势延续)"),
+    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 volume_wave_enhanced(动量守恒增强版)"),
     theme: str = Query("dark", description="图表主题: light(亮色) 或 dark(暗色)")
 ) -> Dict[str, Any]:
     """
@@ -34,14 +34,14 @@ async def generate_stock_chart(
     
     Args:
         stock_code: 股票代码
-        strategy: 策略类型，可选 'volume_wave'(动量守恒) 或 'trend_continuation'(趋势延续)
+        strategy: 策略类型，可选 'volume_wave'(动量守恒) 或 'volume_wave_enhanced'(动量守恒增强版)
         theme: 图表主题，可选 'light'(亮色背景) 或 'dark'(暗色背景)，默认暗色
         
     Returns:
         图表URL和其他信息
     """
     # 检查策略类型
-    if strategy not in ["volume_wave", "trend_continuation"]:
+    if strategy not in ["volume_wave", "volume_wave_enhanced"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略类型: {strategy}")
     
     # 检查主题类型
@@ -311,7 +311,7 @@ async def generate_stock_chart(
 @router.get("/api/chart/{stock_code}", summary="查看股票图表页面")
 async def view_stock_chart(
     stock_code: str,
-    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(量能波动) 或 trend_continuation(趋势延续)"),
+    strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 volume_wave_enhanced(动量守恒增强版)"),
     theme: str = Query("dark", description="图表主题: light(亮色) 或 dark(暗色)")
 ):
     """
@@ -319,7 +319,7 @@ async def view_stock_chart(
     
     Args:
         stock_code: 股票代码
-        strategy: 策略类型，可选 'volume_wave'(量能波动) 或 'trend_continuation'(趋势延续)
+        strategy: 策略类型，可选 'volume_wave'(动量守恒) 或 'volume_wave_enhanced'(动量守恒增强版)
         theme: 图表主题，可选 'light'(亮色背景) 或 'dark'(暗色背景)，默认暗色
         
     Returns:
@@ -328,7 +328,7 @@ async def view_stock_chart(
     from fastapi.responses import RedirectResponse
     
     # 检查策略类型
-    if strategy not in ["volume_wave", "trend_continuation"]:
+    if strategy not in ["volume_wave", "volume_wave_enhanced"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略类型: {strategy}")
     
     # 检查主题类型

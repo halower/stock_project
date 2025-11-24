@@ -133,7 +133,7 @@ async def _update_signals_with_latest_price(signals: List[Dict]) -> None:
 
 @router.get("/api/stocks/signal/buy", summary="获取买入信号", tags=["买入信号"], dependencies=[Depends(verify_token)])
 async def get_buy_signals(
-    strategy: Optional[str] = Query(None, description="策略名称（可选）：volume_wave, trend_continuation")
+    strategy: Optional[str] = Query(None, description="策略名称（可选）：volume_wave(动量守恒), volume_wave_enhanced(动量守恒增强版)")
 ):
     """获取买入信号"""
     try:

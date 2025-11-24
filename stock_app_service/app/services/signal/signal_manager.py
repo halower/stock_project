@@ -739,8 +739,8 @@ class SignalManager:
         """计算策略置信度"""
         # 根据策略类型设置不同的置信度
         confidence_map = {
-            "volume_wave": 0.85,      # 量价波动
-            "trend_continuation": 0.80 # 趋势延续
+            "volume_wave": 0.85,           # 动量守恒
+            "volume_wave_enhanced": 0.88   # 动量守恒增强版（EMA18过滤）
         }
         return confidence_map.get(strategy_code, 0.75)
     
