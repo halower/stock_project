@@ -234,9 +234,12 @@ class VolumeWaveStrategy(BaseStrategy):
             # angel = ta.ema(close, 2)
             df['angel'] = cls.calculate_ema(close, params['angel_period'])
             
-            # 计算EMA6和EMA18用于图表显示
+            # 计算所有EMA用于图表显示（包括Vegas隧道）
             df['ema6'] = cls.calculate_ema(close, 6)
+            df['ema12'] = cls.calculate_ema(close, 12)
             df['ema18'] = cls.calculate_ema(close, 18)
+            df['ema144'] = cls.calculate_ema(close, 144)
+            df['ema169'] = cls.calculate_ema(close, 169)
             
             # 计算线性回归斜率并构建devil信号
             # devil = ta.ema(xsl(close, 21) * 20 + close, 42)
