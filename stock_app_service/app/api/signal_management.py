@@ -20,52 +20,67 @@ router = APIRouter()
 
 async def _update_signals_with_latest_price(signals: List[Dict]) -> None:
     """
-    更新信号中的价格为最新价格
+    更新信号中的价格为最新价格（优化版：批量获取）
     
-    从Redis缓存中获取最新K线数据，更新信号中的价格、涨跌幅等信息
+    从Redis缓存中批量获取最新K线数据，更新信号中的价格、涨跌幅等信息
+    
+    注意：盘后数据已经通过定时任务更新，Redis中存储的就是最新收盘价
     """
     if not signals:
         return
     
     try:
         from app.db.session import RedisCache
-        redis_cache = RedisCache()
+        from app.core.redis_client import get_redis_client
         
-        for signal in signals:
+        redis_cache = RedisCache()
+        redis_client = await get_redis_client()
+        
+        # 第一步：批量构造所有需要查询的cache_key
+        signal_ts_code_map = {}  # {ts_code: [signal_indices]}
+        
+        for idx, signal in enumerate(signals):
+            code = signal.get('code')
+            if not code:
+                continue
+            
+            # 优先使用信号中存储的ts_code，否则根据code和market重建
+            ts_code = signal.get('ts_code')
+            if not ts_code:
+                # 构造ts_code
+                if code.startswith('6'):
+                    ts_code = f"{code}.SH"
+                elif code.startswith('5'):
+                    ts_code = f"{code}.SH"
+                elif code.startswith('1') and len(code) == 6:
+                    ts_code = f"{code}.SZ"
+                elif code.startswith(('0', '3')):
+                    ts_code = f"{code}.SZ"
+                elif code.startswith(('43', '83', '87', '88')):
+                    ts_code = f"{code}.BJ"
+                else:
+                    ts_code = f"{code}.SZ"
+            
+            if ts_code not in signal_ts_code_map:
+                signal_ts_code_map[ts_code] = []
+            signal_ts_code_map[ts_code].append(idx)
+        
+        # 第二步：批量获取所有K线数据
+        if not signal_ts_code_map:
+            return
+        
+        # 第三步：处理获取到的数据
+        updated_count = 0
+        
+        for ts_code in signal_ts_code_map.keys():
             try:
-                code = signal.get('code')
-                if not code:
-                    continue
-                
-                # 优先使用信号中存储的ts_code，否则根据code和market重建
-                ts_code = signal.get('ts_code')
-                if not ts_code:
-                    # 获取市场信息，用于ETF判断
-                    market = signal.get('market', '')
-                    
-                    # 构造ts_code
-                    if code.startswith('6'):
-                        ts_code = f"{code}.SH"  # 上海主板/科创板
-                    elif code.startswith('5'):
-                        ts_code = f"{code}.SH"  # 上海ETF（5开头）
-                    elif code.startswith('1') and len(code) == 6:
-                        ts_code = f"{code}.SZ"  # 深圳ETF（15/16开头）
-                    elif code.startswith(('0', '3')):
-                        ts_code = f"{code}.SZ"  # 深圳主板/创业板
-                    elif code.startswith(('43', '83', '87', '88')):
-                        ts_code = f"{code}.BJ"  # 北交所
-                    else:
-                        ts_code = f"{code}.SZ"  # 默认深圳
-                
-                # 从Redis获取K线数据
+                # 使用RedisCache获取（它会自动处理JSON解析）
                 cache_key = f"stock_trend:{ts_code}"
                 cached_data = redis_cache.get_cache(cache_key)
                 
                 if not cached_data:
-                    logger.debug(f"未找到K线缓存: {ts_code} ({signal.get('name', 'unknown')})")
                     continue
                 
-                # 解析缓存数据
                 kline_data = None
                 if isinstance(cached_data, list):
                     kline_data = cached_data
@@ -78,57 +93,57 @@ async def _update_signals_with_latest_price(signals: List[Dict]) -> None:
                 # 获取最新一条K线数据
                 latest = kline_data[-1]
                 trade_date = latest.get('trade_date', '')
-                
-                # 更新价格信息
                 close_price = float(latest.get('close', 0))
                 pre_close = float(latest.get('pre_close', 0))
+                vol = latest.get('vol', 0)
                 
-                # 更新K线日期（格式：20251111 -> 2025-11-11）
+                # 格式化日期
+                formatted_date = None
                 if trade_date and len(str(trade_date)) == 8:
                     trade_date_str = str(trade_date)
                     formatted_date = f"{trade_date_str[:4]}-{trade_date_str[4:6]}-{trade_date_str[6:8]}"
-                    signal['kline_date'] = formatted_date
                 
-                # 计算涨跌
+                # 计算涨跌幅
+                change_pct = 0.0
                 if close_price > 0:
-                    old_price = signal.get('price', 0)
-                    signal['price'] = close_price
-                    
                     if pre_close > 0:
                         change = close_price - pre_close
                         change_pct = (change / pre_close) * 100
-                        signal['change'] = round(change, 2)
+                    elif len(kline_data) >= 2:
+                        # pre_close为0时，使用前一天的收盘价
+                        prev_close = float(kline_data[-2].get('close', 0))
+                        if prev_close > 0:
+                            change = close_price - prev_close
+                            change_pct = (change / prev_close) * 100
+                
+                # 更新所有使用这个ts_code的信号
+                for signal_idx in signal_ts_code_map[ts_code]:
+                    signal = signals[signal_idx]
+                    
+                    if formatted_date:
+                        signal['kline_date'] = formatted_date
+                    
+                    if close_price > 0:
+                        signal['price'] = close_price
+                        signal['change'] = round(close_price - pre_close, 2) if pre_close > 0 else 0
                         signal['change_percent'] = round(change_pct, 2)
-                    else:
-                        # pre_close为0时，记录警告并尝试其他方法
-                        logger.warning(f"股票 {ts_code} ({signal.get('name', 'unknown')}) pre_close为0，无法计算涨跌幅。K线数据: close={close_price}, pre_close={pre_close}")
-                        # 尝试使用前一天的收盘价
-                        if len(kline_data) >= 2:
-                            prev_close = float(kline_data[-2].get('close', 0))
-                            if prev_close > 0:
-                                change = close_price - prev_close
-                                change_pct = (change / prev_close) * 100
-                                signal['change'] = round(change, 2)
-                                signal['change_percent'] = round(change_pct, 2)
-                                logger.info(f"使用前一天收盘价计算: {ts_code} 涨跌幅={change_pct:.2f}%")
-                
-                # 更新成交量
-                vol = latest.get('vol', 0)
-                if vol:
-                    # Tushare的vol单位是手，需要乘以100转为股
-                    signal['volume'] = float(vol) * 100
-                
-                # 标记为已更新最新价格
-                signal['price_updated'] = True
-                
+                    
+                    if vol:
+                        signal['volume'] = float(vol) * 100
+                    
+                    signal['price_updated'] = True
+                    updated_count += 1
+                    
             except Exception as e:
-                logger.warning(f"更新股票 {signal.get('code')} 最新价格失败: {e}")
+                logger.warning(f"处理 {ts_code} 的K线数据失败: {e}")
                 continue
         
-        logger.info(f"成功更新 {sum(1 for s in signals if s.get('price_updated'))} 个信号的最新价格")
+        logger.info(f"批量更新完成：成功更新 {updated_count} 个信号的最新价格（共 {len(signals)} 个信号）")
         
     except Exception as e:
         logger.error(f"批量更新信号价格失败: {e}")
+        import traceback
+        logger.error(f"详细错误: {traceback.format_exc()}")
 
 
 @router.get("/api/stocks/signal/buy", summary="获取买入信号", tags=["买入信号"], dependencies=[Depends(verify_token)])

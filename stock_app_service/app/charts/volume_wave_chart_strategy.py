@@ -255,12 +255,12 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     ema6Series.setData(ema6Data);
                 }}
                 
-                // 添加EMA12均线 - 专业线条粗细
+                // 添加EMA12均线 - 重要均线，加粗显示
                 const ema12Data = {ema12_json};
                 if (ema12Data.length > 0) {{
                     const ema12Series = chart.addLineSeries({{
-                        color: '{colors['ema12']}',  // 中期EMA
-                        lineWidth: 1,              // 细线（专业标准）
+                        color: '{colors['ema12']}',  // 金黄色（重要）
+                        lineWidth: 2,              // 加粗线条（重要均线）⭐
                         priceLineVisible: false,
                         lastValueVisible: false,
                         title: ''
@@ -268,12 +268,12 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     ema12Series.setData(ema12Data);
                 }}
                 
-                // 添加EMA18均线 - 专业线条粗细
+                // 添加EMA18均线 - 重要均线，加粗显示
                 const ema18Data = {ema18_json};
                 if (ema18Data.length > 0) {{
                     const ema18Series = chart.addLineSeries({{
-                        color: '{colors['ema18']}',  // 长期EMA
-                        lineWidth: 1,              // 细线（专业标准）
+                        color: '{colors['ema18']}',  // 蓝色（重要）
+                        lineWidth: 2,              // 加粗线条（重要均线）⭐
                         priceLineVisible: false,
                         lastValueVisible: false,
                         title: ''
