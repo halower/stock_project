@@ -48,24 +48,24 @@ class StockSignalResult(BaseModel):
 
 
 # ==================== 工具函数 ====================
-        
+
 def clean_numeric_value(value, default=0):
-            """清理数值，确保JSON序列化兼容"""
-            if value is None:
-                return default
-            if isinstance(value, (int, float)):
-                if math.isnan(value) or math.isinf(value):
-                    return default
-                return value
-            try:
-                num_value = float(value)
-                if math.isnan(num_value) or math.isinf(num_value):
-                    return default
-                return num_value
-            except (ValueError, TypeError):
-                return default
-        
-        
+    """清理数值，确保JSON序列化兼容"""
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        if math.isnan(value) or math.isinf(value):
+            return default
+        return value
+    try:
+        num_value = float(value)
+        if math.isnan(num_value) or math.isinf(num_value):
+            return default
+        return num_value
+    except (ValueError, TypeError):
+        return default
+
+
 def format_volume_humanized(volume):
     """格式化成交量为人性化显示（A股习惯：股数单位）"""
     volume = clean_numeric_value(volume, 0)
@@ -113,10 +113,10 @@ async def get_buy_signals(
             for key in ['price', 'volume', 'volume_ratio', 'change_percent', 'confidence']:
                 if key in signal:
                     signal[key] = clean_numeric_value(signal[key], 0)
-                
-                # 添加人性化成交量显示
-                volume = signal.get('volume', 0)
-                signal['volume_display'] = format_volume_humanized(volume)
+            
+            # 添加人性化成交量显示
+            volume = signal.get('volume', 0)
+            signal['volume_display'] = format_volume_humanized(volume)
             
         logger.info(f"获取到 {len(signals)} 个信号")
         
@@ -245,4 +245,4 @@ async def batch_check_signals(
                 "count": 0
             }
         }
- 
+
