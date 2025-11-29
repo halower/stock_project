@@ -24,6 +24,9 @@ class ApiProvider with ChangeNotifier {
   final AIStockFilterService _aiFilterService = AIStockFilterService();
   final WebSocketService _wsService = WebSocketService();
   
+  // 价格更新回调列表（用于备选池等其他页面监听）
+  final List<Function(List<dynamic>)> _priceUpdateCallbacks = [];
+  
   // 状态变量
   bool _isLoading = false;
   String _error = '';
@@ -171,6 +174,20 @@ class ApiProvider with ChangeNotifier {
     }
   }
   
+  /// 注册价格更新回调（用于备选池等页面）
+  void addPriceUpdateCallback(Function(List<dynamic>) callback) {
+    if (!_priceUpdateCallbacks.contains(callback)) {
+      _priceUpdateCallbacks.add(callback);
+      debugPrint('[API] 注册价格更新回调，当前回调数: ${_priceUpdateCallbacks.length}');
+    }
+  }
+  
+  /// 移除价格更新回调
+  void removePriceUpdateCallback(Function(List<dynamic>) callback) {
+    _priceUpdateCallbacks.remove(callback);
+    debugPrint('[API] 移除价格更新回调，当前回调数: ${_priceUpdateCallbacks.length}');
+  }
+  
   /// 处理价格更新
   void _handlePriceUpdate(Map<String, dynamic> message) {
     try {
@@ -246,6 +263,15 @@ class ApiProvider with ChangeNotifier {
         debugPrint('[API] ✅ UI刷新通知已发送');
       } else {
         debugPrint('[API] ⚠️ 没有匹配的股票被更新');
+      }
+      
+      // 通知所有注册的回调（用于备选池等页面）
+      for (var callback in _priceUpdateCallbacks) {
+        try {
+          callback(updates);
+        } catch (e) {
+          debugPrint('[API] 价格更新回调执行失败: $e');
+        }
       }
       
     } catch (e) {

@@ -36,6 +36,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
   // 排序选项的键
   static const String _sortOptionKey = 'watchlist_sort_option';
   
+  // 上次订阅的时间戳
+  DateTime? _lastSubscribeTime;
+  
   @override
   void initState() {
     super.initState();
@@ -51,14 +54,29 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
     });
   }
   
+  /// 确保WebSocket订阅有效
+  void _ensureSubscription() {
+    if (_watchlistItems.isEmpty) return;
+    
+    final now = DateTime.now();
+    // 如果距离上次订阅超过3秒，重新订阅
+    if (_lastSubscribeTime == null || 
+        now.difference(_lastSubscribeTime!).inSeconds > 3) {
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      if (apiProvider.wsService.isConnected) {
+        debugPrint('[Watchlist] 确保订阅: ${_watchlistItems.length} 个股票');
+        _subscribeWatchlistStocks();
+        _lastSubscribeTime = now;
+      }
+    }
+  }
+  
   /// 设置WebSocket价格更新
   void _setupWebSocketPriceUpdates() {
     final apiProvider = Provider.of<ApiProvider>(context, listen: false);
     
-    // 注册价格更新处理器
-    apiProvider.wsService.registerHandler('price_update', (message) {
-      _handleWebSocketPriceUpdate(message);
-    });
+    // 注册价格更新回调（不会覆盖 ApiProvider 的处理器）
+    apiProvider.addPriceUpdateCallback(_handleWebSocketPriceUpdate);
     
     // 连接WebSocket（如果未连接）
     if (!apiProvider.wsService.isConnected) {
@@ -96,12 +114,10 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
     debugPrint('[Watchlist] 已订阅 ${_watchlistItems.length} 个股票');
   }
   
-  /// 处理WebSocket价格更新
-  void _handleWebSocketPriceUpdate(Map<String, dynamic> message) {
+  /// 处理WebSocket价格更新（接收更新列表）
+  void _handleWebSocketPriceUpdate(List<dynamic> updates) {
     try {
-      final updates = message['data'] as List<dynamic>?;
-      
-      if (updates == null || updates.isEmpty) return;
+      if (updates.isEmpty) return;
       
       bool hasUpdate = false;
       final updatedItems = <WatchlistItem>[];
@@ -174,6 +190,13 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
 
   @override
   void dispose() {
+    // 移除价格更新回调
+    try {
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      apiProvider.removePriceUpdateCallback(_handleWebSocketPriceUpdate);
+    } catch (e) {
+      debugPrint('[Watchlist] 移除回调失败: $e');
+    }
     _refreshAnimationController?.dispose();
     super.dispose();
   }
@@ -197,6 +220,10 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
         
         // 自动更新价格（如果有需要更新的股票）
         _updatePricesIfNeeded();
+        
+        // 订阅WebSocket价格更新
+        debugPrint('[Watchlist] 加载完成，订阅 ${_watchlistItems.length} 个股票');
+        _subscribeWatchlistStocks();
       }
     } catch (e) {
       if (mounted) {
@@ -585,6 +612,11 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    // 确保WebSocket订阅有效
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureSubscription();
+    });
+    
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(

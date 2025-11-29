@@ -198,11 +198,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 actions: _menuItems[_selectedIndex].actions?.call(context),
               )
             : null,
-        body: Builder(
-          builder: (context) {
-            // 为子页面提供访问drawer的能力
-            return _menuItems[_selectedIndex].screen;
-          },
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _menuItems.map((item) => item.screen).toList(),
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: bottomNavIndex.clamp(0, bottomNavItems.length - 1),
@@ -294,7 +292,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // 右侧内容区域（移除顶部标题栏）
             Expanded(
-              child: _menuItems[_selectedIndex].screen,
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: _menuItems.map((item) => item.screen).toList(),
+              ),
             ),
           ],
         ),

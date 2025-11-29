@@ -144,6 +144,8 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
   final bool _autoLoadData = false;
   // 添加一个变量跟踪是否是首次加载
   bool _isFirstLoad = true;
+  // 上次订阅的时间戳
+  DateTime? _lastSubscribeTime;
 
   @override
   void initState() {
@@ -180,6 +182,29 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
         _isFirstLoad = false;
       }
     });
+  }
+  
+  /// 确保WebSocket订阅有效并检查数据（在build中调用）
+  void _ensureSubscription() {
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    
+    // 如果数据为空且不在加载中，重新加载数据
+    if (apiProvider.scanResults.isEmpty && !apiProvider.isLoading && _selectedStrategy.isNotEmpty) {
+      debugPrint('[StockScanner] 数据为空，重新加载');
+      _loadData();
+      return;
+    }
+    
+    final now = DateTime.now();
+    // 如果距离上次订阅超过3秒，重新订阅
+    if (_lastSubscribeTime == null || 
+        now.difference(_lastSubscribeTime!).inSeconds > 3) {
+      if (_selectedStrategy.isNotEmpty && apiProvider.wsService.isConnected) {
+        debugPrint('[StockScanner] 确保订阅: $_selectedStrategy');
+        apiProvider.subscribeStrategyPrices(_selectedStrategy);
+        _lastSubscribeTime = now;
+      }
+    }
   }
 
   @override
@@ -298,6 +323,11 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 确保WebSocket订阅有效
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureSubscription();
+    });
+    
     // 不使用Scaffold，直接返回body内容
     // AppBar和actions由HomeScreen提供
     return Column(
