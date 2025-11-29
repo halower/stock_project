@@ -186,8 +186,14 @@ class KLineReplayService {
   void _updateVisibleData() {
     if (_fullData.isEmpty) return;
     
-    // 显示从开始到当前索引的所有数据
-    final visibleData = _fullData.sublist(0, _currentIndex + 1);
+    // 固定显示最近60根K线，实现平滑滚动效果
+    const int maxVisibleCandles = 60;
+    
+    final int startIndex = _currentIndex >= maxVisibleCandles 
+        ? _currentIndex - maxVisibleCandles + 1 
+        : 0;
+    
+    final visibleData = _fullData.sublist(startIndex, _currentIndex + 1);
     _visibleDataController.add(visibleData);
   }
   
