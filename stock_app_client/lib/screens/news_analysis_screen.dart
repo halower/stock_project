@@ -606,6 +606,9 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
   Widget _buildBeautifulAnalysisView(String analysisContent) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
+    // 过滤掉think部分
+    String filteredContent = _filterThinkContent(analysisContent);
+    
     return SingleChildScrollView(
       child: Container(
         margin: const EdgeInsets.all(16),
@@ -689,7 +692,7 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                       const SizedBox(width: 16),
                       const Expanded(
                         child: Text(
-                          '消息面AI分析报告',
+                              '消息面AI深度分析',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -704,13 +707,20 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
-                          '专业版',
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.auto_awesome, color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+                                Text(
+                                  'AI专业版',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
+                                ),
+                              ],
                         ),
                       ),
                     ],
@@ -731,17 +741,31 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
                           fontSize: 12,
                         ),
                       ),
+                          const Spacer(),
+                          Icon(
+                            Icons.trending_up,
+                            color: Colors.white.withOpacity(0.8),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '实时数据',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
             
-            // 分析内容区域
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: MarkdownBody(
-                data: analysisContent,
+                // 分析内容区域
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  child: MarkdownBody(
+                    data: filteredContent,
                 styleSheet: MarkdownStyleSheet(
                   // 标题样式
                   h1: TextStyle(
@@ -847,7 +871,17 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
     );
   }
 
-
+  // 过滤think内容
+  String _filterThinkContent(String content) {
+    // 移除<think>...</think>标签及其内容
+    final thinkPattern = RegExp(r'<think>[\s\S]*?</think>', multiLine: true);
+    String filtered = content.replaceAll(thinkPattern, '');
+    
+    // 移除多余的空行
+    filtered = filtered.replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n');
+    
+    return filtered.trim();
+  }
 
   // 构建重要性标签
 }
