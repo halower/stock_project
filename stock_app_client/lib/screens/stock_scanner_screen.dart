@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/stock_indicator.dart';
 import '../services/providers/api_provider.dart';
 import '../services/providers/theme_provider.dart';
+import '../services/websocket_service.dart';
 import '../widgets/ai_filter_panel.dart';
 import '../widgets/stock_list_item.dart';
 import 'stock_detail_screen.dart';
@@ -20,6 +21,12 @@ class StockScannerScreen extends StatefulWidget {
   // 静态方法：提供AppBar的actions
   static List<Widget> buildActions(BuildContext context) {
     return [
+      // WebSocket状态指示器
+      Consumer<ApiProvider>(
+        builder: (context, provider, child) {
+          return _buildWebSocketIndicator(provider.wsStatus);
+        },
+      ),
       // 备选池按钮
       Padding(
         padding: const EdgeInsets.only(bottom: 4.0),
@@ -86,6 +93,44 @@ class StockScannerScreen extends StatefulWidget {
         ),
       ),
     ];
+  }
+  
+  // 构建WebSocket状态指示器
+  static Widget _buildWebSocketIndicator(WebSocketStatus status) {
+    IconData icon;
+    Color color;
+    String tooltip;
+    
+    switch (status) {
+      case WebSocketStatus.connected:
+        icon = Icons.wifi;
+        color = Colors.green;
+        tooltip = '实时连接';
+        break;
+      case WebSocketStatus.connecting:
+        icon = Icons.wifi_tethering;
+        color = Colors.orange;
+        tooltip = '连接中...';
+        break;
+      case WebSocketStatus.disconnected:
+        icon = Icons.wifi_off;
+        color = Colors.grey;
+        tooltip = '未连接';
+        break;
+      case WebSocketStatus.error:
+        icon = Icons.error_outline;
+        color = Colors.red;
+        tooltip = '连接错误';
+        break;
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.only(right: 4.0),
+      child: Tooltip(
+        message: tooltip,
+        child: Icon(icon, color: color, size: 20),
+      ),
+    );
   }
 }
 

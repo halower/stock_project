@@ -267,10 +267,11 @@ class RuntimeTasks:
     @staticmethod
     def job_realtime_update():
         """定时任务：实时更新所有股票数据"""
-        # 检查是否为交易时间
-        if not is_trading_time():
-            logger.debug("非交易时间，跳过实时数据更新")
-            return
+        # TODO: 测试完成后恢复交易时间检查
+        # 暂时放开交易时间限制用于测试WebSocket推送
+        # if not is_trading_time():
+        #     logger.debug("非交易时间，跳过实时数据更新")
+        #     return
         
         # 防止重复执行
         if not _task_locks['realtime_update'].acquire(blocking=False):
@@ -286,6 +287,7 @@ class RuntimeTasks:
             asyncio.set_event_loop(loop)
             
             try:
+                # 1. 更新股票数据
                 result = loop.run_until_complete(
                     stock_atomic_service.realtime_update_all_stocks()
                 )
@@ -300,6 +302,24 @@ class RuntimeTasks:
                     result.get('message', '实时数据更新完成'),
                     **{k: v for k, v in result.items() if k != 'message'}  # 排除message避免重复
                 )
+                
+                # 2. 推送价格更新到WebSocket客户端
+                try:
+                    from app.services.websocket import price_publisher
+                    
+                    # 广播所有活跃策略的价格更新
+                    client_count = loop.run_until_complete(
+                        price_publisher.broadcast_all_prices()
+                    )
+                    
+                    if client_count > 0:
+                        logger.info(f"价格更新已推送到 {client_count} 个WebSocket客户端")
+                    else:
+                        logger.debug("没有活跃的WebSocket客户端，跳过价格推送")
+                        
+                except Exception as e:
+                    logger.error(f"WebSocket价格推送失败: {e}")
+                    # 价格推送失败不影响主流程
                 
                 # 注意：实时更新和信号计算已分离，不再自动触发信号计算
                 # 信号计算由独立的定时任务触发
@@ -321,7 +341,11 @@ class RuntimeTasks:
     
     @staticmethod
     def job_calculate_signals():
-        """定时任务：计算策略信号（盘中仅计算股票信号，不计算ETF）"""
+        """
+        定时任务：计算策略信号（盘中仅计算股票信号，不计算ETF）
+        
+        注意：此任务在独立线程中执行，不会阻塞API请求
+        """
         # 检查是否为交易时间
         if not is_trading_time():
             logger.debug("非交易时间，跳过信号计算")
@@ -336,14 +360,19 @@ class RuntimeTasks:
             logger.info("========== 开始计算策略信号（仅股票） ==========")
             start_time = datetime.now()
             
+            # 使用独立的事件循环，在当前线程中执行
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             
             try:
+                # 设置超时保护（5分钟）
                 result = loop.run_until_complete(
-                    stock_atomic_service.calculate_strategy_signals(
-                        force_recalculate=False,
-                        stock_only=True  # 盘中仅计算股票信号
+                    asyncio.wait_for(
+                        stock_atomic_service.calculate_strategy_signals(
+                            force_recalculate=False,
+                            stock_only=True  # 盘中仅计算股票信号
+                        ),
+                        timeout=300  # 5分钟超时
                     )
                 )
                 
@@ -351,7 +380,6 @@ class RuntimeTasks:
                 logger.info(f"========== 信号计算完成（仅股票），耗时 {elapsed:.2f}秒 ==========")
                 
                 # 从result中排除status字段，避免参数冲突
-                # result中已包含elapsed_seconds，不需要再传
                 result_data = {k: v for k, v in result.items() if k != 'status'}
                 add_job_log(
                     'signal_calculation',
@@ -360,6 +388,14 @@ class RuntimeTasks:
                     **result_data
                 )
                 
+            except asyncio.TimeoutError:
+                elapsed = (datetime.now() - start_time).total_seconds()
+                logger.error(f"信号计算超时（{elapsed:.2f}秒），任务被终止")
+                add_job_log(
+                    'signal_calculation',
+                    'error',
+                    f'信号计算超时（{elapsed:.2f}秒）'
+                )
             finally:
                 loop.close()
                 
@@ -494,6 +530,39 @@ class RuntimeTasks:
         except Exception as e:
             logger.error(f"清理图表文件失败: {e}")
             add_job_log('cleanup_charts', 'error', f'清理图表文件失败: {str(e)}')
+    
+    @staticmethod
+    def job_websocket_price_push():
+        """定时任务：WebSocket价格推送（测试用，不受交易时间限制）"""
+        try:
+            from app.services.websocket import price_publisher, connection_manager
+            
+            # 检查是否有活跃连接
+            connection_count = connection_manager.get_connection_count()
+            if connection_count == 0:
+                logger.debug("WebSocket价格推送: 没有活跃连接，跳过")
+                return  # 没有连接，跳过
+            
+            logger.info(f"========== WebSocket价格推送 ==========")
+            logger.info(f"活跃连接数: {connection_count}")
+            
+            # 在新的事件循环中执行异步任务
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                client_count = loop.run_until_complete(
+                    price_publisher.broadcast_all_prices()
+                )
+                
+                if client_count > 0:
+                    logger.info(f"价格推送完成: {client_count} 个客户端")
+                    
+            finally:
+                loop.close()
+                
+        except Exception as e:
+            logger.error(f"WebSocket价格推送失败: {e}")
 
 
 # ==================== 调度器管理 ====================
@@ -518,18 +587,21 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
     logger.info(f"初始化模式: {init_mode}")
     logger.info(f"启动时计算信号: {calculate_signals}")
     
-    # 1. 执行启动任务
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(
-            StartupTasks.execute(init_mode=init_mode, calculate_signals=calculate_signals)
-        )
-    finally:
-        loop.close()
-    
-    # 2. 创建调度器
-    scheduler = BackgroundScheduler(timezone='Asia/Shanghai')
+    # 1. 创建调度器（增加线程池大小，避免长时间任务阻塞其他任务）
+    from apscheduler.executors.pool import ThreadPoolExecutor
+    executors = {
+        'default': ThreadPoolExecutor(max_workers=10),  # 增加线程池大小
+    }
+    job_defaults = {
+        'coalesce': True,  # 合并错过的任务
+        'max_instances': 1,  # 每个任务最多同时运行1个实例
+        'misfire_grace_time': 60,  # 错过执行时间后60秒内仍可执行
+    }
+    scheduler = BackgroundScheduler(
+        timezone='Asia/Shanghai',
+        executors=executors,
+        job_defaults=job_defaults
+    )
     
     # 3. 添加运行时任务
     
@@ -597,15 +669,50 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
         replace_existing=True
     )
     
+    # WebSocket价格推送：每5秒执行一次（测试用，不受交易时间限制）
+    scheduler.add_job(
+        func=RuntimeTasks.job_websocket_price_push,
+        trigger=IntervalTrigger(seconds=5),
+        id='websocket_price_push',
+        name='WebSocket价格推送',
+        replace_existing=True
+    )
+    logger.info("WebSocket价格推送任务已添加，间隔: 5秒")
+    
     # 4. 启动调度器
     scheduler.start()
     logger.info("========== 股票调度器启动完成 ==========")
     logger.info("定时任务:")
     logger.info(f"  - 实时数据更新: 每{realtime_interval}分钟（交易时间）")
     logger.info("  - 策略信号计算: 固定时间点（9:30/9:50/10:10/10:30/10:50/11:10/11:30/13:00/13:20/13:40/14:00/14:20/14:40/15:00/15:20，独立任务）")
+    logger.info("  - WebSocket价格推送: 每5秒（测试用，不受交易时间限制）")
     logger.info("  - 新闻爬取: 每2小时")
     logger.info("  - 全量更新并计算信号: 每个交易日17:35")
     logger.info("  - 图表文件清理: 每天00:00")
+    
+    # 5. 在后台线程中执行启动任务（不阻塞调度器和API）
+    def run_startup_tasks():
+        """在后台线程中执行启动任务"""
+        try:
+            logger.info("========== 开始执行启动任务（后台） ==========")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(
+                    StartupTasks.execute(init_mode=init_mode, calculate_signals=calculate_signals)
+                )
+                logger.info("========== 启动任务执行完成 ==========")
+            finally:
+                loop.close()
+        except Exception as e:
+            logger.error(f"启动任务执行失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
+    # 启动后台任务
+    import threading
+    threading.Thread(target=run_startup_tasks, daemon=True, name="StartupTasksThread").start()
+    logger.info("启动任务已在后台线程中执行，不阻塞API服务")
 
 
 def stop_stock_scheduler():

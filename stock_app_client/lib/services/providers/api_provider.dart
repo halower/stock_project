@@ -9,6 +9,7 @@ import '../../models/ai_filter_result.dart';
 import '../api_service.dart';
 import '../ai_stock_filter_service.dart';
 import '../strategy_config_service.dart';
+import '../websocket_service.dart';
 
 // 获取默认策略列表（仅在API完全失败时使用，策略名称将通过API动态获取）
 List<Map<String, String>> _getEmergencyStrategies() {
@@ -21,6 +22,7 @@ List<Map<String, String>> _getEmergencyStrategies() {
 class ApiProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   final AIStockFilterService _aiFilterService = AIStockFilterService();
+  final WebSocketService _wsService = WebSocketService();
   
   // 状态变量
   bool _isLoading = false;
@@ -94,6 +96,16 @@ class ApiProvider with ChangeNotifier {
     });
     _subscriptions.add(subscription);
     
+    // 延迟初始化WebSocket（避免启动时阻塞）
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!_disposed) {
+        // 注册WebSocket价格更新处理器
+        _wsService.registerHandler('price_update', _handlePriceUpdate);
+        // 监听WebSocket状态变化
+        _wsService.addListener(_onWebSocketStatusChanged);
+      }
+    });
+    
     // 立即从服务器加载策略
     debugPrint('ApiProvider初始化: 开始从后端加载策略列表');
     _loadStrategies();
@@ -101,6 +113,154 @@ class ApiProvider with ChangeNotifier {
     // 立即从服务器加载市场类型
     debugPrint('ApiProvider初始化: 开始从后端加载市场类型列表');
     _loadMarketTypes();
+  }
+  
+  // ==================== WebSocket相关方法 ====================
+  
+  /// WebSocket连接状态
+  WebSocketStatus get wsStatus => _wsService.status;
+  WebSocketService get wsService => _wsService;
+  
+  /// 连接WebSocket
+  Future<void> connectWebSocket() async {
+    try {
+      // 从配置中获取WebSocket URL
+      const baseUrl = ApiService.baseUrl;
+      final wsUrl = baseUrl.replaceFirst('http', 'ws') + '/ws/stock/prices';
+      
+      debugPrint('[API] 连接WebSocket: $wsUrl');
+      await _wsService.connect(wsUrl);
+    } catch (e) {
+      debugPrint('[API] WebSocket连接失败: $e');
+    }
+  }
+  
+  /// 异步连接WebSocket（不阻塞主流程）
+  void _connectWebSocketAsync(String strategy) {
+    // 延迟执行，避免阻塞UI
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (_disposed) return;
+      
+      try {
+        if (!_wsService.isConnected) {
+          debugPrint('[API] 信号加载完成，尝试连接WebSocket...');
+          await connectWebSocket();
+          
+          // 等待连接建立
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+        
+        // 订阅当前策略的价格更新
+        if (_wsService.isConnected && strategy.isNotEmpty) {
+          subscribeStrategyPrices(strategy);
+        }
+      } catch (e) {
+        debugPrint('[API] WebSocket连接/订阅失败: $e');
+        // 失败不影响主流程
+      }
+    });
+  }
+  
+  /// 订阅策略价格更新
+  void subscribeStrategyPrices(String strategy) {
+    if (_wsService.isConnected) {
+      _wsService.subscribeStrategy(strategy);
+      debugPrint('[API] 订阅策略价格: $strategy');
+    } else {
+      debugPrint('[API] WebSocket未连接，无法订阅');
+    }
+  }
+  
+  /// 处理价格更新
+  void _handlePriceUpdate(Map<String, dynamic> message) {
+    try {
+      debugPrint('[API] 收到价格更新消息: ${message.keys}');
+      debugPrint('[API] data类型: ${message['data']?.runtimeType}');
+      
+      final updates = message['data'] as List<dynamic>?;
+      
+      if (updates == null || updates.isEmpty) {
+        debugPrint('[API] updates为空或null');
+        return;
+      }
+      
+      debugPrint('[API] 收到 ${updates.length} 个价格更新');
+      debugPrint('[API] 当前_scanResults数量: ${_scanResults.length}');
+      
+      // 打印前3个更新的股票代码
+      if (updates.length > 0) {
+        final updateCodes = updates.take(3).map((u) => u['code']).toList();
+        debugPrint('[API] 推送的股票代码（前3个）: $updateCodes');
+      }
+      
+      // 打印前3个_scanResults的股票代码
+      if (_scanResults.isNotEmpty) {
+        final scanCodes = _scanResults.take(3).map((s) => s.code).toList();
+        debugPrint('[API] _scanResults的股票代码（前3个）: $scanCodes');
+      }
+      
+      int updateCount = 0;
+      
+      // 创建更新后的列表
+      final updatedResults = <StockIndicator>[];
+      
+      for (var signal in _scanResults) {
+        // 查找是否有该股票的价格更新
+        final update = updates.firstWhere(
+          (u) => u['code'] == signal.code,
+          orElse: () => null,
+        );
+        
+        if (update != null) {
+          final oldPrice = signal.price;
+          final newPrice = (update['price'] as num?)?.toDouble() ?? signal.price;
+          final oldChange = signal.changePercent;
+          final newChange = (update['change_percent'] as num?)?.toDouble() ?? signal.changePercent;
+          
+          debugPrint('[API] 更新 ${signal.code}: price $oldPrice → $newPrice, change $oldChange% → $newChange%');
+          
+          // 创建新的StockIndicator对象（因为是final字段）
+          updatedResults.add(StockIndicator(
+            market: signal.market,
+            code: signal.code,
+            name: signal.name,
+            signal: signal.signal,
+            signalReason: signal.signalReason,
+            price: newPrice,
+            changePercent: newChange,
+            volume: (update['volume'] as num?)?.toInt() ?? signal.volume,
+            volumeRatio: signal.volumeRatio,
+            details: signal.details,
+            strategy: signal.strategy,
+          ));
+          updateCount++;
+        } else {
+          updatedResults.add(signal);
+        }
+      }
+      
+      if (updateCount > 0) {
+        _scanResults = updatedResults;
+        debugPrint('[API] ✅ WebSocket更新了 $updateCount 个股票的价格，准备刷新UI');
+        _safeNotifyListeners();
+        debugPrint('[API] ✅ UI刷新通知已发送');
+      } else {
+        debugPrint('[API] ⚠️ 没有匹配的股票被更新');
+      }
+      
+    } catch (e) {
+      debugPrint('[API] 处理价格更新失败: $e');
+    }
+  }
+  
+  /// WebSocket状态变化处理
+  void _onWebSocketStatusChanged() {
+    _safeNotifyListeners();
+    
+    // 如果连接成功，自动订阅当前策略
+    if (_wsService.isConnected && _selectedStrategy.isNotEmpty) {
+      subscribeStrategyPrices(_selectedStrategy);
+    }
   }
   
   @override
@@ -111,6 +271,8 @@ class ApiProvider with ChangeNotifier {
       subscription.cancel();
     }
     _subscriptions.clear();
+    // 断开WebSocket连接
+    _wsService.dispose();
     super.dispose();
   }
   
@@ -298,6 +460,9 @@ class ApiProvider with ChangeNotifier {
         _isLoading = false;
         notifyListeners();
       });
+      
+      // 异步连接WebSocket（不阻塞主流程）
+      _connectWebSocketAsync(strategyParam);
     } catch (e) {
       _error = '获取指标扫描结果失败: $e';
       debugPrint(_error);

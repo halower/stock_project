@@ -1,0 +1,87 @@
+# Redis配置示例 - 针对股票数据服务优化
+# 复制此文件为 redis.conf 并根据需要修改
+
+# ==================== 内存配置 ====================
+
+# 最大内存限制（根据服务器配置调整）
+# 建议：服务器内存的50-70%
+maxmemory 2gb
+
+# 内存淘汰策略
+# volatile-lru: 只淘汰设置了过期时间的key（推荐）
+# allkeys-lru: 淘汰所有key
+maxmemory-policy volatile-lru
+
+# ==================== 持久化配置 ====================
+
+# RDB持久化（定期快照）
+# 900秒内有1次写入则保存
+save 900 1
+# 300秒内有10次写入则保存
+save 300 10
+# 60秒内有10000次写入则保存
+save 60 10000
+
+# RDB文件名
+dbfilename dump.rdb
+
+# RDB文件目录
+dir ./data
+
+# RDB压缩
+rdbcompression yes
+
+# AOF持久化（可选，更安全但性能稍低）
+# 如果对数据安全性要求高，可以开启
+appendonly no
+# appendonly yes
+# appendfsync everysec
+
+# ==================== 连接配置 ====================
+
+# 最大客户端连接数
+maxclients 10000
+
+# 客户端超时（0表示不超时）
+timeout 0
+
+# TCP keepalive
+tcp-keepalive 300
+
+# ==================== 性能优化 ====================
+
+# 惰性删除（后台删除大key，避免阻塞）
+lazyfree-lazy-eviction yes
+lazyfree-lazy-expire yes
+lazyfree-lazy-server-del yes
+
+# 后台IO线程数（Redis 6.0+）
+# io-threads 4
+# io-threads-do-reads yes
+
+# ==================== 安全配置 ====================
+
+# 密码（生产环境必须设置）
+# requirepass your_strong_password
+
+# 禁用危险命令（生产环境推荐）
+# rename-command FLUSHALL ""
+# rename-command FLUSHDB ""
+# rename-command CONFIG ""
+
+# ==================== 日志配置 ====================
+
+# 日志级别
+loglevel notice
+
+# 日志文件
+logfile "redis.log"
+
+# ==================== 慢查询日志 ====================
+
+# 慢查询阈值（微秒）
+slowlog-log-slower-than 10000
+
+# 慢查询日志长度
+slowlog-max-len 128
+

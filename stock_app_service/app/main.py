@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
                     
                     # 从环境变量读取配置，默认值：skip模式，不计算信号
                     init_mode = os.getenv("SCHEDULER_INIT_MODE", "skip").lower()
-                    calculate_signals = os.getenv("SCHEDULER_CALCULATE_SIGNALS", "false").lower() in ("true", "1", "yes")
+                    calculate_signals = os.getenv("SCHEDULER_CALCULATE_SIGNALS", "true").lower() in ("true", "1", "yes")
                     
                     logger.info(f"股票调度器配置: init_mode={init_mode}, calculate_signals={calculate_signals}")
                     start_stock_scheduler(init_mode=init_mode, calculate_signals=calculate_signals)
@@ -130,7 +130,7 @@ from app.api import (
     system, public, news_analysis, stocks_redis, strategy, 
     signal_management, task_management,
     stock_data_management, stock_ai_analysis, chart, market_types,
-    realtime_config, data_validation
+    realtime_config, data_validation, websocket
 )
 
 # 注册路由
@@ -147,6 +147,7 @@ app.include_router(chart.router)
 app.include_router(market_types.router)
 app.include_router(realtime_config.router, prefix="/api", tags=["实时行情配置"])
 app.include_router(data_validation.router, tags=["数据验证"])
+app.include_router(websocket.router, tags=["WebSocket"])
 
 # 基础路由
 @app.get("/ping")

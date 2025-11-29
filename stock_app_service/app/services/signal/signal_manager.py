@@ -143,7 +143,12 @@ class SignalManager:
             return False, 0
     
     async def get_buy_signals(self, strategy: Optional[str] = None, limit: int = None) -> List[Dict[str, Any]]:
-        """获取买入信号列表"""
+        """
+        获取买入信号列表
+        
+        性能优化：直接返回信号计算时的数据，不再查询实时价格
+        实时价格通过WebSocket推送更新
+        """
         try:
             # 从Redis获取所有买入信号
             redis_client = await get_redis_client()
@@ -167,8 +172,8 @@ class SignalManager:
                     logger.error(f"解析信号数据失败: {key}, {e}")
                     continue
             
-            # 更新信号中的实时价格数据
-            await self._update_signals_with_realtime_prices(signals, redis_client)
+            # 注意：不再调用_update_signals_with_realtime_prices
+            # 实时价格通过WebSocket推送更新，这里直接返回信号计算时的数据
             
             # 过滤掉股票名称包含ST和*ST的股票
             filtered_signals = []
@@ -365,21 +370,18 @@ class SignalManager:
             else:
                 logger.debug(f"    {ts_code} 缺少成交量数据列，无法计算量能比值")
             
-            # 计算涨跌幅
+            # 获取涨跌幅（优先使用K线数据中的pct_chg，这是tushare返回的准确值）
             change_percent = 0.0
             if signal_index < len(df):
                 signal_row = df.iloc[signal_index]
-                if 'close' in df.columns and 'pre_close' in df.columns:
+                # 优先使用pct_chg（tushare返回的涨跌幅）
+                if 'pct_chg' in df.columns and not pd.isna(signal_row['pct_chg']):
+                    change_percent = round(float(signal_row['pct_chg']), 2)
+                elif 'close' in df.columns and 'pre_close' in df.columns:
                     close_price = float(signal_row['close']) if not pd.isna(signal_row['close']) else 0
                     pre_close_price = float(signal_row['pre_close']) if not pd.isna(signal_row['pre_close']) else 0
                     if pre_close_price > 0:
                         change_percent = round((close_price - pre_close_price) / pre_close_price * 100, 2)
-                elif 'open' in df.columns and 'close' in df.columns:
-                    # 如果没有pre_close，使用开盘价计算当日涨跌幅
-                    close_price = float(signal_row['close']) if not pd.isna(signal_row['close']) else 0
-                    open_price = float(signal_row['open']) if not pd.isna(signal_row['open']) else 0
-                    if open_price > 0:
-                        change_percent = round((close_price - open_price) / open_price * 100, 2)
             
             # 清理所有数值，确保JSON序列化兼容
             def clean_value(value, default=0):
@@ -439,100 +441,8 @@ class SignalManager:
         except Exception as e:
             logger.error(f"存储信号失败: {str(e)}")
             
-    async def _update_signals_with_realtime_prices(self, signals: List[Dict[str, Any]], redis_client) -> None:
-        """更新信号中的实时价格数据"""
-        try:
-            updated_count = 0
-            fallback_count = 0  # 从K线获取的数量
-            
-            for signal in signals:
-                code = signal.get('code', '')
-                ts_code = signal.get('ts_code', '')  # 获取完整ts_code
-                
-                if not code:
-                    continue
-                
-                # 1. 优先尝试获取实时价格数据
-                realtime_data = await self._get_realtime_price_data(code, redis_client)
-                
-                # 2. 如果没有实时数据且有ts_code，从K线数据获取
-                if not realtime_data and ts_code:
-                    kline_key = f"stock_trend:{ts_code}"
-                    kline_data_str = await redis_client.get(kline_key)
-                    
-                    if kline_data_str:
-                        try:
-                            trend_data = json.loads(kline_data_str)
-                            kline_list = trend_data.get('data', [])
-                            if kline_list and len(kline_list) > 0:
-                                # 获取最后一条K线数据
-                                last_kline = kline_list[-1]
-                                realtime_data = {
-                                    'price': last_kline.get('close', 0),
-                                    'pct_chg': 0,  # K线中没有当日涨跌幅
-                                    'volume': last_kline.get('volume', 0),
-                                    'update_time': last_kline.get('date', '')
-                                }
-                                fallback_count += 1
-                                logger.debug(f"从K线获取{ts_code}的价格: {realtime_data.get('price', 0)}")
-                        except json.JSONDecodeError as e:
-                            logger.error(f"解析K线数据失败: {ts_code}, {e}")
-                
-                # 3. 更新价格信息
-                if realtime_data:
-                    # 更新价格相关字段
-                    original_price = signal.get('price', 0)
-                    current_price = realtime_data.get('price', 0)
-                    current_change_pct = realtime_data.get('pct_chg', 0)
-                    
-                    # 更新信号数据
-                    signal['current_price'] = current_price  # 当前实时价格
-                    signal['original_price'] = original_price  # 原始信号价格
-                    signal['current_change_percent'] = current_change_pct  # 当前涨跌幅
-                    signal['price_updated_at'] = realtime_data.get('update_time', '')
-                    
-                    # 计算从信号价格到当前价格的收益率
-                    if original_price > 0:
-                        price_return = round((current_price - original_price) / original_price * 100, 2)
-                        signal['price_return_percent'] = price_return
-                    else:
-                        signal['price_return_percent'] = 0.0
-                    
-                    # 如果有实时价格，使用实时价格作为主要显示价格
-                    if current_price > 0:
-                        signal['price'] = current_price
-                        signal['change_percent'] = current_change_pct
-                    
-                    updated_count += 1
-            
-            if updated_count > 0:
-                logger.debug(f"已更新 {updated_count}/{len(signals)} 个信号的价格（实时: {updated_count-fallback_count}, K线: {fallback_count}）")
-        except Exception as e:
-            logger.error(f"更新信号实时价格失败: {str(e)}")
-
-    async def _get_realtime_price_data(self, code: str, redis_client) -> Optional[Dict[str, Any]]:
-        """获取股票的实时价格数据"""
-        try:
-            # 尝试不同的股票代码格式
-            possible_keys = [
-                f"stocks:realtime:{code}.SH",  # 上海交易所
-                f"stocks:realtime:{code}.SZ",  # 深圳交易所
-                f"stocks:realtime:{code}"      # 无后缀
-            ]
-            
-            for key in possible_keys:
-                realtime_data = await redis_client.get(key)
-                if realtime_data:
-                    try:
-                        return json.loads(realtime_data)
-                    except json.JSONDecodeError:
-                                continue
-            
-            return None
-            
-        except Exception as e:
-            logger.debug(f"获取股票 {code} 实时价格数据失败: {str(e)}")
-            return None
+    # 注意：_update_signals_with_realtime_prices 和 _get_realtime_price_data 已删除
+    # 实时价格通过WebSocket推送更新，不再在获取信号时查询
     
     async def calculate_buy_signals(self, force_recalculate: bool = False, etf_only: bool = False, stock_only: bool = False, clear_existing: bool = True) -> Dict[str, Any]:
         """

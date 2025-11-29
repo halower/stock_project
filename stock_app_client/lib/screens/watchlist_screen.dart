@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../models/watchlist_item.dart';
 import '../services/watchlist_service.dart';
+import '../services/providers/api_provider.dart';
 import '../widgets/watchlist_item_widget.dart';
-import '../widgets/enhanced_watchlist_header.dart';
 import '../widgets/professional_watchlist_header.dart';
 
 // 添加排序枚举
@@ -43,6 +44,107 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
       vsync: this,
     );
     _loadSortOption().then((_) => _loadWatchlist());
+    
+    // 延迟注册WebSocket价格更新处理器
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupWebSocketPriceUpdates();
+    });
+  }
+  
+  /// 设置WebSocket价格更新
+  void _setupWebSocketPriceUpdates() {
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    
+    // 注册价格更新处理器
+    apiProvider.wsService.registerHandler('price_update', (message) {
+      _handleWebSocketPriceUpdate(message);
+    });
+    
+    // 连接WebSocket（如果未连接）
+    if (!apiProvider.wsService.isConnected) {
+      apiProvider.connectWebSocket();
+    }
+    
+    // 订阅备选池中所有股票
+    _subscribeWatchlistStocks();
+  }
+  
+  /// 订阅备选池中的股票
+  Future<void> _subscribeWatchlistStocks() async {
+    if (_watchlistItems.isEmpty) return;
+    
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    
+    // 等待WebSocket连接
+    int retries = 0;
+    while (!apiProvider.wsService.isConnected && retries < 10) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      retries++;
+    }
+    
+    if (!apiProvider.wsService.isConnected) {
+      debugPrint('[Watchlist] WebSocket未连接，无法订阅');
+      return;
+    }
+    
+    // 订阅每个股票
+    for (var item in _watchlistItems) {
+      apiProvider.wsService.subscribeStock(item.code);
+      await Future.delayed(const Duration(milliseconds: 50)); // 避免过快发送
+    }
+    
+    debugPrint('[Watchlist] 已订阅 ${_watchlistItems.length} 个股票');
+  }
+  
+  /// 处理WebSocket价格更新
+  void _handleWebSocketPriceUpdate(Map<String, dynamic> message) {
+    try {
+      final updates = message['data'] as List<dynamic>?;
+      
+      if (updates == null || updates.isEmpty) return;
+      
+      bool hasUpdate = false;
+      final updatedItems = <WatchlistItem>[];
+      
+      for (var item in _watchlistItems) {
+        // 查找该股票的价格更新
+        final update = updates.firstWhere(
+          (u) => u['code'] == item.code,
+          orElse: () => null,
+        );
+        
+        if (update != null) {
+          // 创建更新后的WatchlistItem
+          final updatedItem = WatchlistItem(
+            code: item.code,
+            name: item.name,
+            market: item.market,
+            strategy: item.strategy,
+            addedTime: item.addedTime,
+            originalDetails: item.originalDetails,
+            currentPrice: (update['price'] as num?)?.toDouble() ?? item.currentPrice,
+            changePercent: (update['change_percent'] as num?)?.toDouble() ?? item.changePercent,
+            volume: (update['volume'] as num?)?.toInt() ?? item.volume,
+            priceUpdateTime: DateTime.now(),
+          );
+          updatedItems.add(updatedItem);
+          hasUpdate = true;
+        } else {
+          updatedItems.add(item);
+        }
+      }
+      
+      if (hasUpdate && mounted) {
+        setState(() {
+          _watchlistItems = updatedItems;
+          _applyFiltersAndSort();
+        });
+        debugPrint('[Watchlist] WebSocket更新了价格');
+      }
+      
+    } catch (e) {
+      debugPrint('[Watchlist] 处理价格更新失败: $e');
+    }
   }
 
   // 加载保存的排序选项
