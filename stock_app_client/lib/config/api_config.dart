@@ -1,7 +1,7 @@
 class ApiConfig {
   // API 地址配置
   //http://101.200.47.169:8000/docs
-  static const String baseUrl = 'http://192.168.2.12:8000';
+  static const String baseUrl = 'http://101.200.47.169:8000';
   static const String apiBaseUrl = '$baseUrl/api';
   
   // API 端点 - 策略相关
