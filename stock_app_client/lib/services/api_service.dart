@@ -922,6 +922,39 @@ class ApiService {
       {'code': 'etf', 'name': 'ETF'},
     ];
   }
+  
+  /// 批量查询股票信号
+  /// 
+  /// [stocks] 股票列表，每个元素包含 code 和 strategy
+  /// 返回信号结果列表
+  Future<List<Map<String, dynamic>>?> batchCheckSignals(List<Map<String, String>> stocks) async {
+    try {
+      debugPrint('[ApiService] 批量查询信号: ${stocks.length} 只股票');
+      
+      final url = '${ApiConfig.baseUrl}/api/stocks/signal/batch-check';
+      final requestBody = {'stocks': stocks};
+      
+      final response = await HttpClient.post(url, requestBody);
+      
+      if (response.statusCode == 200) {
+        final responseBody = utf8.decode(response.bodyBytes);
+        final data = json.decode(responseBody);
+        if (data['code'] == 200) {
+          final results = data['data']?['results'] as List<dynamic>?;
+          if (results != null) {
+            debugPrint('[ApiService] 批量查询信号成功: ${results.length} 个结果');
+            return results.map((e) => Map<String, dynamic>.from(e)).toList();
+          }
+        }
+      }
+      
+      debugPrint('[ApiService] 批量查询信号失败: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('[ApiService] 批量查询信号异常: $e');
+      return null;
+    }
+  }
 }
 
 // 缓存的新闻数据类

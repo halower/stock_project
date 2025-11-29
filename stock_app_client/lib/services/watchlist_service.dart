@@ -163,6 +163,33 @@ class WatchlistService {
     }
   }
   
+  // 添加WatchlistItem到备选池（直接传入WatchlistItem对象）
+  static Future<bool> addToWatchlistItem(WatchlistItem item) async {
+    try {
+      final watchlistItems = await getWatchlistItems();
+      
+      // 检查是否已存在
+      if (watchlistItems.any((existingItem) => existingItem.code == item.code)) {
+        debugPrint('股票 ${item.code} 已在备选池中');
+        return true; // 已存在也算成功
+      }
+      
+      watchlistItems.add(item);
+      
+      final success = await _saveWatchlistItems(watchlistItems);
+      
+      if (success) {
+        _notifyChange(); // 通知状态变化
+        debugPrint('成功添加 ${item.name} (${item.code}) 到备选池');
+      }
+      
+      return success;
+    } catch (e) {
+      debugPrint('添加到备选池失败: $e');
+      return false;
+    }
+  }
+  
   // 从备选池移除股票
   static Future<bool> removeFromWatchlist(String stockCode) async {
     try {
@@ -313,6 +340,73 @@ class WatchlistService {
     } catch (e) {
       debugPrint('更新单个股票价格失败: $e');
       return null;
+    }
+  }
+  
+  /// 批量查询备选池股票的信号状态
+  /// 返回更新了信号信息的股票列表
+  static Future<List<WatchlistItem>> updateWatchlistSignals() async {
+    try {
+      final watchlistItems = await getWatchlistItems();
+      
+      if (watchlistItems.isEmpty) {
+        return watchlistItems;
+      }
+      
+      debugPrint('[WatchlistService] 开始批量查询 ${watchlistItems.length} 只股票的信号');
+      
+      // 构建请求数据：每只股票使用其对应的策略
+      final stocks = watchlistItems.map((item) => {
+        'code': item.code,
+        'strategy': item.strategy.isNotEmpty ? item.strategy : 'volume_wave',
+      }).toList();
+      
+      // 调用API批量查询
+      final signalResults = await _apiService.batchCheckSignals(stocks);
+      
+      if (signalResults == null || signalResults.isEmpty) {
+        debugPrint('[WatchlistService] 批量查询信号返回为空');
+        return watchlistItems;
+      }
+      
+      // 将结果转换为Map方便查找
+      final signalMap = <String, Map<String, dynamic>>{};
+      for (var result in signalResults) {
+        final code = result['code'] as String?;
+        if (code != null) {
+          signalMap[code] = result;
+        }
+      }
+      
+      // 更新每个股票的信号信息
+      final updatedItems = watchlistItems.map((item) {
+        final signalInfo = signalMap[item.code];
+        if (signalInfo != null) {
+          final signalType = signalInfo['signal'] as String?;
+          debugPrint('[WatchlistService] ${item.code} 信号: $signalType');
+          return item.updateSignal(
+            signalType: signalType,
+            signalReason: signalInfo['signal_reason'] as String?,
+            confidence: signalInfo['confidence'] != null 
+                ? double.tryParse(signalInfo['confidence'].toString()) 
+                : null,
+          );
+        }
+        return item;
+      }).toList();
+      
+      // 统计信号数量
+      final buyCount = updatedItems.where((item) => item.hasBuySignal).length;
+      final sellCount = updatedItems.where((item) => item.hasSellSignal).length;
+      debugPrint('[WatchlistService] 信号查询完成: 买入信号 $buyCount 个, 卖出信号 $sellCount 个');
+      
+      // 保存更新后的数据
+      await _saveWatchlistItems(updatedItems);
+      
+      return updatedItems;
+    } catch (e) {
+      debugPrint('[WatchlistService] 批量查询信号失败: $e');
+      return await getWatchlistItems();
     }
   }
 } 

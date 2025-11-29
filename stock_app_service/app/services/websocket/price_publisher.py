@@ -23,8 +23,8 @@ from app.services.websocket.subscription_manager import subscription_manager
 
 
 # 测试模式开关：添加随机价格波动
-# TODO: 测试完成后设置为 False
-ENABLE_PRICE_SIMULATION = True
+# 生产环境：False（使用真实价格）
+ENABLE_PRICE_SIMULATION = False
 
 
 class PricePublisher:
@@ -200,10 +200,22 @@ class PricePublisher:
             List[PriceUpdate]: 价格更新列表
         """
         try:
-            from app.services.signal.signal_manager import signal_manager
+            # 直接从Redis获取信号数据，避免事件循环冲突
+            from app.core.redis_client import get_redis_client
             
-            # 获取策略的所有信号（已包含价格和涨跌幅）
-            signals = await signal_manager.get_buy_signals(strategy=strategy)
+            redis_client = await get_redis_client()
+            buy_signals_key = "buy_signals"
+            
+            # 获取所有信号
+            all_signals_data = await redis_client.hgetall(buy_signals_key)
+            
+            # 过滤出指定策略的信号
+            signals = []
+            for key, value in all_signals_data.items():
+                import json
+                signal = json.loads(value)
+                if signal.get('strategy') == strategy:
+                    signals.append(signal)
             
             if not signals:
                 return []
@@ -282,12 +294,17 @@ class PricePublisher:
             Optional[PriceUpdate]: 价格更新对象，如果获取失败则返回None
         """
         try:
-            from app.services.signal.signal_manager import signal_manager
+            from app.core.redis_client import get_redis_client
             from app.db.session import RedisCache
+            import json
             
             # 1. 尝试从信号中获取（如果该股票有信号）
-            signals = await signal_manager.get_buy_signals()
-            signal = next((s for s in signals if s.get('code') == code), None)
+            redis_client = await get_redis_client()
+            buy_signals_key = "buy_signals"
+            
+            # 直接从Redis获取该股票的信号
+            signal_data = await redis_client.hget(buy_signals_key, code)
+            signal = json.loads(signal_data) if signal_data else None
             
             if signal:
                 # 从信号中获取基础数据

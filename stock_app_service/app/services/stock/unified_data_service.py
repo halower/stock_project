@@ -435,6 +435,12 @@ class UnifiedDataService:
             是否更新成功
         """
         try:
+            # 0. 检查今天是否是交易日（周一到周五）
+            today_weekday = datetime.now().weekday()  # 0=周一, 6=周日
+            if today_weekday >= 5:  # 周六或周日
+                logger.debug(f"今天是周末，跳过实时K线更新")
+                return False
+            
             # 1. 获取现有K线数据
             key = self.kline_key_template.format(ts_code)
             cached_data = self.redis_cache.get_cache(key)
@@ -499,7 +505,17 @@ class UnifiedDataService:
             
             # 4. 检查是否已有今日数据（此时kline_list必然有数据，因为前面已经检查过了）
             last_kline = kline_list[-1]
-            last_trade_date = str(last_kline.get('trade_date', ''))
+            
+            # 兼容不同的日期字段格式：
+            # - trade_date: tushare格式，如 '20251129'
+            # - date: 标准格式，如 '2025-11-29'
+            last_trade_date = ''
+            if 'trade_date' in last_kline and last_kline['trade_date']:
+                last_trade_date = str(last_kline['trade_date'])
+            elif 'date' in last_kline and last_kline['date']:
+                # 将 '2025-11-29' 格式转换为 '20251129' 格式
+                date_str = str(last_kline['date'])
+                last_trade_date = date_str.replace('-', '')[:8]  # 去掉时间部分
             
             if last_trade_date == today:
                 # 更新今日数据
@@ -548,6 +564,20 @@ class UnifiedDataService:
         Returns:
             更新结果统计
         """
+        # 0. 检查今天是否是交易日（周一到周五）
+        today_weekday = datetime.now().weekday()  # 0=周一, 6=周日
+        if today_weekday >= 5:  # 周六或周日
+            logger.debug(f"今天是周末（weekday={today_weekday}），跳过批量K线更新")
+            return {
+                'stock_updated': 0,
+                'stock_failed': 0,
+                'etf_updated': 0,
+                'etf_failed': 0,
+                'total_updated': 0,
+                'total_failed': 0,
+                'skipped_reason': 'weekend'
+            }
+        
         result = {
             'stock_updated': 0,
             'stock_failed': 0,

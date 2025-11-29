@@ -174,6 +174,24 @@ class ApiProvider with ChangeNotifier {
     }
   }
   
+  /// 订阅单个股票价格更新
+  void subscribeStockPrice(String stockCode) {
+    if (_wsService.isConnected) {
+      _wsService.subscribeStock(stockCode);
+      debugPrint('[API] 订阅股票价格: $stockCode');
+    } else {
+      debugPrint('[API] WebSocket未连接，无法订阅股票');
+    }
+  }
+  
+  /// 取消订阅单个股票价格更新
+  void unsubscribeStockPrice(String stockCode) {
+    if (_wsService.isConnected) {
+      _wsService.unsubscribeStock(stockCode);
+      debugPrint('[API] 取消订阅股票价格: $stockCode');
+    }
+  }
+  
   /// 注册价格更新回调（用于备选池等页面）
   void addPriceUpdateCallback(Function(List<dynamic>) callback) {
     if (!_priceUpdateCallbacks.contains(callback)) {

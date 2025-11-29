@@ -33,8 +33,8 @@ class WebSocketService with ChangeNotifier {
   // 重连次数
   int _reconnectAttempts = 0;
   
-  // 最大重连次数
-  static const int maxReconnectAttempts = 5;
+  // 最大重连次数（增加到20次，约10分钟）
+  static const int maxReconnectAttempts = 20;
   
   // 保存URL用于重连
   String? _url;
@@ -64,19 +64,24 @@ class WebSocketService with ChangeNotifier {
       // 创建WebSocket连接
       _channel = WebSocketChannel.connect(Uri.parse(url));
       
-      // 监听消息（添加错误处理）
+      // 监听消息（添加错误处理和自动重连）
       _channel!.stream.listen(
         _onMessage,
         onError: (error) {
           debugPrint('[WebSocket] 连接错误: $error');
-          _updateStatus(WebSocketStatus.disconnected);
+          _updateStatus(WebSocketStatus.error);
+          _heartbeatTimer?.cancel();
           _channel = null;
+          // 触发重连
+          _scheduleReconnect();
         },
         onDone: () {
           debugPrint('[WebSocket] 连接已断开');
           _updateStatus(WebSocketStatus.disconnected);
           _heartbeatTimer?.cancel();
           _channel = null;
+          // 触发重连
+          _scheduleReconnect();
         },
         cancelOnError: true,  // 出错时取消监听
       );
@@ -248,8 +253,9 @@ class WebSocketService with ChangeNotifier {
   void _onError(error) {
     debugPrint('[WebSocket] 连接错误: $error');
     _updateStatus(WebSocketStatus.error);
-    // 不自动重连，避免无限循环
-    // _scheduleReconnect();
+    _heartbeatTimer?.cancel();
+    // 自动重连
+    _scheduleReconnect();
   }
   
   /// 处理断开连接
@@ -257,8 +263,8 @@ class WebSocketService with ChangeNotifier {
     debugPrint('[WebSocket] 连接已断开');
     _updateStatus(WebSocketStatus.disconnected);
     _heartbeatTimer?.cancel();
-    // 不自动重连，避免无限循环
-    // _scheduleReconnect();
+    // 自动重连
+    _scheduleReconnect();
   }
   
   /// 发送消息

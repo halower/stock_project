@@ -142,6 +142,11 @@ class WatchlistItemWidget extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 12),
                                 _buildMarketBadge(item.market),
+                                // 信号标签
+                                if (item.hasSignal) ...[
+                                  const SizedBox(width: 8),
+                                  _buildSignalBadge(item, isDark),
+                                ],
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -272,6 +277,90 @@ class WatchlistItemWidget extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+  
+  // 构建信号标签（买入/卖出）
+  Widget _buildSignalBadge(WatchlistItem item, bool isDark) {
+    final isBuy = item.hasBuySignal;
+    final isSell = item.hasSellSignal;
+    
+    if (!isBuy && !isSell) return const SizedBox.shrink();
+    
+    // 买入信号：红色渐变，卖出信号：绿色渐变
+    final List<Color> gradientColors = isBuy 
+        ? [const Color(0xFFFF4757), const Color(0xFFFF6348)]  // 红色渐变
+        : [const Color(0xFF26de81), const Color(0xFF20bf6b)]; // 绿色渐变
+    
+    final IconData signalIcon = isBuy ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
+    final String signalText = isBuy ? '买' : '卖';
+    
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: Container(
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.5),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: gradientColors[0].withOpacity(0.5),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                  spreadRadius: 1,
+                ),
+                // 添加脉冲光晕效果
+                BoxShadow(
+                  color: gradientColors[0].withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  signalIcon,
+                  size: 14,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  signalText,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 4,
+                        color: Colors.black26,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -505,13 +594,11 @@ class WatchlistItemWidget extends StatelessWidget {
     return const Color(0xFF607D8B);
   }
 
-  // 获取市场显示名称（使用完整名称）
+  // 获取市场显示名称
   String _getMarketShortName(String market) {
     if (market.contains('创业板')) return '创业板';
     if (market.contains('科创板')) return '科创板';
     if (market.contains('北交所')) return '北交所';
-    if (market.contains('深证主板') || market.contains('主板') && market.contains('深')) return '深主板';
-    if (market.contains('上证主板') || market.contains('主板') && market.contains('上')) return '沪主板';
     if (market.contains('ETF')) return 'ETF';
     if (market.contains('主板')) return '主板';
     return market; // 返回原始名称

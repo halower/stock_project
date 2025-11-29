@@ -266,12 +266,11 @@ class RuntimeTasks:
     
     @staticmethod
     def job_realtime_update():
-        """定时任务：实时更新所有股票数据"""
-        # TODO: 测试完成后恢复交易时间检查
-        # 暂时放开交易时间限制用于测试WebSocket推送
-        # if not is_trading_time():
-        #     logger.debug("非交易时间，跳过实时数据更新")
-        #     return
+        """定时任务：实时更新所有股票数据（仅交易时间）"""
+        # 检查是否在交易时间
+        if not is_trading_time():
+            logger.debug("非交易时间，跳过实时数据更新")
+            return
         
         # 防止重复执行
         if not _task_locks['realtime_update'].acquire(blocking=False):
@@ -368,9 +367,9 @@ class RuntimeTasks:
                 # 设置超时保护（5分钟）
                 result = loop.run_until_complete(
                     asyncio.wait_for(
-                        stock_atomic_service.calculate_strategy_signals(
-                            force_recalculate=False,
-                            stock_only=True  # 盘中仅计算股票信号
+                    stock_atomic_service.calculate_strategy_signals(
+                        force_recalculate=False,
+                        stock_only=True  # 盘中仅计算股票信号
                         ),
                         timeout=300  # 5分钟超时
                     )
@@ -533,9 +532,14 @@ class RuntimeTasks:
     
     @staticmethod
     def job_websocket_price_push():
-        """定时任务：WebSocket价格推送（测试用，不受交易时间限制）"""
+        """定时任务：WebSocket价格推送（仅在交易时间）"""
         try:
             from app.services.websocket import price_publisher, connection_manager
+            
+            # 检查是否在交易时间
+            if not is_trading_time():
+                logger.debug("WebSocket价格推送: 非交易时间，跳过")
+                return
             
             # 检查是否有活跃连接
             connection_count = connection_manager.get_connection_count()
@@ -543,8 +547,7 @@ class RuntimeTasks:
                 logger.debug("WebSocket价格推送: 没有活跃连接，跳过")
                 return  # 没有连接，跳过
             
-            logger.info(f"========== WebSocket价格推送 ==========")
-            logger.info(f"活跃连接数: {connection_count}")
+            logger.debug(f"WebSocket价格推送: 活跃连接数 {connection_count}")
             
             # 在新的事件循环中执行异步任务
             loop = asyncio.new_event_loop()
@@ -556,7 +559,7 @@ class RuntimeTasks:
                 )
                 
                 if client_count > 0:
-                    logger.info(f"价格推送完成: {client_count} 个客户端")
+                    logger.debug(f"价格推送完成: {client_count} 个客户端")
                     
             finally:
                 loop.close()
@@ -669,7 +672,7 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
         replace_existing=True
     )
     
-    # WebSocket价格推送：每5秒执行一次（测试用，不受交易时间限制）
+    # WebSocket价格推送：每5秒执行一次（仅在交易时间）
     scheduler.add_job(
         func=RuntimeTasks.job_websocket_price_push,
         trigger=IntervalTrigger(seconds=5),
@@ -677,7 +680,7 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
         name='WebSocket价格推送',
         replace_existing=True
     )
-    logger.info("WebSocket价格推送任务已添加，间隔: 5秒")
+    logger.info("WebSocket价格推送任务已添加，间隔: 5秒（仅交易时间）")
     
     # 4. 启动调度器
     scheduler.start()
@@ -685,7 +688,7 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
     logger.info("定时任务:")
     logger.info(f"  - 实时数据更新: 每{realtime_interval}分钟（交易时间）")
     logger.info("  - 策略信号计算: 固定时间点（9:30/9:50/10:10/10:30/10:50/11:10/11:30/13:00/13:20/13:40/14:00/14:20/14:40/15:00/15:20，独立任务）")
-    logger.info("  - WebSocket价格推送: 每5秒（测试用，不受交易时间限制）")
+    logger.info("  - WebSocket价格推送: 每5秒（仅交易时间）")
     logger.info("  - 新闻爬取: 每2小时")
     logger.info("  - 全量更新并计算信号: 每个交易日17:35")
     logger.info("  - 图表文件清理: 每天00:00")

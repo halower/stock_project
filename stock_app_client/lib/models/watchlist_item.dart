@@ -14,6 +14,12 @@ class WatchlistItem {
   double? changePercent;
   int? volume;
   DateTime? priceUpdateTime;
+  
+  // 信号信息（通过批量查询获取）
+  String? signalType;      // buy/sell/null
+  String? signalReason;    // 信号原因
+  double? signalConfidence; // 信号置信度
+  DateTime? signalUpdateTime; // 信号更新时间
 
   WatchlistItem({
     required this.code,
@@ -26,6 +32,10 @@ class WatchlistItem {
     this.changePercent,
     this.volume,
     this.priceUpdateTime,
+    this.signalType,
+    this.signalReason,
+    this.signalConfidence,
+    this.signalUpdateTime,
   });
 
   // 市场代码转换为完整市场名称
@@ -115,6 +125,14 @@ class WatchlistItem {
       priceUpdateTime: json['price_update_time'] != null 
           ? DateTime.parse(json['price_update_time']) 
           : null,
+      signalType: json['signal_type'],
+      signalReason: json['signal_reason'],
+      signalConfidence: json['signal_confidence'] != null 
+          ? double.tryParse(json['signal_confidence'].toString()) 
+          : null,
+      signalUpdateTime: json['signal_update_time'] != null 
+          ? DateTime.parse(json['signal_update_time']) 
+          : null,
     );
   }
 
@@ -131,6 +149,10 @@ class WatchlistItem {
       'change_percent': changePercent,
       'volume': volume,
       'price_update_time': priceUpdateTime?.toIso8601String(),
+      'signal_type': signalType,
+      'signal_reason': signalReason,
+      'signal_confidence': signalConfidence,
+      'signal_update_time': signalUpdateTime?.toIso8601String(),
     };
   }
 
@@ -151,8 +173,45 @@ class WatchlistItem {
       changePercent: changePercent ?? this.changePercent,
       volume: volume ?? this.volume,
       priceUpdateTime: DateTime.now(),
+      signalType: signalType,
+      signalReason: signalReason,
+      signalConfidence: signalConfidence,
+      signalUpdateTime: signalUpdateTime,
     );
   }
+  
+  // 更新信号信息
+  WatchlistItem updateSignal({
+    String? signalType,
+    String? signalReason,
+    double? confidence,
+  }) {
+    return WatchlistItem(
+      code: code,
+      name: name,
+      market: market,
+      strategy: strategy,
+      addedTime: addedTime,
+      originalDetails: originalDetails,
+      currentPrice: currentPrice,
+      changePercent: changePercent,
+      volume: volume,
+      priceUpdateTime: priceUpdateTime,
+      signalType: signalType,
+      signalReason: signalReason,
+      signalConfidence: confidence,
+      signalUpdateTime: DateTime.now(),
+    );
+  }
+  
+  // 是否有买入信号
+  bool get hasBuySignal => signalType == 'buy';
+  
+  // 是否有卖出信号
+  bool get hasSellSignal => signalType == 'sell';
+  
+  // 是否有任何信号
+  bool get hasSignal => signalType != null;
 
   // 获取关注时长的友好显示文本
   String get watchDurationText {

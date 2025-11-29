@@ -217,6 +217,153 @@ class SignalManager:
             logger.error(f"获取买入信号失败: {str(e)}")
             return []
     
+    async def batch_check_signals(self, codes: List[str], strategy: str) -> Dict[str, Dict[str, Any]]:
+        """
+        批量检查股票的买入/卖出信号
+        
+        通过计算最后一根K线的策略信号，判断是买入还是卖出
+        
+        Args:
+            codes: 股票代码列表（如：['600519', '000001']）
+            strategy: 策略代码（如：'volume_wave'）
+            
+        Returns:
+            Dict[str, Dict]: {
+                '600519': {'signal': 'buy', 'reason': '...', 'name': '贵州茅台', ...},
+                '000001': {'signal': 'sell', 'reason': '...', 'name': '平安银行', ...},
+                ...
+            }
+        """
+        results = {}
+        
+        try:
+            from app.db.session import RedisCache
+            
+            redis_cache = RedisCache()
+            
+            # 获取策略类
+            strategy_info = self.strategies.get(strategy)
+            if not strategy_info:
+                logger.warning(f"未找到策略: {strategy}")
+                return results
+            
+            strategy_class = strategy_info.get('class')
+            if not strategy_class:
+                # 根据策略代码获取策略类
+                if strategy == 'volume_wave':
+                    from app.indicators.volume_wave_strategy import VolumeWaveStrategy
+                    strategy_class = VolumeWaveStrategy
+                elif strategy == 'volume_wave_enhanced':
+                    from app.indicators.volume_wave_enhanced_strategy import VolumeWaveEnhancedStrategy
+                    strategy_class = VolumeWaveEnhancedStrategy
+                else:
+                    logger.warning(f"未知策略: {strategy}")
+                    return results
+            
+            for code in codes:
+                try:
+                    # 尝试不同的ts_code格式
+                    ts_codes = [f"{code}.SH", f"{code}.SZ", f"{code}.BJ"]
+                    
+                    kline_data = None
+                    used_ts_code = None
+                    
+                    for ts_code in ts_codes:
+                        data = redis_cache.get_cache(f"stock_trend:{ts_code}")
+                        if data:
+                            kline_data = data
+                            used_ts_code = ts_code
+                            break
+                    
+                    if not kline_data:
+                        results[code] = {
+                            'signal': None,
+                            'reason': '无K线数据',
+                            'name': None,
+                            'price': None,
+                            'change_percent': None,
+                            'confidence': None
+                        }
+                        continue
+                    
+                    # 获取K线列表
+                    klines = kline_data.get('data', [])
+                    if not klines or len(klines) < 20:  # 至少需要20根K线计算EMA等指标
+                        results[code] = {
+                            'signal': None,
+                            'reason': 'K线数据不足',
+                            'name': None,
+                            'price': None,
+                            'change_percent': None,
+                            'confidence': None
+                        }
+                        continue
+                    
+                    # 转换为DataFrame
+                    df = pd.DataFrame(klines)
+                    
+                    # 获取股票名称
+                    stock_name = None
+                    if 'name' in df.columns:
+                        stock_name = df.iloc[-1].get('name')
+                    
+                    # 应用策略计算信号
+                    df_result, signals = strategy_class.apply_strategy(df)
+                    
+                    # 获取最后一根K线的信息
+                    last_row = df.iloc[-1]
+                    last_index = len(df) - 1
+                    
+                    price = float(last_row.get('close', 0))
+                    change_percent = float(last_row.get('pct_chg', 0)) if 'pct_chg' in last_row else 0
+                    
+                    # 查找最后一根K线是否有信号
+                    signal_type = None
+                    signal_reason = None
+                    confidence = None
+                    
+                    for signal in signals:
+                        if signal.get('index') == last_index:
+                            sig_type = signal.get('type')
+                            if sig_type == 'buy':
+                                signal_type = 'buy'
+                                signal_reason = signal.get('reason', '买入信号')
+                                confidence = signal.get('confidence', 0.8)
+                            elif sig_type == 'sell':
+                                signal_type = 'sell'
+                                signal_reason = signal.get('reason', '卖出信号')
+                                confidence = signal.get('confidence', 0.8)
+                            break
+                    
+                    results[code] = {
+                        'signal': signal_type,
+                        'reason': signal_reason,
+                        'name': stock_name,
+                        'price': price,
+                        'change_percent': change_percent,
+                        'confidence': confidence
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"检查股票 {code} 信号失败: {e}")
+                    results[code] = {
+                        'signal': None,
+                        'reason': f'计算失败: {str(e)}',
+                        'name': None,
+                        'price': None,
+                        'change_percent': None,
+                        'confidence': None
+                    }
+            
+            logger.info(f"批量检查信号完成: {len(codes)} 只股票, 策略: {strategy}")
+            return results
+            
+        except Exception as e:
+            logger.error(f"批量检查信号失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return results
+    
     async def _process_stock_with_thread_control(self, stock: Dict, strategy_code: str, strategy_info: Dict) -> Tuple[bool, int]:
         """使用线程控制处理单只股票的信号计算
         

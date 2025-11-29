@@ -37,7 +37,8 @@ class TushareRateLimiter:
         self.daily_limit_reached = False
         self.daily_limit_check_time = None
         self.lock = threading.Lock()
-        self.async_lock = None  # 异步锁，用于并发控制
+        # 不在__init__中创建async_lock，避免事件循环冲突
+        # 每次使用时在当前事件循环中创建
         
     def _record_call(self):
         """记录API调用"""
@@ -61,12 +62,28 @@ class TushareRateLimiter:
     
     async def wait_for_rate_limit(self):
         """等待频率限制解除 - 纯异步模式，支持并发安全"""
-        # 初始化异步锁（延迟初始化，确保在正确的事件循环中）
-        if self.async_lock is None:
-            self.async_lock = asyncio.Lock()
+        # 在当前事件循环中创建新的Lock，避免事件循环冲突
+        # 使用threading.Lock来保护Lock的创建过程
+        with self.lock:
+            # 获取当前事件循环
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                # 如果没有运行中的事件循环，直接返回
+                return
+            
+            # 为当前事件循环创建专属的Lock
+            loop_id = id(loop)
+            if not hasattr(self, '_async_locks'):
+                self._async_locks = {}
+            
+            if loop_id not in self._async_locks:
+                self._async_locks[loop_id] = asyncio.Lock()
+            
+            async_lock = self._async_locks[loop_id]
         
         # 使用异步锁保护，避免并发竞态条件
-        async with self.async_lock:
+        async with async_lock:
             # 在锁内再次检查，确保并发安全
             if self._check_rate_limit():
                 # 计算等待时间：等待最早的API调用过期（60秒后）
