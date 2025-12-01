@@ -83,7 +83,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "1000"))
 
 # 实时行情配置（仅Tushare）
-REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "1"))  # 实时更新周期，单位：分钟，默认1分钟
+REALTIME_UPDATE_INTERVAL = float(os.getenv("REALTIME_UPDATE_INTERVAL", "1"))  # 实时更新周期，单位：分钟，默认1分钟，支持小数如0.5表示30秒
 
 
 class Settings(BaseModel):
@@ -117,7 +117,7 @@ class Settings(BaseModel):
     DEFAULT_AI_MODEL: str = DEFAULT_AI_MODEL
     
     # 实时行情配置（仅Tushare）
-    REALTIME_UPDATE_INTERVAL: int = REALTIME_UPDATE_INTERVAL
+    REALTIME_UPDATE_INTERVAL: float = REALTIME_UPDATE_INTERVAL
     
     class Config:
         case_sensitive = True

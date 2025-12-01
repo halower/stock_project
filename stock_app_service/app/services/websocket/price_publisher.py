@@ -8,7 +8,6 @@
 3. 根据订阅关系推送给相应客户端
 """
 
-import random
 from typing import List, Dict, Optional
 from datetime import datetime
 
@@ -20,11 +19,6 @@ from app.models.websocket_models import (
 )
 from app.services.websocket.connection_manager import connection_manager
 from app.services.websocket.subscription_manager import subscription_manager
-
-
-# 测试模式开关：添加随机价格波动
-# 生产环境：False（使用真实价格）
-ENABLE_PRICE_SIMULATION = False
 
 
 class PricePublisher:
@@ -190,8 +184,7 @@ class PricePublisher:
         """
         获取策略相关的所有股票价格更新
         
-        直接从信号数据中获取价格（信号计算时已包含价格和涨跌幅）
-        如果开启测试模式，会添加随机价格波动
+        优先从K线缓存读取最新价格（每分钟更新），如果没有则使用信号数据
         
         Args:
             strategy: 策略代码
@@ -200,20 +193,31 @@ class PricePublisher:
             List[PriceUpdate]: 价格更新列表
         """
         try:
-            # 直接从Redis获取信号数据，避免事件循环冲突
-            from app.core.redis_client import get_redis_client
+            import json
+            from app.db.session import cache  # 使用全局单例，避免重复创建连接
             
-            redis_client = await get_redis_client()
+            # 使用全局Redis客户端（复用连接，避免每次创建新连接）
+            redis_client = cache.get_redis_client()
+            
+            if redis_client is None:
+                logger.warning("Redis客户端未连接，跳过价格更新")
+                return []
+            
             buy_signals_key = "buy_signals"
             
-            # 获取所有信号
-            all_signals_data = await redis_client.hgetall(buy_signals_key)
+            # 从Redis获取所有信号（使用同步方式）
+            all_signals_data = redis_client.hgetall(buy_signals_key)
+            
+            if not all_signals_data:
+                return []
             
             # 过滤出指定策略的信号
             signals = []
             for key, value in all_signals_data.items():
-                import json
-                signal = json.loads(value)
+                # Redis返回的是bytes，需要解码
+                key_str = key.decode('utf-8') if isinstance(key, bytes) else key
+                value_str = value.decode('utf-8') if isinstance(value, bytes) else value
+                signal = json.loads(value_str)
                 if signal.get('strategy') == strategy:
                     signals.append(signal)
             
@@ -224,51 +228,54 @@ class PricePublisher:
             
             for signal in signals:
                 code = signal.get('code')
+                ts_code = signal.get('ts_code', '')
+                name = signal.get('name', '')
+                
                 if not code:
                     continue
                 
-                # 从信号中获取价格和涨跌幅（计算时已保存）
-                base_price = float(signal.get('price', 0))
-                base_change_percent = float(signal.get('change_percent', 0))
-                volume = signal.get('volume', 0)
-                name = signal.get('name', '')
+                # 1. 优先从K线缓存读取最新价格（每分钟更新）
+                current_price = None
+                current_change_percent = None
+                volume = None
                 
-                if base_price <= 0:
+                # 尝试从K线缓存读取（这是每分钟更新的实时数据）
+                if ts_code:
+                    kline_key = f"stock_trend:{ts_code}"
+                    kline_data = cache.get_cache(kline_key)
+                    
+                    if kline_data:
+                        kline_list = kline_data.get('data', []) if isinstance(kline_data, dict) else kline_data
+                        if kline_list:
+                            # 取最新一条K线
+                            last_kline = kline_list[-1]
+                            current_price = float(last_kline.get('close', 0))
+                            current_change_percent = float(last_kline.get('pct_chg', 0))
+                            volume = int(last_kline.get('vol', 0)) if last_kline.get('vol') else None
+                
+                # 2. 如果K线缓存没有，使用信号中的价格（兜底）
+                if current_price is None or current_price <= 0:
+                    current_price = float(signal.get('price', 0))
+                    current_change_percent = float(signal.get('change_percent', 0))
+                    volume = signal.get('volume', 0)
+                
+                if current_price <= 0:
                     continue
                 
-                # 计算当前价格和涨跌幅
-                current_price = base_price
-                current_change_percent = base_change_percent
+                # 3. 检测价格是否有变化（与上次推送比较）
+                last_price = self._last_prices.get(code, 0)
+                price_change = round(current_price - last_price, 2) if last_price > 0 else 0
                 
-                # 测试模式：添加随机价格波动 ±0.20~0.69
-                if ENABLE_PRICE_SIMULATION:
-                    # 随机波动金额：0.20 ~ 0.69，随机正负
-                    fluctuation = random.uniform(0.20, 0.69)
-                    if random.random() < 0.5:
-                        fluctuation = -fluctuation
-                    
-                    current_price = base_price + fluctuation
-                    
-                    # 重新计算涨跌幅（基于昨日收盘价）
-                    # 假设昨日收盘价 = 今日价格 / (1 + 涨跌幅%)
-                    if base_change_percent != 0:
-                        pre_close = base_price / (1 + base_change_percent / 100)
-                    else:
-                        pre_close = base_price
-                    
-                    if pre_close > 0:
-                        current_change_percent = (current_price - pre_close) / pre_close * 100
-                    
-                    # 保存当前价格用于下次计算
-                    self._last_prices[code] = current_price
+                # 更新缓存
+                self._last_prices[code] = current_price
                 
                 # 创建价格更新对象
                 price_update = PriceUpdate(
                     code=code,
                     name=name,
                     price=round(current_price, 2),
-                    change=round(current_price - base_price, 2) if ENABLE_PRICE_SIMULATION else 0,
-                    change_percent=round(current_change_percent, 2),
+                    change=price_change,
+                    change_percent=round(current_change_percent, 2) if current_change_percent else 0,
                     volume=int(volume) if volume else None,
                     timestamp=datetime.now().isoformat()
                 )
@@ -287,6 +294,8 @@ class PricePublisher:
         """
         获取单个股票的价格更新
         
+        优先从K线缓存读取最新价格（每分钟更新）
+        
         Args:
             code: 股票代码（如：600519）
             
@@ -294,89 +303,66 @@ class PricePublisher:
             Optional[PriceUpdate]: 价格更新对象，如果获取失败则返回None
         """
         try:
-            from app.core.redis_client import get_redis_client
-            from app.db.session import RedisCache
             import json
+            from app.db.session import cache  # 使用全局单例
             
-            # 1. 尝试从信号中获取（如果该股票有信号）
-            redis_client = await get_redis_client()
-            buy_signals_key = "buy_signals"
+            # 1. 优先从K线缓存读取（每分钟更新的实时数据）
+            ts_codes = [
+                f"{code}.SH",
+                f"{code}.SZ",
+                f"{code}.BJ"
+            ]
             
-            # 直接从Redis获取该股票的信号
-            signal_data = await redis_client.hget(buy_signals_key, code)
-            signal = json.loads(signal_data) if signal_data else None
+            current_price = None
+            current_change_percent = None
+            volume = None
+            name = code
             
-            if signal:
-                # 从信号中获取基础数据
-                base_price = float(signal.get('price', 0))
-                base_change_percent = float(signal.get('change_percent', 0))
-                volume = signal.get('volume', 0)
-                name = signal.get('name', '')
-            else:
-                # 2. 从K线数据中获取
-                redis_cache = RedisCache()
-                
-                # 尝试不同的ts_code格式
-                ts_codes = [
-                    f"{code}.SH",
-                    f"{code}.SZ",
-                    f"{code}.BJ"
-                ]
-                
-                kline_data = None
-                for ts_code in ts_codes:
-                    kline_data = redis_cache.get_cache(f"stock_trend:{ts_code}")
-                    if kline_data:
+            for ts_code in ts_codes:
+                kline_data = cache.get_cache(f"stock_trend:{ts_code}")
+                if kline_data:
+                    kline_list = kline_data.get('data', []) if isinstance(kline_data, dict) else kline_data
+                    if kline_list:
+                        last_kline = kline_list[-1]
+                        current_price = float(last_kline.get('close', 0))
+                        current_change_percent = float(last_kline.get('pct_chg', 0))
+                        volume = int(last_kline.get('vol', 0)) if last_kline.get('vol') else None
+                        name = last_kline.get('name', code)
                         break
-                
-                if not kline_data:
-                    logger.debug(f"未找到股票 {code} 的数据")
-                    return None
-                
-                # 获取最后一条K线
-                klines = kline_data.get('data', [])
-                if not klines:
-                    return None
-                
-                last_kline = klines[-1]
-                base_price = float(last_kline.get('close', 0))
-                base_change_percent = float(last_kline.get('pct_chg', 0))
-                volume = int(last_kline.get('vol', 0))
-                name = last_kline.get('name', code)
             
-            if base_price <= 0:
+            # 2. 如果K线缓存没有，尝试从信号中获取（兜底）
+            if current_price is None or current_price <= 0:
+                redis_client = cache.get_redis_client()
+                if redis_client:
+                    buy_signals_key = "buy_signals"
+                    signal_data = redis_client.hget(buy_signals_key, code)
+                    
+                    if signal_data:
+                        signal_str = signal_data.decode('utf-8') if isinstance(signal_data, bytes) else signal_data
+                        signal = json.loads(signal_str)
+                        current_price = float(signal.get('price', 0))
+                        current_change_percent = float(signal.get('change_percent', 0))
+                        volume = signal.get('volume', 0)
+                        name = signal.get('name', code)
+            
+            if current_price is None or current_price <= 0:
+                logger.debug(f"未找到股票 {code} 的数据")
                 return None
             
-            # 计算当前价格和涨跌幅
-            current_price = base_price
-            current_change_percent = base_change_percent
+            # 3. 检测价格是否有变化
+            last_price = self._last_prices.get(code, 0)
+            price_change = round(current_price - last_price, 2) if last_price > 0 else 0
             
-            # 测试模式：添加随机价格波动
-            if ENABLE_PRICE_SIMULATION:
-                fluctuation = random.uniform(0.20, 0.69)
-                if random.random() < 0.5:
-                    fluctuation = -fluctuation
-                
-                current_price = base_price + fluctuation
-                
-                # 重新计算涨跌幅
-                if base_change_percent != 0:
-                    pre_close = base_price / (1 + base_change_percent / 100)
-                else:
-                    pre_close = base_price
-                
-                if pre_close > 0:
-                    current_change_percent = (current_price - pre_close) / pre_close * 100
-                
-                self._last_prices[code] = current_price
+            # 更新缓存
+            self._last_prices[code] = current_price
             
             # 创建价格更新对象
             return PriceUpdate(
                 code=code,
                 name=name,
                 price=round(current_price, 2),
-                change=round(current_price - base_price, 2) if ENABLE_PRICE_SIMULATION else 0,
-                change_percent=round(current_change_percent, 2),
+                change=price_change,
+                change_percent=round(current_change_percent, 2) if current_change_percent else 0,
                 volume=int(volume) if volume else None,
                 timestamp=datetime.now().isoformat()
             )

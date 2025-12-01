@@ -65,7 +65,6 @@ def clean_numeric_value(value, default=0):
     except (ValueError, TypeError):
         return default
 
-
 def format_volume_humanized(volume):
     """格式化成交量为人性化显示（A股习惯：股数单位）"""
     volume = clean_numeric_value(volume, 0)
@@ -113,10 +112,10 @@ async def get_buy_signals(
             for key in ['price', 'volume', 'volume_ratio', 'change_percent', 'confidence']:
                 if key in signal:
                     signal[key] = clean_numeric_value(signal[key], 0)
-            
-            # 添加人性化成交量显示
-            volume = signal.get('volume', 0)
-            signal['volume_display'] = format_volume_humanized(volume)
+                
+                # 添加人性化成交量显示
+                volume = signal.get('volume', 0)
+                signal['volume_display'] = format_volume_humanized(volume)
             
         logger.info(f"获取到 {len(signals)} 个信号")
         
@@ -246,3 +245,4 @@ async def batch_check_signals(
             }
         }
 
+ 
