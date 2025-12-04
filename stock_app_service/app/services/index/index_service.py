@@ -141,7 +141,7 @@ class IndexService:
     
     async def get_index_list(self) -> Dict[str, Any]:
         """
-        获取常用指数列表
+        获取三大核心指数列表
         
         Returns:
             {
@@ -150,15 +150,29 @@ class IndexService:
             }
         """
         try:
-            # 常用指数列表
+            # 三大核心指数 - 专业版只保留最重要的指数
             indices = [
-                {'code': '000001.SH', 'name': '上证指数', 'market': '上海'},
-                {'code': '399001.SZ', 'name': '深证成指', 'market': '深圳'},
-                {'code': '399006.SZ', 'name': '创业板指', 'market': '深圳'},
-                {'code': '399107.SZ', 'name': '深证A指', 'market': '深圳'},
-                {'code': '000300.SH', 'name': '沪深300', 'market': '跨市场'},
-                {'code': '000016.SH', 'name': '上证50', 'market': '上海'},
-                {'code': '000905.SH', 'name': '中证500', 'market': '跨市场'},
+                {
+                    'code': '000001.SH', 
+                    'name': '上证指数', 
+                    'market': '上海',
+                    'description': '上海证券交易所综合股价指数',
+                    'symbol': 'SSE'
+                },
+                {
+                    'code': '399001.SZ', 
+                    'name': '深证成指', 
+                    'market': '深圳',
+                    'description': '深圳证券交易所成份股指数',
+                    'symbol': 'SZSE'
+                },
+                {
+                    'code': '399006.SZ', 
+                    'name': '创业板指', 
+                    'market': '深圳',
+                    'description': '创业板综合指数',
+                    'symbol': 'ChiNext'
+                },
             ]
             
             return {
