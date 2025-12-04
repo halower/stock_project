@@ -58,10 +58,12 @@ def add_job_log(job_type: str, status: str, message: str, **kwargs):
 
 def is_trading_time() -> bool:
     """
-    判断是否为交易时间（包括盘后30分钟）
+    判断是否为交易时间（包括盘后时间）
     
-    交易时间: 9:30-11:30, 13:00-15:00
-    盘后时间: 15:00-15:30
+    交易时间: 9:15-12:00, 13:00-15:15
+    - 9:15开始：提前15分钟准备
+    - 12:00结束：上午收盘后30分钟
+    - 15:15结束：下午收盘后15分钟
     """
     now = datetime.now()
     
@@ -71,20 +73,17 @@ def is_trading_time() -> bool:
     
     current_time = now.time()
     
-    # 上午交易时间
-    morning_start = time(9, 30)
-    morning_end = time(11, 30)
+    # 上午时段（9:15-12:00）
+    morning_start = time(9, 15)
+    morning_end = time(12, 0)
     
-    # 下午交易时间
+    # 下午时段（13:00-15:15）
     afternoon_start = time(13, 0)
-    afternoon_end = time(15, 0)
-    
-    # 盘后时间（15:00-15:30）
-    after_close_end = time(15, 30)
+    afternoon_end = time(15, 15)
     
     return (
         (morning_start <= current_time <= morning_end) or
-        (afternoon_start <= current_time <= after_close_end)
+        (afternoon_start <= current_time <= afternoon_end)
     )
 
 
@@ -364,14 +363,11 @@ class RuntimeTasks:
             asyncio.set_event_loop(loop)
             
             try:
-                # 设置超时保护（5分钟）
+                # 不设置超时，让信号计算自然完成
                 result = loop.run_until_complete(
-                    asyncio.wait_for(
                     stock_atomic_service.calculate_strategy_signals(
-                        force_recalculate=False,
+                        force_recalculate=True,  # 盘中也需要强制重算，确保信号最新
                         stock_only=True  # 盘中仅计算股票信号
-                        ),
-                        timeout=300  # 5分钟超时
                     )
                 )
                 
@@ -387,14 +383,6 @@ class RuntimeTasks:
                     **result_data
                 )
                 
-            except asyncio.TimeoutError:
-                elapsed = (datetime.now() - start_time).total_seconds()
-                logger.error(f"信号计算超时（{elapsed:.2f}秒），任务被终止")
-                add_job_log(
-                    'signal_calculation',
-                    'error',
-                    f'信号计算超时（{elapsed:.2f}秒）'
-                )
             finally:
                 loop.close()
                 
@@ -632,18 +620,57 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
         # 在后台线程中执行，不阻塞启动
         threading.Thread(target=RuntimeTasks.job_calculate_signals, daemon=True).start()
     
+    # 信号计算：从9:30开始，每20分钟执行一次
+    # 9:30, 9:50, 10:10, 10:30, 10:50, 11:10, 13:10, 13:30, 13:50, 14:10, 14:30, 14:50, 15:10
     scheduler.add_job(
         func=RuntimeTasks.job_calculate_signals,
         trigger=CronTrigger(
             day_of_week='mon-fri',
-            hour='9-11,13-15',
-            minute='0,10,20,30,40,50'
+            hour='9',
+            minute='30,50'
         ),
-        id='signal_calculation',
-        name='策略信号计算',
-        replace_existing=True
+        id='signal_calculation_morning_1',
+        name='策略信号计算（9:30-9:50）',
+        replace_existing=True,
+        misfire_grace_time=300
     )
-    logger.info("信号计算任务已添加，固定时间点触发（约每20分钟）")
+    scheduler.add_job(
+        func=RuntimeTasks.job_calculate_signals,
+        trigger=CronTrigger(
+            day_of_week='mon-fri',
+            hour='10-11',
+            minute='10,30,50'
+        ),
+        id='signal_calculation_morning_2',
+        name='策略信号计算（10:10-11:50）',
+        replace_existing=True,
+        misfire_grace_time=300
+    )
+    scheduler.add_job(
+        func=RuntimeTasks.job_calculate_signals,
+        trigger=CronTrigger(
+            day_of_week='mon-fri',
+            hour='13-14',
+            minute='10,30,50'
+        ),
+        id='signal_calculation_afternoon_1',
+        name='策略信号计算（13:10-14:50）',
+        replace_existing=True,
+        misfire_grace_time=300
+    )
+    scheduler.add_job(
+        func=RuntimeTasks.job_calculate_signals,
+        trigger=CronTrigger(
+            day_of_week='mon-fri',
+            hour='15',
+            minute='10'
+        ),
+        id='signal_calculation_afternoon_2',
+        name='策略信号计算（15:10）',
+        replace_existing=True,
+        misfire_grace_time=300
+    )
+    logger.info("信号计算任务已添加，从9:30开始，每20分钟执行一次（共13次）")
     
     # 新闻爬取：每2小时执行一次
     scheduler.add_job(

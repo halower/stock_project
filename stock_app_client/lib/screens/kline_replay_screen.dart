@@ -806,9 +806,9 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     
     // 启动回放并自动开始播放
     _replayService.startReplay();
-    // 自动启动播放定时器
+    // 自动启动播放定时器，使用当前设置的播放速度
     _autoPlayTimer = Timer.periodic(
-      const Duration(milliseconds: 1000),
+      Duration(milliseconds: _replayService.playSpeed),
       (_) => _nextCandle(),
     );
   }
@@ -1626,9 +1626,9 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       _replayService.pause();
     } else {
       _replayService.play();
-      // 使用默认1000毫秒（1x速度）启动定时器
+      // 使用当前设置的播放速度启动定时器
       _autoPlayTimer = Timer.periodic(
-        const Duration(milliseconds: 1000),
+        Duration(milliseconds: _replayService.playSpeed),
         (_) => _nextCandle(),
       );
     }
@@ -1647,6 +1647,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   
   void _changeSpeed(double speedInMilliseconds) {
     // speedInMilliseconds是毫秒值，如3333、2000、1000等
+    // 更新service中的速度
+    _replayService.setPlaySpeed(speedInMilliseconds.toInt());
+    
+    // 如果正在播放，重启定时器以应用新速度
     if (_replayService.isPlaying) {
       _autoPlayTimer?.cancel();
       _autoPlayTimer = Timer.periodic(

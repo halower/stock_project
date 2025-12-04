@@ -186,8 +186,8 @@ class KLineReplayService {
   void _updateVisibleData() {
     if (_fullData.isEmpty) return;
     
-    // 固定显示最近60根K线，实现平滑滚动效果
-    const int maxVisibleCandles = 60;
+    // 固定显示最近30根K线，横屏显示更清晰，不拥挤
+    const int maxVisibleCandles = 30;
     
     final int startIndex = _currentIndex >= maxVisibleCandles 
         ? _currentIndex - maxVisibleCandles + 1 

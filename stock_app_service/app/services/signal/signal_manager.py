@@ -364,7 +364,7 @@ class SignalManager:
             logger.error(traceback.format_exc())
             return results
     
-    async def _process_stock_with_thread_control(self, stock: Dict, strategy_code: str, strategy_info: Dict) -> Tuple[bool, int]:
+    async def _process_stock_with_thread_control(self, stock: Dict, strategy_code: str, strategy_info: Dict, target_key: str = None) -> Tuple[bool, int]:
         """使用线程控制处理单只股票的信号计算
         
         参数:
@@ -446,8 +446,8 @@ class SignalManager:
                     
                     # 只保留最后一根K线的买入信号
                     if signal_index == last_index:
-                        # 存储信号逻辑（使用同步Redis客户端）
-                        self._store_signal_sync(stock, signal, df, signal_index, strategy_code, strategy_info, redis_client)
+                        # 存储信号逻辑（使用同步Redis客户端，传入target_key）
+                        self._store_signal_sync(stock, signal, df, signal_index, strategy_code, strategy_info, redis_client, target_key)
                         signal_count += 1
             
             return True, signal_count
@@ -460,7 +460,7 @@ class SignalManager:
             self.release_thread()
     
     def _store_signal_sync(self, stock: Dict, signal: Dict, df: pd.DataFrame, signal_index: int, 
-                           strategy_code: str, strategy_info: Dict, redis_client) -> None:
+                           strategy_code: str, strategy_info: Dict, redis_client, target_key: str = None) -> None:
         """存储买入信号（同步版本，避免事件循环冲突）"""
         try:
             ts_code = stock.get('ts_code')
@@ -580,8 +580,10 @@ class SignalManager:
             }
             
             signal_key = f"{clean_code}:{strategy_code}"
+            # 使用传入的target_key或默认的buy_signals_key
+            save_to_key = target_key if target_key else self.buy_signals_key
             redis_client.hset(
-                self.buy_signals_key,
+                save_to_key,
                 signal_key,
                 json.dumps(signal_data)
             )
@@ -593,7 +595,7 @@ class SignalManager:
     
     async def calculate_buy_signals(self, force_recalculate: bool = False, etf_only: bool = False, stock_only: bool = False, clear_existing: bool = True) -> Dict[str, Any]:
         """
-        计算买入信号
+        计算买入信号（优化版：先计算到临时位置，完成后原子性替换，避免计算期间信号为空）
         
         Args:
             force_recalculate: 是否强制重新计算
@@ -611,37 +613,31 @@ class SignalManager:
                 signal_type = "股票+ETF"
             logger.info(f"开始计算{signal_type}买入信号...")
             
-            # 根据参数决定是否清空旧信号
-            if clear_existing:
-                logger.info("清空所有旧信号...")
+            # 使用临时键存储新计算的信号，避免计算期间信号为空
+            temp_signals_key = f"{self.buy_signals_key}:temp"
+            
+            # 使用同步Redis客户端
+            from app.core.sync_redis_client import get_sync_redis_client
+            sync_redis = get_sync_redis_client()
                 
-                # 使用同步Redis客户端，避免事件循环冲突
-                from app.core.sync_redis_client import get_sync_redis_client
-                sync_redis = get_sync_redis_client()
-                
-                # 清空新系统的信号数据
+            # 如果是追加模式，先复制现有信号到临时键
+            if not clear_existing:
+                logger.info(f"追加模式：复制现有信号到临时键")
                 old_signals_count = sync_redis.hlen(self.buy_signals_key)
                 if old_signals_count > 0:
-                    sync_redis.delete(self.buy_signals_key)
-                    logger.info(f"已清空新系统 {old_signals_count} 个旧信号")
-                
-                # 清空旧系统的信号数据（确保兼容性）
-                legacy_key = "stock:buy_signals"
-                legacy_count = 0
-                try:
-                    # 检查旧系统键是否存在
-                    if sync_redis.exists(legacy_key):
-                        key_type = sync_redis.type(legacy_key)
-                        legacy_count = sync_redis.hlen(legacy_key) if key_type == 'hash' else 1
-                        sync_redis.delete(legacy_key)
-                        logger.info(f"已清空旧系统 {legacy_count} 个旧信号")
-                except Exception as e:
-                    logger.debug(f"清空旧系统信号数据时出现异常（可忽略）: {e}")
-                
-                if old_signals_count == 0 and legacy_count == 0:
-                    logger.info("无旧信号需要清空")
+                    # 复制现有信号
+                    for field in sync_redis.hkeys(self.buy_signals_key):
+                        value = sync_redis.hget(self.buy_signals_key, field)
+                        sync_redis.hset(temp_signals_key, field, value)
+                    logger.info(f"已复制 {old_signals_count} 个现有信号到临时键")
             else:
-                logger.info(f"追加模式：不清空现有信号，新增{signal_type}信号")
+                # 清空临时键（如果存在）
+                if sync_redis.exists(temp_signals_key):
+                    sync_redis.delete(temp_signals_key)
+                    logger.info("已清空临时键，准备计算新信号")
+                
+                old_signals_count = sync_redis.hlen(self.buy_signals_key)
+                logger.info(f"当前有 {old_signals_count} 个旧信号，计算完成后将原子性替换")
             
             # 获取异步Redis客户端用于后续操作（不保存为实例变量）
             redis_client = await get_redis_client()
@@ -711,7 +707,7 @@ class SignalManager:
                         
                         async def process_with_semaphore(stock):
                             async with semaphore:
-                                return await self._process_stock_with_thread_control(stock, strategy_code, strategy_info)
+                                return await self._process_stock_with_thread_control(stock, strategy_code, strategy_info, target_key=temp_signals_key)
                         
                         # 创建任务列表
                         tasks = [process_with_semaphore(stock) for stock in batch]
@@ -770,6 +766,23 @@ class SignalManager:
                 logger.info(f"   总信号数: {total_signals} 个")
                 logger.info(f"   总耗时: {total_elapsed:.2f} 秒")
                 logger.info(f"各策略信号数量: {strategy_counts}")
+                
+                # 原子性替换：将临时键重命名为正式键
+                logger.info("开始原子性替换信号数据...")
+                try:
+                    # 使用RENAME命令原子性替换（如果临时键存在）
+                    if sync_redis.exists(temp_signals_key):
+                        # 先删除旧的正式键（如果存在）
+                        if sync_redis.exists(self.buy_signals_key):
+                            sync_redis.delete(self.buy_signals_key)
+                        # 重命名临时键为正式键
+                        sync_redis.rename(temp_signals_key, self.buy_signals_key)
+                        logger.info(f"✓ 原子性替换完成，新信号已生效（{total_signals} 个）")
+                    else:
+                        logger.warning("临时键不存在，跳过替换")
+                except Exception as e:
+                    logger.error(f"原子性替换失败: {e}")
+                    # 即使替换失败，也返回成功（信号已计算到临时键）
                 
                 return {
                     "status": "success",

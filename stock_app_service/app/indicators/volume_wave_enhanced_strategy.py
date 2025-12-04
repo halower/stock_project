@@ -17,30 +17,33 @@ class VolumeWaveEnhancedStrategy(VolumeWaveStrategy):
     
     @classmethod
     def apply_strategy(cls, df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, List[Dict]]:
-        """应用增强版波动交易策略 - 买入信号增加EMA18过滤"""
+        """应用增强版波动交易策略 - 买入信号增加EMA18过滤，卖出信号需要有持仓"""
         try:
             # 调用父类方法获取基础信号
             df, base_signals = super().apply_strategy(df, **kwargs)
             
-            # 过滤买入信号：只保留价格大于EMA18的买入信号
+            # 过滤信号：买入需要价格>EMA18，卖出需要有持仓
             filtered_signals = []
+            has_position = False  # 持仓状态
             
             for signal in base_signals:
                 if signal['type'] == 'buy':
-                    # 买入信号需要额外检查：价格 > EMA18
-                    idx = signal['index']
-                    if idx < len(df):
-                        close_price = df['close'].iloc[idx]
-                        ema18 = df['ema18'].iloc[idx]
-                        
-                        # 只有当价格大于EMA18时才保留买入信号
-                        if not pd.isna(ema18) and close_price > ema18:
-                            filtered_signals.append(signal)
-                        # else:
-                        #     logger.debug(f"过滤掉买入信号: index={idx}, close={close_price:.2f}, ema18={ema18:.2f}")
-                else:
-                    # 卖出信号保持不变
-                    filtered_signals.append(signal)
+                    # 买入信号需要额外检查：价格 > EMA18 且 当前无持仓
+                    if not has_position:
+                        idx = signal['index']
+                        if idx < len(df):
+                            close_price = df['close'].iloc[idx]
+                            ema18 = df['ema18'].iloc[idx]
+                            
+                            # 只有当价格大于EMA18时才保留买入信号
+                            if not pd.isna(ema18) and close_price > ema18:
+                                filtered_signals.append(signal)
+                                has_position = True  # 买入后标记为持仓
+                elif signal['type'] == 'sell':
+                    # 卖出信号只有在持仓状态下才有效
+                    if has_position:
+                        filtered_signals.append(signal)
+                        has_position = False  # 卖出后清除持仓状态
             
             return df, filtered_signals
             
