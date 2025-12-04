@@ -16,6 +16,7 @@ import 'news_analysis_screen.dart';
 import 'feedback_screen.dart';
 import 'watchlist_screen.dart';
 import 'kline_replay_screen.dart';
+import 'index_analysis_screen.dart';
 
 class MenuItem {
   final String title;
@@ -87,6 +88,12 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'K线回放',
         icon: Icons.candlestick_chart,
         screen: EnhancedKLineReplayScreen(),
+      ),
+      MenuItem(
+        title: '大盘分析',
+        icon: Icons.show_chart,
+        screen: const IndexAnalysisScreen(),
+        needsAppBar: false, // 大盘分析有自己的AppBar，不需要HomeScreen提供
       ),
       const MenuItem(
         title: '交易概览',
@@ -171,8 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final isKLineReplayScreen = _menuItems[_selectedIndex].title == 'K线回放';
 
     if (isMobile) {
-      // 移动设备使用底部导航栏（不包含K线回放）
-      final bottomNavItems = _menuItems.where((item) => item.title != 'K线回放').toList();
+      // 移动设备使用底部导航栏（不包含K线回放和大盘分析）
+      final bottomNavItems = _menuItems.where((item) => item.title != 'K线回放' && item.title != '大盘分析').toList();
       final bottomNavIndex = _selectedIndex >= bottomNavItems.length 
           ? 0 
           : (_menuItems[_selectedIndex].title == 'K线回放' 
