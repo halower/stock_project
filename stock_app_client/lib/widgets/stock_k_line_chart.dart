@@ -39,7 +39,8 @@ class StockKLineChart extends StatelessWidget {
     final indicatorData = _calculateIndicators(candleData);
     final subChartData = _calculateSubChartIndicator(candleData);
     
-    debugPrint('📊 K线数据: ${candleData.length}根, 指标数据: ${indicatorData.length}个');
+    // 移除频繁的调试日志
+    // debugPrint('📊 K线数据: ${candleData.length}根, 指标数据: ${indicatorData.length}个');
     
     // 计算最大最小值用于Y轴
     final minY = candleData.map((e) => e.low).reduce((a, b) => a < b ? a : b) * 0.98;
@@ -243,21 +244,16 @@ class StockKLineChart extends StatelessWidget {
     List<Map<String, dynamic>> historyData = [];
     
     if (data == null) {
-      debugPrint('K线图数据为空');
       return result;
     }
     
-    debugPrint('原始数据类型: ${data.runtimeType}');
-    if (data is Map<String, dynamic>) {
-      debugPrint('数据包含的键: ${data.keys.join(", ")}');
-    }
+    // 移除频繁的调试日志
+    // debugPrint('原始数据类型: ${data.runtimeType}');
     
     // 处理新API格式，数据在data字段中（不是history字段）
     if (data is Map<String, dynamic> && data.containsKey('data')) {
-      debugPrint('检测到data字段，包含历史数据');
       var historyList = data['data'];
       if (historyList is List) {
-        debugPrint('历史数据条数: ${historyList.length}');
         // 不再限制数据量，使用所有数据以便正确计算技术指标
         for (var item in historyList) {
           if (item is Map<String, dynamic>) {
@@ -268,7 +264,6 @@ class StockKLineChart extends StatelessWidget {
     } 
     // 处理直接传入历史数据数组的情况
     else if (data is List) {
-      debugPrint('直接传入历史数据数组');
       // 不再限制数据量，使用所有数据以便正确计算技术指标
       for (var item in data) {
         if (item is Map<String, dynamic>) {
@@ -279,14 +274,7 @@ class StockKLineChart extends StatelessWidget {
     
     // 如果历史数据为空，直接返回
     if (historyData.isEmpty) {
-      debugPrint('处理后历史数据为空');
       return result;
-    }
-    
-    // 打印第一条和最后一条数据用于调试
-    if (historyData.isNotEmpty) {
-      debugPrint('第一条历史数据: ${historyData.first}');
-      debugPrint('最后一条历史数据: ${historyData.last}');
     }
     
     // 按日期排序（从旧到新）
@@ -340,23 +328,18 @@ class StockKLineChart extends StatelessWidget {
             close: close,
             volume: volumeValue,
           ));
-          // 调试：打印前几条数据的成交量
-          if (result.length <= 3) {
-            debugPrint('K线数据 ${result.length}: date=$date, volume=$volumeValue');
-          }
+          // 移除频繁的调试日志
         } else {
-          debugPrint('数据不完整，跳过: date=$date, open=$open, close=$close, high=$high, low=$low');
+          // 只在数据不完整时打印错误
+          // debugPrint('数据不完整，跳过: date=$date');
         }
       } catch (e) {
         debugPrint('处理K线数据出错: $e');
       }
     }
     
-    // 最终处理结果
-    debugPrint('处理后的数据条数: ${result.length}');
-    if (result.length >= 2) {
-      debugPrint('最终日期范围: ${result.first.date} 到 ${result.last.date}');
-    }
+    // 移除频繁的调试日志
+    // debugPrint('处理后的数据条数: ${result.length}');
     
     return result;
   }
@@ -380,18 +363,18 @@ class StockKLineChart extends StatelessWidget {
     Map<String, dynamic> result = {};
     
     if (indicators == null || indicators!.isEmpty) {
-      debugPrint('📊 指标列表为空');
       return result;
     }
     
-    debugPrint('📊 开始计算指标，共 ${indicators!.length} 个');
+    // 移除频繁的调试日志
+    // debugPrint('📊 开始计算指标，共 ${indicators!.length} 个');
     
     final closes = candleData.map((c) => c.close).toList();
     // final highs = candleData.map((c) => c.high).toList();
     // final lows = candleData.map((c) => c.low).toList();
     
     for (var indicator in indicators!) {
-      debugPrint('📊 指标: ${indicator.name}, 类型: ${indicator.type}, 启用: ${indicator.enabled}');
+      // debugPrint('📊 指标: ${indicator.name}, 类型: ${indicator.type}, 启用: ${indicator.enabled}');
       if (!indicator.enabled) continue;
       
       switch (indicator.type) {
@@ -404,7 +387,7 @@ class StockKLineChart extends StatelessWidget {
             'color': _getColorFromString(indicator.params['color'] as String),
             'name': indicator.name,
           };
-          debugPrint('✅ 添加MA指标: $key, 数据点数: ${ma.values.length}');
+          // debugPrint('✅ 添加MA指标: $key, 数据点数: ${ma.values.length}');
           break;
           
         case 'EMA':
@@ -416,7 +399,7 @@ class StockKLineChart extends StatelessWidget {
             'color': _getColorFromString(indicator.params['color'] as String),
             'name': indicator.name,
           };
-          debugPrint('✅ 添加EMA指标: $key, 数据点数: ${ema.length}');
+          // debugPrint('✅ 添加EMA指标: $key, 数据点数: ${ema.length}');
           break;
           
         case 'MACD':
@@ -774,11 +757,11 @@ class CandlestickChartPainter extends CustomPainter {
   // 绘制技术指标
   void _drawIndicators(Canvas canvas, Size size) {
     if (indicators.isEmpty) {
-      debugPrint('📊 绘制指标: 指标数据为空');
       return;
     }
     
-    debugPrint('📊 开始绘制指标，共 ${indicators.length} 个: ${indicators.keys.join(", ")}');
+    // 移除频繁的调试日志
+    // debugPrint('📊 开始绘制指标，共 ${indicators.length} 个: ${indicators.keys.join(", ")}');
     
     // final chartWidth = size.width;
     // final chartHeight = size.height;
@@ -789,14 +772,14 @@ class CandlestickChartPainter extends CustomPainter {
       if (key.startsWith('MA') || key.startsWith('EMA')) {
         final data = value['data'] as List<double>;
         final color = value['color'] as Color;
-        debugPrint('📊 绘制均线: $key, 颜色: $color, 数据点: ${data.length}');
+        // debugPrint('📊 绘制均线: $key, 颜色: $color, 数据点: ${data.length}');
         _drawMALine(canvas, size, data, color, candleSpacing);
       } else if (key == 'BOLL') {
         // 绘制布林带
         final upper = value['upper'] as List<double>;
         final middle = value['middle'] as List<double>;
         final lower = value['lower'] as List<double>;
-        debugPrint('📊 绘制BOLL带');
+        // debugPrint('📊 绘制BOLL带');
         _drawBOLL(canvas, size, upper, middle, lower, candleSpacing);
       }
     });

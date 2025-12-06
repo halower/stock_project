@@ -57,22 +57,22 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
     });
   }
   
-  /// 确保WebSocket订阅有效
-  void _ensureSubscription() {
-    if (_watchlistItems.isEmpty) return;
-    
-    final now = DateTime.now();
-    // 如果距离上次订阅超过3秒，重新订阅
-    if (_lastSubscribeTime == null || 
-        now.difference(_lastSubscribeTime!).inSeconds > 3) {
-      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
-      if (apiProvider.wsService.isConnected) {
-        debugPrint('[Watchlist] 确保订阅: ${_watchlistItems.length} 个股票');
-        _subscribeWatchlistStocks();
-        _lastSubscribeTime = now;
-      }
-    }
-  }
+  // 移除未使用的方法，避免频繁订阅检查
+  // void _ensureSubscription() {
+  //   if (_watchlistItems.isEmpty) return;
+  //   
+  //   final now = DateTime.now();
+  //   // 如果距离上次订阅超过3秒，重新订阅
+  //   if (_lastSubscribeTime == null || 
+  //       now.difference(_lastSubscribeTime!).inSeconds > 3) {
+  //     final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+  //     if (apiProvider.wsService.isConnected) {
+  //       debugPrint('[Watchlist] 确保订阅: ${_watchlistItems.length} 个股票');
+  //       _subscribeWatchlistStocks();
+  //       _lastSubscribeTime = now;
+  //     }
+  //   }
+  // }
   
   /// 设置WebSocket价格更新
   void _setupWebSocketPriceUpdates() {
@@ -1051,10 +1051,10 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    // 确保WebSocket订阅有效
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureSubscription();
-    });
+    // 移除频繁的订阅检查，改为只在数据加载后订阅一次
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _ensureSubscription();
+    // });
     
     final isDark = Theme.of(context).brightness == Brightness.dark;
     

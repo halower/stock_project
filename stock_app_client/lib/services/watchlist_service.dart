@@ -23,23 +23,18 @@ class WatchlistService {
   // 获取备选池列表（新版本，返回WatchlistItem）
   static Future<List<WatchlistItem>> getWatchlistItems() async {
     try {
-      debugPrint('开始获取备选池数据...');
+      // 移除频繁的调试日志，只在出错时打印
       final prefs = await SharedPreferences.getInstance();
       final watchlistJson = prefs.getString(_watchlistKey);
       
-      debugPrint('备选池JSON数据: ${watchlistJson?.substring(0, watchlistJson.length > 100 ? 100 : watchlistJson.length)}...');
-      
       if (watchlistJson == null || watchlistJson.isEmpty) {
-        debugPrint('备选池数据为空，尝试从旧版本迁移...');
         // 尝试从旧版本迁移数据
         final migratedItems = await _migrateFromLegacyWatchlist();
-        debugPrint('迁移完成，获得 ${migratedItems.length} 个项目');
         return migratedItems;
       }
       
       final List<dynamic> watchlistData = json.decode(watchlistJson);
       final items = watchlistData.map((item) => WatchlistItem.fromJson(item)).toList();
-      debugPrint('成功解析备选池数据，共 ${items.length} 个项目');
       
       // 重新处理市场信息，确保历史数据也正确显示市场
       final updatedItems = items.map((item) {
@@ -66,19 +61,9 @@ class WatchlistService {
         return item;
       }).toList();
       
-      // 打印前3个项目的详细信息用于调试
-      for (int i = 0; i < updatedItems.length && i < 3; i++) {
-        final item = updatedItems[i];
-        debugPrint('备选池项目 $i: ${item.code} - ${item.name}');
-        debugPrint('  市场: ${item.market}');
-        debugPrint('  策略: ${item.strategy}');
-        debugPrint('  原始数据: ${item.originalDetails}');
-      }
-      
       return updatedItems;
     } catch (e) {
       debugPrint('获取备选池失败: $e');
-      debugPrint('错误堆栈: ${StackTrace.current}');
       return [];
     }
   }

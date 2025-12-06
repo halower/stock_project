@@ -31,8 +31,10 @@ class HttpClient {
         headers.addAll(extraHeaders);
       }
       
-      debugPrint('GET请求: $url');
-      debugPrint('请求头: $headers');
+      // 仅在开发模式下输出详细日志
+      if (kDebugMode) {
+        debugPrint('GET请求: $url');
+      }
       
       final response = await http.get(
         uri,
@@ -175,22 +177,25 @@ class HttpClient {
   
   /// 记录响应信息
   static void _logResponse(http.Response response) {
-    debugPrint('响应状态码: ${response.statusCode}');
-    
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      debugPrint('认证失败: Token无效或未提供');
-    }
-    
-    // 尝试解析响应体为JSON并记录
-    if (response.body.isNotEmpty) {
-      try {
-        final responseBody = utf8.decode(response.bodyBytes);
-        final truncatedBody = responseBody.length > 200 
-            ? '${responseBody.substring(0, 200)}...' 
-            : responseBody;
-        debugPrint('响应体: $truncatedBody');
-      } catch (e) {
-        debugPrint('无法解析响应体: $e');
+    // 仅在开发模式下输出详细日志
+    if (kDebugMode) {
+      debugPrint('响应状态码: ${response.statusCode}');
+      
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        debugPrint('认证失败: Token无效或未提供');
+      }
+      
+      // 尝试解析响应体为JSON并记录
+      if (response.body.isNotEmpty) {
+        try {
+          final responseBody = utf8.decode(response.bodyBytes);
+          final truncatedBody = responseBody.length > 200 
+              ? '${responseBody.substring(0, 200)}...' 
+              : responseBody;
+          debugPrint('响应体: $truncatedBody');
+        } catch (e) {
+          debugPrint('无法解析响应体: $e');
+        }
       }
     }
   }
