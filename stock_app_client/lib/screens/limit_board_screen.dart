@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../services/limit_board_service.dart';
 import '../models/limit_board_data.dart';
 import '../utils/design_system.dart';
+import 'stock_detail_screen.dart';
 
 class LimitBoardScreen extends StatefulWidget {
   const LimitBoardScreen({super.key});
@@ -87,6 +88,12 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
     
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer();
+          },
+        ),
         title: const Text('打板数据'),
         actions: [
           // 日期选择按钮
@@ -167,6 +174,13 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
             // 连板梯队
             _buildContinuousSection(isDark),
             const SizedBox(height: 24),
+            
+            // 最强板块统计
+            if (_summary!.sectorStats.isNotEmpty)
+              _buildSectorStatsSection(isDark),
+            
+            if (_summary!.sectorStats.isNotEmpty)
+              const SizedBox(height: 24),
             
             // 高连板股票
             if (_summary!.topContinuous.isNotEmpty)
@@ -271,13 +285,24 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
       return const SizedBox.shrink();
     }
     
-    // 按连板数排序
+    // 按连板数排序，并过滤掉1连板（只显示2连板及以上）
     final sortedKeys = stats.keys.toList()
       ..sort((a, b) {
         final aNum = int.tryParse(a.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
         final bNum = int.tryParse(b.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
         return bNum.compareTo(aNum);
       });
+    
+    // 过滤掉1连板
+    final filteredKeys = sortedKeys.where((key) {
+      final days = int.tryParse(key.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+      return days >= 2;
+    }).toList();
+    
+    // 如果过滤后没有数据，不显示这个区块
+    if (filteredKeys.isEmpty) {
+      return const SizedBox.shrink();
+    }
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,7 +332,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: sortedKeys.map((key) {
+          children: filteredKeys.map((key) {
             final count = stats[key] ?? 0;
             final days = int.tryParse(key.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
             
@@ -320,55 +345,387 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
               bgColor = Colors.blue.shade600;
             }
             
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [bgColor, bgColor.withOpacity(0.8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            return GestureDetector(
+              onTap: () => _showContinuousStocks(days, isDark),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [bgColor, bgColor.withOpacity(0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: bgColor.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: bgColor.withOpacity(0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    key,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$count只',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      key,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$count只',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }).toList(),
         ),
       ],
+    );
+  }
+  
+  /// 显示连板股票列表
+  void _showContinuousStocks(int days, bool isDark) {
+    // 筛选出对应连板天数的股票
+    final stocks = _summary!.upLimitList
+        .where((stock) => stock.limitTimes == days)
+        .toList()
+      ..sort((a, b) => b.pctChg.compareTo(a.pctChg)); // 按涨幅排序
+    
+    if (stocks.isEmpty) {
+      return;
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppDesignSystem.darkBg1 : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // 标题栏
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$days连板股票',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '共${stocks.length}只',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // 股票列表
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(12),
+                  itemCount: stocks.length,
+                  itemBuilder: (context, index) {
+                    return _buildClickableLimitStockItem(
+                      stocks[index],
+                      isDark,
+                      showContinuous: true,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 构建最强板块统计
+  Widget _buildSectorStatsSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Colors.deepOrange,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '最强板块',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '涨停数量',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ..._summary!.sectorStats.take(8).map((sector) => 
+          _buildSectorStatsItem(sector, isDark)
+        ),
+      ],
+    );
+  }
+  
+  /// 构建板块统计项
+  Widget _buildSectorStatsItem(SectorStats sector, bool isDark) {
+    // 根据涨停数量确定颜色
+    Color getColorByCount(int count) {
+      if (count >= 10) return Colors.red.shade600;
+      if (count >= 5) return Colors.orange.shade600;
+      if (count >= 3) return Colors.blue.shade600;
+      return Colors.grey.shade600;
+    }
+    
+    final color = getColorByCount(sector.count);
+    
+    return GestureDetector(
+      onTap: () => _showSectorDetail(sector, isDark),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? AppDesignSystem.darkBg2 : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: color.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // 排名标识
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [color, color.withOpacity(0.7)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  '${sector.count}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            
+            // 板块信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    sector.sectorName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        '平均涨幅 ${sector.avgPctChg.toStringAsFixed(2)}%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+                        ),
+                      ),
+                      if (sector.highContinuousCount > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '${sector.highContinuousCount}只高连板',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.red.shade600,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // 箭头图标
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: isDark ? AppDesignSystem.darkText4 : AppDesignSystem.lightText4,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  /// 显示板块详情
+  void _showSectorDetail(SectorStats sector, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppDesignSystem.darkBg1 : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // 标题栏
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            sector.sectorName,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${sector.count}只涨停 · 平均涨幅${sector.avgPctChg.toStringAsFixed(2)}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // 股票列表
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(12),
+                  itemCount: sector.stocks.length,
+                  itemBuilder: (context, index) {
+                    return _buildClickableLimitStockItem(
+                      sector.stocks[index],
+                      isDark,
+                      showContinuous: true,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
   
@@ -418,7 +775,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         padding: const EdgeInsets.all(12),
         itemCount: _summary!.upLimitList.length,
         itemBuilder: (context, index) {
-          return _buildLimitStockItem(_summary!.upLimitList[index], isDark);
+          return _buildClickableLimitStockItem(_summary!.upLimitList[index], isDark);
         },
       ),
     );
@@ -436,7 +793,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         padding: const EdgeInsets.all(12),
         itemCount: _summary!.downLimitList.length,
         itemBuilder: (context, index) {
-          return _buildLimitStockItem(_summary!.downLimitList[index], isDark, isDown: true);
+          return _buildClickableLimitStockItem(_summary!.downLimitList[index], isDark, isDown: true);
         },
       ),
     );
@@ -454,9 +811,45 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         padding: const EdgeInsets.all(12),
         itemCount: _summary!.topList.length,
         itemBuilder: (context, index) {
-          return _buildTopListItem(_summary!.topList[index], isDark);
+          return _buildClickableTopListItem(_summary!.topList[index], isDark);
         },
       ),
+    );
+  }
+  
+  /// 构建可点击的龙虎榜项（打开走势图）
+  Widget _buildClickableTopListItem(TopListStock stock, bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StockDetailScreen(
+              stockCode: stock.tsCode,
+              stockName: stock.name,
+            ),
+          ),
+        );
+      },
+      child: _buildTopListItem(stock, isDark),
+    );
+  }
+  
+  /// 构建可点击的涨跌停股票项（打开走势图）
+  Widget _buildClickableLimitStockItem(LimitStock stock, bool isDark, {bool isDown = false, bool showContinuous = false}) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StockDetailScreen(
+              stockCode: stock.tsCode,
+              stockName: stock.name,
+            ),
+          ),
+        );
+      },
+      child: _buildLimitStockItem(stock, isDark, isDown: isDown, showContinuous: showContinuous),
     );
   }
   

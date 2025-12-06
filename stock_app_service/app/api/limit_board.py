@@ -130,3 +130,30 @@ async def get_down_limit_list(
     """
     return await get_limit_list(trade_date, 'D', use_cache)
 
+
+@router.get("/hot-money-detail")
+async def get_hot_money_detail(
+    trade_date: Optional[str] = Query(None, description="交易日期，格式YYYYMMDD"),
+    ts_code: Optional[str] = Query(None, description="股票代码，可选"),
+    use_cache: bool = Query(True, description="是否使用缓存")
+):
+    """
+    获取每日游资交易明细
+    
+    - **trade_date**: 交易日期，格式YYYYMMDD，不传则使用最近交易日
+    - **ts_code**: 股票代码（可选），用于查询特定股票的游资明细
+    - **use_cache**: 是否使用缓存，默认True
+    
+    返回游资交易明细列表，包含游资名称、股票代码、买入卖出金额等信息
+    """
+    try:
+        result = await limit_board_service.async_get_hot_money_detail(
+            trade_date=trade_date,
+            ts_code=ts_code,
+            use_cache=use_cache
+        )
+        return result
+    except Exception as e:
+        logger.error(f"获取游资明细失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

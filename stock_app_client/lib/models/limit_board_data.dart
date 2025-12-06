@@ -1,6 +1,45 @@
 /// 打板数据模型
 /// 涨跌停、龙虎榜、连板统计等数据
 
+/// 游资每日明细数据
+class HotMoneyDetail {
+  final String tradeDate; // 交易日期
+  final String tsCode; // 股票代码
+  final String name; // 股票名称
+  final String hmName; // 游资名称
+  final double buyValue; // 买入金额(万元)
+  final double sellValue; // 卖出金额(万元)
+  final double netValue; // 净买入金额(万元)
+
+  HotMoneyDetail({
+    required this.tradeDate,
+    required this.tsCode,
+    required this.name,
+    required this.hmName,
+    required this.buyValue,
+    required this.sellValue,
+    required this.netValue,
+  });
+
+  factory HotMoneyDetail.fromJson(Map<String, dynamic> json) {
+    return HotMoneyDetail(
+      tradeDate: json['trade_date'] ?? '',
+      tsCode: json['ts_code'] ?? '',
+      name: json['name'] ?? '',
+      hmName: json['hm_name'] ?? '',
+      buyValue: (json['buy_value'] ?? 0).toDouble(),
+      sellValue: (json['sell_value'] ?? 0).toDouble(),
+      netValue: (json['net_value'] ?? 0).toDouble(),
+    );
+  }
+  
+  /// 获取纯股票代码（去除后缀）
+  String get code => tsCode.split('.').first;
+  
+  /// 是否为净买入
+  bool get isNetBuy => netValue > 0;
+}
+
 /// 涨跌停股票数据
 class LimitStock {
   final String tradeDate;
@@ -22,6 +61,7 @@ class LimitStock {
   final double? downLimit; // 跌停价
   final double? vol; // 成交量
   final double? amount; // 成交额
+  final String? industry; // 所属行业
 
   LimitStock({
     required this.tradeDate,
@@ -43,6 +83,7 @@ class LimitStock {
     this.downLimit,
     this.vol,
     this.amount,
+    this.industry,
   });
 
   factory LimitStock.fromJson(Map<String, dynamic> json) {
@@ -66,6 +107,7 @@ class LimitStock {
       downLimit: json['down_limit']?.toDouble(),
       vol: json['vol']?.toDouble(),
       amount: json['amount']?.toDouble(),
+      industry: json['industry'],
     );
   }
   
@@ -136,6 +178,35 @@ class TopListStock {
   String get code => tsCode.split('.').first;
 }
 
+/// 板块统计数据
+class SectorStats {
+  final String sectorName; // 板块名称
+  final int count; // 涨停数量
+  final double avgPctChg; // 平均涨幅
+  final int highContinuousCount; // 高连板数量（3连板以上）
+  final List<LimitStock> stocks; // 该板块的涨停股票
+
+  SectorStats({
+    required this.sectorName,
+    required this.count,
+    required this.avgPctChg,
+    required this.highContinuousCount,
+    required this.stocks,
+  });
+
+  factory SectorStats.fromJson(Map<String, dynamic> json) {
+    return SectorStats(
+      sectorName: json['sector_name'] ?? '',
+      count: json['count'] ?? 0,
+      avgPctChg: (json['avg_pct_chg'] ?? 0).toDouble(),
+      highContinuousCount: json['high_continuous_count'] ?? 0,
+      stocks: (json['stocks'] as List<dynamic>? ?? [])
+          .map((e) => LimitStock.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
 /// 打板综合数据
 class LimitBoardSummary {
   final String tradeDate;
@@ -147,6 +218,7 @@ class LimitBoardSummary {
   final List<LimitStock> downLimitList; // 跌停列表
   final List<TopListStock> topList; // 龙虎榜列表
   final List<LimitStock> topContinuous; // 高连板股票
+  final List<SectorStats> sectorStats; // 板块统计
   final String updateTime;
 
   LimitBoardSummary({
@@ -159,6 +231,7 @@ class LimitBoardSummary {
     this.downLimitList = const [],
     this.topList = const [],
     this.topContinuous = const [],
+    this.sectorStats = const [],
     this.updateTime = '',
   });
 
@@ -184,6 +257,9 @@ class LimitBoardSummary {
           .toList(),
       topContinuous: (json['top_continuous'] as List<dynamic>? ?? [])
           .map((e) => LimitStock.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      sectorStats: (json['sector_stats'] as List<dynamic>? ?? [])
+          .map((e) => SectorStats.fromJson(e as Map<String, dynamic>))
           .toList(),
       updateTime: json['update_time'] ?? '',
     );

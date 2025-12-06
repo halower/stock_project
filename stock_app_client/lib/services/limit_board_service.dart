@@ -182,5 +182,45 @@ class LimitBoardService {
       return null;
     }
   }
+  
+  /// 获取游资明细
+  static Future<List<HotMoneyDetail>> getHotMoneyDetail({String? tradeDate, String? tsCode}) async {
+    try {
+      var url = '$_baseUrl/hot-money-detail';
+      final params = <String>[];
+      if (tradeDate != null && tradeDate.isNotEmpty) {
+        params.add('trade_date=$tradeDate');
+      }
+      if (tsCode != null && tsCode.isNotEmpty) {
+        params.add('ts_code=$tsCode');
+      }
+      if (params.isNotEmpty) {
+        url += '?${params.join('&')}';
+      }
+      
+      debugPrint('请求游资明细: $url');
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> list = data['data'] ?? [];
+          final hotMoneyList = list.map((e) => HotMoneyDetail.fromJson(e as Map<String, dynamic>)).toList();
+          debugPrint('获取游资明细成功: ${hotMoneyList.length}条');
+          return hotMoneyList;
+        }
+      }
+      
+      debugPrint('获取游资明细失败: ${response.statusCode}');
+      return [];
+    } catch (e) {
+      debugPrint('获取游资明细异常: $e');
+      return [];
+    }
+  }
 }
 

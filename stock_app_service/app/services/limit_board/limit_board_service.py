@@ -411,7 +411,184 @@ class LimitBoardService:
                 'top_continuous': []
             }
     
-    # ==================== 4. 打板综合数据 ====================
+    # ==================== 4. 板块统计 ====================
+    
+    def get_sector_stats(
+        self,
+        trade_date: Optional[str] = None,
+        use_cache: bool = True
+    ) -> List[Dict[str, Any]]:
+        """
+        获取板块统计数据（基于涨停股票的行业分布）
+        
+        Args:
+            trade_date: 交易日期
+            use_cache: 是否使用缓存
+            
+        Returns:
+            板块统计列表，按涨停数量排序
+        """
+        try:
+            if trade_date is None:
+                trade_date = self._get_last_trade_date()
+            
+            # 获取涨停数据
+            limit_data = self.get_limit_list(trade_date, 'U', use_cache)
+            
+            if not limit_data.get('success') or not limit_data.get('data'):
+                return []
+            
+            data = limit_data['data']
+            
+            # 获取股票行业信息
+            sector_map = self._get_stock_industry()
+            
+            # 按行业分组统计
+            sector_dict = {}
+            for item in data:
+                ts_code = item.get('ts_code', '')
+                industry = sector_map.get(ts_code, '其他')
+                
+                if industry not in sector_dict:
+                    sector_dict[industry] = {
+                        'sector_name': industry,
+                        'count': 0,
+                        'total_pct_chg': 0,
+                        'high_continuous_count': 0,
+                        'stocks': []
+                    }
+                
+                sector_dict[industry]['count'] += 1
+                sector_dict[industry]['total_pct_chg'] += item.get('pct_chg', 0)
+                sector_dict[industry]['stocks'].append({
+                    **item,
+                    'industry': industry
+                })
+                
+                # 统计高连板（3连板以上）
+                if item.get('limit_times', 0) >= 3:
+                    sector_dict[industry]['high_continuous_count'] += 1
+            
+            # 计算平均涨幅并排序
+            sector_stats = []
+            for sector_name, stats in sector_dict.items():
+                count = stats['count']
+                avg_pct_chg = stats['total_pct_chg'] / count if count > 0 else 0
+                
+                sector_stats.append({
+                    'sector_name': sector_name,
+                    'count': count,
+                    'avg_pct_chg': round(avg_pct_chg, 2),
+                    'high_continuous_count': stats['high_continuous_count'],
+                    'stocks': stats['stocks']
+                })
+            
+            # 按涨停数量排序
+            sector_stats.sort(key=lambda x: (x['count'], x['high_continuous_count']), reverse=True)
+            
+            logger.info(f"板块统计完成: {trade_date}, 共{len(sector_stats)}个板块")
+            return sector_stats
+            
+        except Exception as e:
+            logger.error(f"获取板块统计失败: {e}")
+            return []
+    
+    # ==================== 5. 游资每日明细 ====================
+    
+    def get_hot_money_detail(
+        self,
+        trade_date: Optional[str] = None,
+        ts_code: Optional[str] = None,
+        use_cache: bool = True
+    ) -> Dict[str, Any]:
+        """
+        获取每日游资交易明细
+        
+        Args:
+            trade_date: 交易日期，格式YYYYMMDD
+            ts_code: 股票代码（可选）
+            use_cache: 是否使用缓存
+            
+        Returns:
+            游资交易明细数据
+        """
+        try:
+            if trade_date is None:
+                trade_date = self._get_last_trade_date()
+            
+            cache_key = f"hot_money_detail:{trade_date}:{ts_code or 'all'}"
+            
+            # 尝试从缓存获取
+            if use_cache:
+                cached = self.redis_cache.get_cache(cache_key)
+                if cached:
+                    logger.debug(f"从缓存获取游资明细: {cache_key}")
+                    return cached
+            
+            # 等待频率限制
+            self.rate_limiter.wait_if_needed()
+            self.rate_limiter._record_call()
+            
+            # 调用hm_detail接口（需要10000积分）
+            try:
+                params = {'trade_date': trade_date}
+                if ts_code:
+                    params['ts_code'] = ts_code
+                
+                df = self.pro.hm_detail(**params)
+                
+                if df is None or df.empty:
+                    logger.warning(f"游资明细数据为空: {trade_date}")
+                    return {
+                        'success': True,
+                        'trade_date': trade_date,
+                        'count': 0,
+                        'data': []
+                    }
+                
+                # 转换为字典列表
+                data = df.to_dict('records')
+                
+                # 按买入金额降序排序
+                data.sort(key=lambda x: x.get('buy_value', 0), reverse=True)
+                
+                result = {
+                    'success': True,
+                    'trade_date': trade_date,
+                    'count': len(data),
+                    'data': data
+                }
+                
+                # 缓存结果（当日数据缓存1小时）
+                self.redis_cache.set_cache(cache_key, result, ttl=3600)
+                
+                logger.info(f"获取游资明细成功: {trade_date}, {len(data)}条")
+                return result
+                
+            except Exception as e:
+                error_msg = str(e)
+                if "权限" in error_msg or "积分" in error_msg or "10000" in error_msg:
+                    logger.warning(f"hm_detail接口需要10000积分，返回空数据")
+                    return {
+                        'success': False,
+                        'message': '游资明细接口需要10000积分权限',
+                        'trade_date': trade_date,
+                        'count': 0,
+                        'data': []
+                    }
+                raise
+                
+        except Exception as e:
+            logger.error(f"获取游资明细失败: {e}")
+            return {
+                'success': False,
+                'message': str(e),
+                'trade_date': trade_date,
+                'count': 0,
+                'data': []
+            }
+    
+    # ==================== 6. 打板综合数据 ====================
     
     def get_limit_board_summary(
         self,
@@ -446,6 +623,7 @@ class LimitBoardService:
             down_limit = self.get_limit_list(trade_date, 'D', use_cache)
             top_list = self.get_top_list(trade_date, use_cache)
             continuous_stats = self.get_continuous_limit_stats(trade_date, use_cache)
+            sector_stats = self.get_sector_stats(trade_date, use_cache)
             
             result = {
                 'success': True,
@@ -460,6 +638,7 @@ class LimitBoardService:
                 'down_limit': down_limit.get('data', [])[:10],  # 跌停前10只
                 'top_list': top_list.get('data', [])[:20],  # 龙虎榜前20只
                 'top_continuous': continuous_stats.get('top_continuous', []),  # 高连板股票
+                'sector_stats': sector_stats[:10],  # 最强板块前10个
                 'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
@@ -529,7 +708,59 @@ class LimitBoardService:
         
         return {}
     
+    def _get_stock_industry(self) -> Dict[str, str]:
+        """获取股票行业信息（代码-行业映射）"""
+        cache_key = "stock_industry_map"
+        
+        cached = self.redis_cache.get_cache(cache_key)
+        if cached:
+            return cached
+        
+        try:
+            self.rate_limiter.wait_if_needed()
+            self.rate_limiter._record_call()
+            
+            # 获取股票基本信息，包含行业
+            df = self.pro.stock_basic(
+                exchange='',
+                list_status='L',
+                fields='ts_code,name,industry'
+            )
+            
+            if df is not None and not df.empty:
+                # 创建代码-行业映射
+                result = {}
+                for _, row in df.iterrows():
+                    ts_code = row['ts_code']
+                    industry = row['industry'] if pd.notna(row['industry']) else '其他'
+                    result[ts_code] = industry
+                
+                self.redis_cache.set_cache(cache_key, result, ttl=86400)  # 24小时
+                logger.info(f"获取股票行业信息成功: {len(result)}只股票")
+                return result
+        except Exception as e:
+            logger.error(f"获取股票行业信息失败: {e}")
+        
+        return {}
+    
     # ==================== 异步方法 ====================
+    
+    async def async_get_hot_money_detail(
+        self,
+        trade_date: Optional[str] = None,
+        ts_code: Optional[str] = None,
+        use_cache: bool = True
+    ) -> Dict[str, Any]:
+        """异步获取游资每日明细"""
+        import concurrent.futures
+        
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            result = await loop.run_in_executor(
+                executor,
+                lambda: self.get_hot_money_detail(trade_date, ts_code, use_cache)
+            )
+        return result
     
     async def async_get_limit_list(
         self,
