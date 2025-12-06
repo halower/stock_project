@@ -87,7 +87,11 @@ class KLineReplayService {
       
       // 发送初始数据
       _updateVisibleData();
-      _currentIndexController.add(_currentIndex);
+      
+      // 检查流控制器是否已关闭
+      if (!_currentIndexController.isClosed) {
+        _currentIndexController.add(_currentIndex);
+      }
       
       debugPrint('K线回放数据加载完成: 共${_fullData.length}根K线');
     } catch (e) {
@@ -133,7 +137,11 @@ class KLineReplayService {
     if (_currentIndex < _fullData.length - 1) {
       _currentIndex++;
       _updateVisibleData();
-      _currentIndexController.add(_currentIndex);
+      
+      // 检查流控制器是否已关闭
+      if (!_currentIndexController.isClosed) {
+        _currentIndexController.add(_currentIndex);
+      }
     } else {
       // 回放结束
       _isReplayFinished = true;
@@ -150,7 +158,11 @@ class KLineReplayService {
       _currentIndex--;
       _isReplayFinished = false; // 如果回退，取消完成状态
       _updateVisibleData();
-      _currentIndexController.add(_currentIndex);
+      
+      // 检查流控制器是否已关闭
+      if (!_currentIndexController.isClosed) {
+        _currentIndexController.add(_currentIndex);
+      }
     }
   }
   
@@ -162,7 +174,11 @@ class KLineReplayService {
       _currentIndex = index;
       _isReplayFinished = index >= _fullData.length - 1;
       _updateVisibleData();
-      _currentIndexController.add(_currentIndex);
+      
+      // 检查流控制器是否已关闭
+      if (!_currentIndexController.isClosed) {
+        _currentIndexController.add(_currentIndex);
+      }
     }
   }
   
@@ -179,12 +195,22 @@ class KLineReplayService {
     _isPlaying = false;
     _isReplayFinished = false;
     _updateVisibleData();
-    _currentIndexController.add(_currentIndex);
+    
+    // 检查流控制器是否已关闭
+    if (!_currentIndexController.isClosed) {
+      _currentIndexController.add(_currentIndex);
+    }
   }
   
   /// 更新可见数据
   void _updateVisibleData() {
     if (_fullData.isEmpty) return;
+    
+    // 检查流控制器是否已关闭
+    if (_visibleDataController.isClosed) {
+      debugPrint('⚠️ 流控制器已关闭，停止发送数据');
+      return;
+    }
     
     // 传递从开始到当前位置的所有数据，让图表组件自己决定如何显示和计算指标
     // 这样可以确保技术指标有足够的历史数据进行计算
@@ -226,8 +252,20 @@ class KLineReplayService {
   
   /// 清理资源
   void dispose() {
+    // 停止播放
+    _isPlaying = false;
+    _isReplayActive = false;
+    _isReplayFinished = false;
+    
+    // 清空数据
+    _fullData.clear();
+    _currentIndex = 0;
+    
+    // 关闭流控制器
     _visibleDataController.close();
     _currentIndexController.close();
+    
+    debugPrint('K线回放服务已清理');
   }
 }
 

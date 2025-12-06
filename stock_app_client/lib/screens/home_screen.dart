@@ -53,46 +53,46 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _authCheckTimer;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-    // 定义菜单项，使用结构化方式便于扩展
-    late List<MenuItem> _menuItems;
+  // 定义菜单项，使用结构化方式便于扩展
+  late List<MenuItem> _menuItems;
 
-    @override
-    void initState() {
-      super.initState();
-      
-      // 不自动打开侧边栏，让用户主动点击菜单按钮
-      
-      // 初始化菜单项（将盘感练习加入侧边栏）
-      _menuItems = [
-        MenuItem(
-          title: '技术量化',
-          icon: Icons.query_stats,
-          screen: const StockScannerScreen(),
-          actions: StockScannerScreen.buildActions,
-          needsAppBar: true, // 需要HomeScreen提供AppBar
-        ),
-        const MenuItem(
-          title: '消息量化',
-          icon: Icons.article,
-          screen: NewsAnalysisScreen(),
+  @override
+  void initState() {
+    super.initState();
+    
+    // 不自动打开侧边栏，让用户主动点击菜单按钮
+    
+    // 初始化菜单项（将盘感练习加入侧边栏）
+    _menuItems = [
+      MenuItem(
+        title: '技术量化',
+        icon: Icons.query_stats,
+        screen: const StockScannerScreen(),
+        actions: StockScannerScreen.buildActions,
+        needsAppBar: true, // 需要HomeScreen提供AppBar
+      ),
+      const MenuItem(
+        title: '消息量化',
+        icon: Icons.article,
+        screen: NewsAnalysisScreen(),
           needsAppBar: false, // 消息量化有自己的AppBar，不需要HomeScreen提供
-        ),
-        const MenuItem(
-          title: '交易记录',
-          icon: Icons.receipt_long,
-          screen: TradeRecordScreen(),
+      ),
+      const MenuItem(
+        title: '交易记录',
+        icon: Icons.receipt_long,
+        screen: TradeRecordScreen(),
           needsAppBar: false, // 交易记录有自己的AppBar，不需要HomeScreen提供
-        ),
-        const MenuItem(
-          title: '交易策略',
-          icon: Icons.psychology,
-          screen: StrategyScreen(),
+      ),
+      const MenuItem(
+        title: '交易策略',
+        icon: Icons.psychology,
+        screen: StrategyScreen(),
           needsAppBar: false, // 交易策略有自己的AppBar，不需要HomeScreen提供
-        ),
-        const MenuItem(
-          title: 'K线回放',
-          icon: Icons.candlestick_chart,
-          screen: EnhancedKLineReplayScreen(),
+      ),
+      const MenuItem(
+        title: 'K线回放',
+        icon: Icons.candlestick_chart,
+        screen: EnhancedKLineReplayScreen(),
           needsAppBar: false, // K线回放有自己的AppBar，不需要HomeScreen提供
         ),
         const MenuItem(
@@ -100,27 +100,27 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.bolt,
           screen: LimitBoardScreen(),
           needsAppBar: false, // 打板数据有自己的AppBar，不需要HomeScreen提供
-        ),
-        MenuItem(
-          title: '大盘分析',
-          icon: Icons.show_chart,
-          screen: const IndexAnalysisScreen(),
-          needsAppBar: false, // 大盘分析有自己的AppBar，不需要HomeScreen提供
-        ),
-        const MenuItem(
-          title: '交易概览',
-          icon: Icons.dashboard,
-          screen: AnalysisScreen(),
+      ),
+      MenuItem(
+        title: '大盘分析',
+        icon: Icons.show_chart,
+        screen: const IndexAnalysisScreen(),
+        needsAppBar: false, // 大盘分析有自己的AppBar，不需要HomeScreen提供
+      ),
+      const MenuItem(
+        title: '交易概览',
+        icon: Icons.dashboard,
+        screen: AnalysisScreen(),
           needsAppBar: false, // 交易概览有自己的AppBar，不需要HomeScreen提供
-        ),
-        // 添加设置页面
-        const MenuItem(
-          title: '系统设置',
-          icon: Icons.settings_suggest,
+      ),
+      // 添加设置页面
+      const MenuItem(
+        title: '系统设置',
+        icon: Icons.settings_suggest,
           screen: SettingsScreen(),
           needsAppBar: false, // 系统设置有自己的AppBar，不需要HomeScreen提供
-        ),
-      ];
+      ),
+    ];
 
     // 加载数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -211,11 +211,21 @@ class _HomeScreenState extends State<HomeScreen> {
       // 移动设备使用底部导航栏（不包含K线回放、打板数据和大盘分析，这些只在侧边栏显示）
       final sidebarOnlyItems = ['K线回放', '打板数据', '大盘分析'];
       final bottomNavItems = _menuItems.where((item) => !sidebarOnlyItems.contains(item.title)).toList();
-      final bottomNavIndex = _selectedIndex >= bottomNavItems.length 
-          ? 0 
-          : (sidebarOnlyItems.contains(_menuItems[_selectedIndex].title)
-              ? 0 
-              : bottomNavItems.indexWhere((item) => item.title == _menuItems[_selectedIndex].title));
+      
+      // 计算底部导航栏的选中索引
+      final currentTitle = _menuItems[_selectedIndex].title;
+      int bottomNavIndex = bottomNavItems.indexWhere((item) => item.title == currentTitle);
+      
+      // 调试输出
+      debugPrint('=== 底部导航调试 ===');
+      debugPrint('当前选中: $currentTitle (_selectedIndex: $_selectedIndex)');
+      debugPrint('bottomNavItems: ${bottomNavItems.map((e) => e.title).toList()}');
+      debugPrint('indexWhere结果: $bottomNavIndex');
+      
+      // 如果找不到（返回-1），说明是侧边栏专属页面，默认选中第一个
+      if (bottomNavIndex == -1) {
+        bottomNavIndex = 0;
+      }
       
       // 如果是横屏且在盘感练习页面，返回全屏布局
       if (isLandscape && isKLineReplayScreen) {
@@ -249,9 +259,9 @@ class _HomeScreenState extends State<HomeScreen> {
             final selectedItem = bottomNavItems[index];
             final newIndex = _menuItems.indexWhere((item) => item.title == selectedItem.title);
             if (newIndex != -1) {
-              setState(() {
+            setState(() {
                 _selectedIndex = newIndex;
-              });
+            });
             }
           },
           destinations: bottomNavItems.map((item) => NavigationDestination(

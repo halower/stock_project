@@ -46,8 +46,20 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   
   @override
   void dispose() {
+    // 取消定时器
     _autoPlayTimer?.cancel();
+    _autoPlayTimer = null;
+    
+    // 停止回放服务
+    _replayService.pause();
     _replayService.dispose();
+    
+    // 清空状态
+    _session = null;
+    _selectedStockCode = null;
+    _selectedStockName = null;
+    
+    debugPrint('K线回放页面已退出，所有资源已清理');
     super.dispose();
   }
   
