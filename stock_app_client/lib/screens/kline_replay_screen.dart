@@ -796,6 +796,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   void _startTraining() {
     if (_selectedStockCode == null || _selectedStockName == null) return;
     
+    // 先取消旧的定时器（如果存在）
+    _autoPlayTimer?.cancel();
+    _autoPlayTimer = null;
+    
     setState(() {
       _session = ReplayTrainingSession(
         stockCode: _selectedStockCode!,
@@ -1622,9 +1626,14 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   // 控制面板回调函数
   void _togglePlayPause() {
     if (_replayService.isPlaying) {
+      // 暂停：取消定时器
       _autoPlayTimer?.cancel();
+      _autoPlayTimer = null;
       _replayService.pause();
     } else {
+      // 播放：先取消旧定时器，再创建新定时器
+      _autoPlayTimer?.cancel();
+      _autoPlayTimer = null;
       _replayService.play();
       // 使用当前设置的播放速度启动定时器
       _autoPlayTimer = Timer.periodic(
@@ -1641,6 +1650,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   }
   
   void _previousCandle() {
+    // 点击上一根时，暂停自动播放
+    _autoPlayTimer?.cancel();
+    _autoPlayTimer = null;
+    _replayService.pause();
     _replayService.previousCandle();
     setState(() {});
   }
@@ -1653,6 +1666,7 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     // 如果正在播放，重启定时器以应用新速度
     if (_replayService.isPlaying) {
       _autoPlayTimer?.cancel();
+      _autoPlayTimer = null;
       _autoPlayTimer = Timer.periodic(
         Duration(milliseconds: speedInMilliseconds.toInt()),
         (_) => _nextCandle(),
@@ -1661,7 +1675,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   }
   
   void _resetReplay() {
+    // 停止定时器和播放
     _autoPlayTimer?.cancel();
+    _autoPlayTimer = null;
+    _replayService.pause(); // 确保停止播放状态
     _replayService.reset();
     // 重置训练会话但保留股票信息
     if (_selectedStockCode != null && _selectedStockName != null) {

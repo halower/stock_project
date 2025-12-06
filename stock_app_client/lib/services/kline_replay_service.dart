@@ -186,14 +186,9 @@ class KLineReplayService {
   void _updateVisibleData() {
     if (_fullData.isEmpty) return;
     
-    // 固定显示最近30根K线，横屏显示更清晰，不拥挤
-    const int maxVisibleCandles = 30;
-    
-    final int startIndex = _currentIndex >= maxVisibleCandles 
-        ? _currentIndex - maxVisibleCandles + 1 
-        : 0;
-    
-    final visibleData = _fullData.sublist(startIndex, _currentIndex + 1);
+    // 传递从开始到当前位置的所有数据，让图表组件自己决定如何显示和计算指标
+    // 这样可以确保技术指标有足够的历史数据进行计算
+    final visibleData = _fullData.sublist(0, _currentIndex + 1);
     _visibleDataController.add(visibleData);
   }
   

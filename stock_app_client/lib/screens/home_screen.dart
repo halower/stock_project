@@ -6,6 +6,7 @@ import '../services/providers/trade_provider.dart';
 import '../services/providers/strategy_provider.dart';
 import '../services/providers/stock_provider.dart';
 import '../services/auth_service.dart';
+import '../utils/design_system.dart';
 import 'trade_record_screen.dart';
 import 'stock_scanner_screen.dart';
 import 'strategy_screen.dart';
@@ -166,6 +167,21 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
+  
+  // 获取对应的空心图标
+  IconData _getOutlinedIcon(IconData icon) {
+    final iconMap = {
+      Icons.query_stats: Icons.query_stats_outlined,
+      Icons.article: Icons.article_outlined,
+      Icons.receipt_long: Icons.receipt_long_outlined,
+      Icons.psychology: Icons.psychology_outlined,
+      Icons.candlestick_chart: Icons.candlestick_chart_outlined,
+      Icons.show_chart: Icons.show_chart_outlined,
+      Icons.dashboard: Icons.dashboard_outlined,
+      Icons.settings_suggest: Icons.settings_suggest_outlined,
+    };
+    return iconMap[icon] ?? icon;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -193,18 +209,10 @@ class _HomeScreenState extends State<HomeScreen> {
       
       return Scaffold(
         key: _scaffoldKey,
-        appBar: _menuItems[_selectedIndex].needsAppBar
-            ? AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () {
-                    _scaffoldKey.currentState?.openDrawer();
-                  },
-                ),
+        appBar: AppBar(
                 title: Text(_menuItems[_selectedIndex].title),
                 actions: _menuItems[_selectedIndex].actions?.call(context),
-              )
-            : null,
+        ),
         body: IndexedStack(
           index: _selectedIndex,
           children: _menuItems.map((item) => item.screen).toList(),
@@ -216,14 +224,12 @@ class _HomeScreenState extends State<HomeScreen> {
               _selectedIndex = _menuItems.indexWhere((item) => item.title == bottomNavItems[index].title);
             });
           },
-          destinations: bottomNavItems
-              .map((item) => NavigationDestination(
-                    icon: Icon(item.icon),
+          destinations: bottomNavItems.map((item) => NavigationDestination(
+            icon: Icon(_getOutlinedIcon(item.icon)),
+            selectedIcon: Icon(item.icon),
                     label: item.title,
-                  ))
-              .toList(),
+          )).toList(),
         ),
-        // 使用美化的侧边栏导航
         drawer: _buildDrawer(),
       );
     } else {
@@ -315,51 +321,68 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Drawer(
-      // 适配dark模式的背景色
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      backgroundColor: isDark ? AppDesignSystem.darkBg1 : Colors.white,
       child: Column(
         children: [
-          // 简洁的头部（移除logo）
+          // 头部设计 - Logo和标题在同一行
           Container(
-            height: 140,
+            width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).primaryColor,
-                  Theme.of(context).primaryColor.withOpacity(0.8),
-                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
+                colors: [
+                  AppDesignSystem.primary,
+                  AppDesignSystem.primary.withOpacity(0.85),
+                  const Color(0xFF7C3AED),
+                ],
               ),
             ),
             child: SafeArea(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Row(
                   children: [
-                    const Text(
-                      '交易大陆',
-                      style: TextStyle(
+                    // Logo图标
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.trending_up_rounded,
                         color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        size: 28,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 20,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        '职业交易员培养大师',
+                    const SizedBox(width: 12),
+                    // 标题和副标题
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            '交易大陆',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '专业量化交易平台',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
+                              color: Colors.white.withOpacity(0.85),
+                              fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -371,134 +394,65 @@ class _HomeScreenState extends State<HomeScreen> {
           // 主导航菜单
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                const SizedBox(height: 8),
-                // 主功能区域标题
-               
-                
                 // 遍历所有菜单项
                 ...List.generate(_menuItems.length, (index) {
                   final item = _menuItems[index];
                   final isSelected = _selectedIndex == index;
+                  final itemColor = _getMenuItemColor(item.title);
                   
-                  // 为不同功能定义不同的颜色主题
-                  Color getItemColor() {
-                    if (item.title == 'K线回放') return Colors.deepPurple;
-                    if (item.title == '技术量化') return Colors.blue;
-                    if (item.title == '消息量化') return Colors.orange;
-                    if (item.title == '交易记录') return Colors.green;
-                    if (item.title == '策略') return Colors.teal;
-                    if (item.title == '概览') return Colors.indigo;
-                    if (item.title == '系统设置') return Colors.grey;
-                    return Theme.of(context).primaryColor;
-                  }
-                  
-                  final itemColor = getItemColor();
-                  
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: isSelected 
-                          ? LinearGradient(
-                              colors: [
-                                itemColor.withOpacity(0.15),
-                                itemColor.withOpacity(0.08),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      color: isSelected ? null : Colors.transparent,
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: isSelected
-                              ? LinearGradient(
-                                  colors: [
-                                    itemColor.withOpacity(0.9),
-                                    itemColor,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : null,
-                          color: isSelected 
-                              ? null 
-                              : (isDark ? Colors.grey.shade800 : Colors.grey.shade100),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: isSelected ? [
-                            BoxShadow(
-                              color: itemColor.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ] : null,
-                        ),
-                        child: Icon(
-                          item.icon,
-                          color: isSelected 
-                              ? Colors.white 
-                              : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-                          size: 24,
-                        ),
-                      ),
-                      title: Text(
-                        item.title,
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: isSelected ? 15 : 14,
-                          color: isSelected 
-                              ? itemColor.withOpacity(0.9)
-                              : (isDark ? Colors.grey.shade300 : Colors.black87),
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      // 添加选中指示器
-                      trailing: isSelected ? Container(
-                        width: 4,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: itemColor,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ) : null,
+                  return _buildDrawerItem(
+                    icon: item.icon,
+                    title: item.title,
+                    isSelected: isSelected,
+                    itemColor: itemColor,
+                    isDark: isDark,
                       onTap: () {
                         setState(() {
                           _selectedIndex = index;
                         });
-                        Navigator.pop(context); // 关闭侧边栏
+                      Navigator.pop(context);
                       },
-                    ),
                   );
                 }),
                 
-                const SizedBox(height: 16),
-                const Divider(),
-
-                // 快速操作区域
+                const SizedBox(height: 12),
+                
+                // 分隔线
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    color: isDark 
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.black.withOpacity(0.08),
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+
+                // 快速操作区域标题
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     '快速操作',
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                      letterSpacing: 1.2,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+                      letterSpacing: 1,
                     ),
                   ),
                 ),
                 
-                // 我的备选池带数量徽标
+                const SizedBox(height: 4),
+                
+                // 我的备选池
                 _buildWatchlistTile(),
                 
+                // 问题反馈
                 _buildQuickActionTile(
-                  icon: Icons.feedback,
+                  icon: Icons.feedback_outlined,
                   title: '问题反馈',
                   onTap: () {
                     Navigator.pop(context);
@@ -513,7 +467,106 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          
+          // 底部版本信息
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'v1.2.13',
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppDesignSystem.darkText4 : AppDesignSystem.lightText4,
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+  
+  // 获取菜单项颜色
+  Color _getMenuItemColor(String title) {
+    switch (title) {
+      case 'K线回放': return const Color(0xFF8B5CF6);
+      case '技术量化': return AppDesignSystem.primary;
+      case '消息量化': return const Color(0xFFF59E0B);
+      case '交易记录': return AppDesignSystem.downColor;
+      case '交易策略': return const Color(0xFF0EA5E9);
+      case '大盘分析': return const Color(0xFFEC4899);
+      case '交易概览': return const Color(0xFF6366F1);
+      case '系统设置': return AppDesignSystem.lightText3;
+      default: return AppDesignSystem.primary;
+    }
+  }
+  
+  // 构建侧边栏菜单项
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required bool isSelected,
+    required Color itemColor,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: isSelected 
+            ? itemColor.withOpacity(0.1)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                // 图标
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? itemColor 
+                        : (isDark ? Colors.grey.shade800 : Colors.grey.shade100),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: isSelected 
+                        ? Colors.white 
+                        : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 标题
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected
+                          ? itemColor
+                          : (isDark ? Colors.grey.shade200 : Colors.grey.shade800),
+                    ),
+                  ),
+                ),
+                // 选中指示器
+                if (isSelected)
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: itemColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -529,39 +582,41 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, snapshot) {
           final count = snapshot.data ?? 0;
           return ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                Icons.star,
-                color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                size: 22,
+                Icons.star_rounded,
+                color: AppDesignSystem.accent,
+                size: 20,
               ),
             ),
-            title: Text(
+            title: const Text(
               '我的备选池',
-              style: TextStyle(
-                color: isDark ? Colors.grey.shade200 : Colors.black87,
-              ),
+              style: TextStyle(fontSize: 14),
             ),
-            trailing: count > 0 ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            trailing: count > 0
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(12),
+                      color: AppDesignSystem.upColor,
+                      borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
-                count.toString(),
+                      count > 99 ? '99+' : count.toString(),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                 ),
               ),
-            ) : null,
+                  )
+                : null,
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -588,23 +643,23 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             icon,
-            color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-            size: 22,
+            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+            size: 20,
           ),
         ),
         title: Text(
           title,
-          style: TextStyle(
-            color: isDark ? Colors.grey.shade200 : Colors.black87,
-          ),
+          style: const TextStyle(fontSize: 14),
         ),
         onTap: onTap,
       ),

@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
+import '../../utils/design_system.dart';
 
 class ThemeProvider with ChangeNotifier {
-  // 固定主题颜色
-  static const Color _primaryColor = Color(0xFF2F80ED); // 固定使用蓝色，不再允许修改
-  static const Color _upColor = Color(0xFFE64A19);      // 更柔和的橙红色(上涨)，替换刺眼的红色
-  static const Color _downColor = Color(0xFF26A69A);    // 更柔和的青绿色(下跌)
-  static const Color _darkBackground = Color(0xFF121212); // 深色背景
-  static const Color _darkSurface = Color(0xFF1E1E1E);    // 深色表面
+  // 使用设计系统的颜色
+  static const Color _primaryColor = AppDesignSystem.primary;
+  static const Color _upColor = AppDesignSystem.upColor;      // A股红色(上涨)
+  static const Color _downColor = AppDesignSystem.downColor;  // A股绿色(下跌)
   
   late ThemeData _lightTheme;
   late ThemeData _darkTheme;
@@ -104,33 +103,35 @@ class ThemeProvider with ChangeNotifier {
   ThemeData _createTheme(bool isDark) {
     final brightness = isDark ? Brightness.dark : Brightness.light;
     
-    // 基本配色
+    // 使用设计系统的颜色
     final ColorScheme colorScheme = isDark
         ? ColorScheme.dark(
             primary: _primaryColor,
-            secondary: _primaryColor.withOpacity(0.8),
-            surface: _darkSurface,
-            onSurface: Colors.white,
+            secondary: AppDesignSystem.accent,
+            tertiary: AppDesignSystem.techGradient.colors.first,
+            surface: AppDesignSystem.darkBg2,
+            onSurface: AppDesignSystem.darkText1,
             onPrimary: Colors.white,
-            onSecondary: Colors.white,
+            onSecondary: AppDesignSystem.darkBg1,
             error: _upColor,
             onError: Colors.white,
-            surfaceContainerHighest: const Color(0xFF2C2C2C),
-            onSurfaceVariant: Colors.white70,
-            outline: Colors.white38,
+            surfaceContainerHighest: AppDesignSystem.darkBg3,
+            onSurfaceVariant: AppDesignSystem.darkText2,
+            outline: AppDesignSystem.darkBorder1,
           )
         : ColorScheme.light(
             primary: _primaryColor,
-            secondary: _primaryColor.withOpacity(0.8),
-            surface: Colors.white,
-            onSurface: Colors.black,
+            secondary: AppDesignSystem.accent,
+            tertiary: AppDesignSystem.techGradient.colors.first,
+            surface: AppDesignSystem.lightBg2,
+            onSurface: AppDesignSystem.lightText1,
             onPrimary: Colors.white,
-            onSecondary: Colors.white,
+            onSecondary: AppDesignSystem.lightText1,
             error: _upColor,
             onError: Colors.white,
-            surfaceContainerHighest: Colors.grey[200]!,
-            onSurfaceVariant: Colors.black54,
-            outline: Colors.black26,
+            surfaceContainerHighest: AppDesignSystem.lightBg3,
+            onSurfaceVariant: AppDesignSystem.lightText2,
+            outline: AppDesignSystem.lightBorder1,
           );
     
     // 文本主题
@@ -140,110 +141,173 @@ class ThemeProvider with ChangeNotifier {
       useMaterial3: true,
       colorScheme: colorScheme,
       brightness: brightness,
-      scaffoldBackgroundColor: colorScheme.surface,
+      scaffoldBackgroundColor: isDark ? AppDesignSystem.darkBg1 : AppDesignSystem.lightBg1,
       fontFamily: _getFontFamily(),
       textTheme: textTheme,
-      primaryColor: _primaryColor, // 确保旧组件也使用正确的颜色
+      primaryColor: _primaryColor,
       
-      // AppBar主题
+      // AppBar主题 - 现代透明效果
       appBarTheme: AppBarTheme(
         elevation: 0,
-        color: colorScheme.surface,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: colorScheme.onSurface,
         centerTitle: true,
         titleTextStyle: TextStyle(
           color: colorScheme.onSurface,
           fontSize: 18 * _fontSize,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w700,
           fontFamily: _getFontFamily(),
+          letterSpacing: 0.5,
         ),
         iconTheme: IconThemeData(
           color: colorScheme.onSurface,
+          size: 24,
         ),
       ),
       
-      // 卡片主题
+      // 卡片主题 - 现代玻璃态风格
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusMd),
           side: BorderSide(
             color: isDark 
-                ? Colors.white.withValues(alpha: 0.1) 
-                : Colors.black.withValues(alpha: 0.05),
+                ? AppDesignSystem.darkBorder1.withOpacity(0.5)
+                : AppDesignSystem.lightBorder1.withOpacity(0.8),
             width: 1,
           ),
         ),
-        color: colorScheme.surface,
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+        color: isDark ? AppDesignSystem.darkBg3 : Colors.white,
+        margin: const EdgeInsets.symmetric(vertical: AppDesignSystem.space6, horizontal: 0),
+        shadowColor: isDark ? Colors.black54 : Colors.black12,
       ),
       
-      // 按钮主题
+      // 按钮主题 - 现代渐变效果
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shadowColor: _primaryColor.withOpacity(0.4),
+          padding: const EdgeInsets.symmetric(horizontal: AppDesignSystem.space24, vertical: AppDesignSystem.space12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppDesignSystem.radiusSm),
           ),
-          textStyle: const TextStyle(
+          textStyle: TextStyle(
             fontWeight: FontWeight.w600,
+            fontSize: 15 * _fontSize,
+            letterSpacing: 0.5,
           ),
         ),
       ),
       
-      // 输入框主题
+      // 文字按钮主题
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: _primaryColor,
+          padding: const EdgeInsets.symmetric(horizontal: AppDesignSystem.space16, vertical: AppDesignSystem.space8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDesignSystem.radiusSm),
+          ),
+          textStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14 * _fontSize,
+          ),
+        ),
+      ),
+      
+      // 输入框主题 - 现代风格
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark 
-            ? colorScheme.surface 
-            : colorScheme.surface,
+            ? AppDesignSystem.darkBg3.withOpacity(0.5)
+            : AppDesignSystem.lightBg3,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusMd),
           borderSide: BorderSide(
             color: isDark 
-                ? Colors.white.withOpacity(0.1) 
-                : Colors.black.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: isDark 
-                ? Colors.white.withOpacity(0.1) 
-                : Colors.black.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: _primaryColor,
+                ? AppDesignSystem.darkBorder1.withOpacity(0.5)
+                : AppDesignSystem.lightBorder1,
             width: 1.5,
           ),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusMd),
+          borderSide: BorderSide(
+            color: isDark 
+                ? AppDesignSystem.darkBorder1.withOpacity(0.5)
+                : AppDesignSystem.lightBorder1,
+            width: 1.5,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusMd),
+          borderSide: BorderSide(
+            color: _primaryColor,
+            width: 2,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusMd),
+          borderSide: BorderSide(
+            color: _upColor,
+            width: 1.5,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppDesignSystem.space16, vertical: AppDesignSystem.space16),
+        hintStyle: TextStyle(
+          color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+        ),
+        labelStyle: TextStyle(
+          color: isDark ? AppDesignSystem.darkText2 : AppDesignSystem.lightText2,
+        ),
       ),
       
-      // 底部导航栏主题
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: colorScheme.surface,
-        selectedItemColor: _primaryColor,
-        unselectedItemColor: isDark 
-            ? Colors.white.withOpacity(0.5) 
-            : Colors.black.withOpacity(0.5),
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
+      // NavigationBar主题 - 现代浮动效果
+      navigationBarTheme: NavigationBarThemeData(
+        elevation: 0,
+        height: 70,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: _primaryColor.withOpacity(0.15),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusMd),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(
+              fontSize: 11 * _fontSize,
+              fontWeight: FontWeight.w700,
+              color: _primaryColor,
+            );
+          }
+          return TextStyle(
+            fontSize: 11 * _fontSize,
+            fontWeight: FontWeight.w500,
+            color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(
+              color: _primaryColor,
+              size: 24,
+            );
+          }
+          return IconThemeData(
+            color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+            size: 24,
+          );
+        }),
       ),
       
       // 分割线主题
       dividerTheme: DividerThemeData(
         color: isDark 
-            ? Colors.white.withOpacity(0.1) 
-            : Colors.black.withOpacity(0.1),
+            ? AppDesignSystem.darkBorder1.withOpacity(0.5)
+            : AppDesignSystem.lightBorder1,
         thickness: 1,
         space: 1,
       ),
@@ -252,28 +316,103 @@ class ThemeProvider with ChangeNotifier {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return _primaryColor;
+            return Colors.white;
           }
-          return isDark ? Colors.grey[400] : Colors.grey[50];
+          return isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText4;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return _primaryColor.withOpacity(0.5);
+            return _primaryColor;
           }
-          return isDark ? Colors.grey[800] : Colors.grey[300];
+          return isDark ? AppDesignSystem.darkBg4 : AppDesignSystem.lightBg4;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          return Colors.transparent;
         }),
       ),
       
       // 芯片主题
       chipTheme: ChipThemeData(
         backgroundColor: isDark 
-            ? colorScheme.surface 
-            : colorScheme.surface,
-        selectedColor: _primaryColor.withOpacity(0.2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+            ? AppDesignSystem.darkBg3 
+            : AppDesignSystem.lightBg3,
+        selectedColor: _primaryColor.withOpacity(0.15),
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
         ),
+        padding: const EdgeInsets.symmetric(horizontal: AppDesignSystem.space12, vertical: AppDesignSystem.space6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusFull),
+        ),
+        side: BorderSide(
+          color: isDark 
+              ? AppDesignSystem.darkBorder1.withOpacity(0.5)
+              : AppDesignSystem.lightBorder1,
+        ),
+      ),
+      
+      // 底部弹出框主题
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: isDark ? AppDesignSystem.darkBg2 : Colors.white,
+        modalBackgroundColor: isDark ? AppDesignSystem.darkBg2 : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(AppDesignSystem.radiusXl),
+            topRight: Radius.circular(AppDesignSystem.radiusXl),
+          ),
+        ),
+        elevation: 0,
+      ),
+      
+      // 对话框主题
+      dialogTheme: DialogThemeData(
+        backgroundColor: isDark ? AppDesignSystem.darkBg2 : Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusXl),
+        ),
+        titleTextStyle: TextStyle(
+          fontSize: 20 * _fontSize,
+          fontWeight: FontWeight.w700,
+          color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
+        ),
+      ),
+      
+      // 浮动操作按钮主题
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: _primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        focusElevation: 6,
+        hoverElevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusLg),
+        ),
+      ),
+      
+      // 列表磁贴主题
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppDesignSystem.space16,
+          vertical: AppDesignSystem.space4,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDesignSystem.radiusSm),
+        ),
+        selectedTileColor: _primaryColor.withOpacity(0.1),
+        selectedColor: _primaryColor,
+      ),
+      
+      // 页面过渡动画
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        },
       ),
     );
   }

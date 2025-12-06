@@ -23,23 +23,27 @@ class StockKLineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 处理数据
-    final List<CandleData> candleData = _processData();
+    final List<CandleData> allCandleData = _processData();
     
-    if (candleData.isEmpty) {
+    if (allCandleData.isEmpty) {
       return const Center(
         child: Text('暂无历史数据'),
       );
     }
     
-    // 计算最大最小值用于Y轴
-    final minY = candleData.map((e) => e.low).reduce((a, b) => a < b ? a : b) * 0.98;
-    final maxY = candleData.map((e) => e.high).reduce((a, b) => a > b ? a : b) * 1.02;
+    // 直接使用所有数据，不再限制显示数量
+    // 回放服务已经控制了传递的数据量，这里不需要再次限制
+    final candleData = allCandleData;
     
     // 计算技术指标
     final indicatorData = _calculateIndicators(candleData);
-    
-    // 计算附图指标数据
     final subChartData = _calculateSubChartIndicator(candleData);
+    
+    debugPrint('📊 K线数据: ${candleData.length}根, 指标数据: ${indicatorData.length}个');
+    
+    // 计算最大最小值用于Y轴
+    final minY = candleData.map((e) => e.low).reduce((a, b) => a < b ? a : b) * 0.98;
+    final maxY = candleData.map((e) => e.high).reduce((a, b) => a > b ? a : b) * 1.02;
     
     return Column(
       children: [
@@ -50,20 +54,30 @@ class StockKLineChart extends StatelessWidget {
             padding: const EdgeInsets.all(8.0),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return CustomPaint(
-                  size: Size(constraints.maxWidth, constraints.maxHeight),
-                  painter: CandlestickChartPainter(
-                    candleData: candleData,
-                    minY: minY,
-                    maxY: maxY,
-                    isDark: Theme.of(context).brightness == Brightness.dark,
-                    indicators: indicatorData,
-                    trades: trades, // 传递交易记录
-                          ),
-                        );
-                      },
+                // 计算实际需要的宽度（固定间距8px，更紧凑）
+                final double candleSpacing = 8.0;
+                final double totalWidth = candleData.length * candleSpacing;
+                // 使用容器宽度和计算宽度中的较大值
+                final double chartWidth = totalWidth > constraints.maxWidth ? totalWidth : constraints.maxWidth;
+                
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  reverse: true, // 从右向左滚动，默认显示最新数据
+                  child: CustomPaint(
+                    size: Size(chartWidth, constraints.maxHeight),
+                    painter: CandlestickChartPainter(
+                      candleData: candleData,
+                      minY: minY,
+                      maxY: maxY,
+                      isDark: Theme.of(context).brightness == Brightness.dark,
+                      indicators: indicatorData,
+                      trades: trades, // 传递交易记录
                     ),
                   ),
+                );
+              },
+            ),
+          ),
         ),
         
         // 日期轴
@@ -119,98 +133,104 @@ class StockKLineChart extends StatelessWidget {
       return const SizedBox(height: 80, child: Center(child: Text('无成交量数据', style: TextStyle(fontSize: 10, color: Colors.grey))));
     }
     
-    // 根据数据量动态计算柱状图宽度
-    final dataCount = candleData.length;
-    double barWidth;
-    if (dataCount <= 30) {
-      barWidth = 8.0;
-    } else if (dataCount <= 60) {
-      barWidth = 5.0;
-    } else if (dataCount <= 90) {
-      barWidth = 3.5;
-    } else {
-      barWidth = 2.5;
-    }
+    // 固定柱状图宽度（更紧凑）
+    final double barWidth = 4.0;
     
     return SizedBox(
       height: 80, // 减小高度，让K线图更大
-      child: Padding(
-        padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 4.0),
-        child: BarChart(
-          BarChartData(
-            alignment: BarChartAlignment.spaceEvenly,
-            maxY: maxVolume,
-            minY: 0,
-            barTouchData: BarTouchData(enabled: false),
-            titlesData: FlTitlesData(
-              show: true,
-              bottomTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 40,
-                  interval: maxVolume / 2, // 只显示2个刻度
-                  getTitlesWidget: (value, meta) {
-                    // 只在最大值和中间值显示
-                    if (value == 0) return const SizedBox.shrink();
-                    
-                    if (value >= 100000000) {
-                      return Text(
-                        '${(value / 100000000).toStringAsFixed(1)}亿',
-                        style: const TextStyle(fontSize: 9, color: Colors.grey),
-                      );
-                    } else if (value >= 10000) {
-                      return Text(
-                        '${(value / 10000).toStringAsFixed(0)}万',
-                        style: const TextStyle(fontSize: 9, color: Colors.grey),
-                      );
-                    }
-                    return Text(
-                      value.toStringAsFixed(0),
-                      style: const TextStyle(fontSize: 9, color: Colors.grey),
-                    );
-                  },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 计算实际需要的宽度（更紧凑）
+          final double candleSpacing = 8.0;
+          final double totalWidth = candleData.length * candleSpacing;
+          final double chartWidth = totalWidth > constraints.maxWidth ? totalWidth : constraints.maxWidth;
+          
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            reverse: true, // 从右向左滚动，默认显示最新数据
+            child: SizedBox(
+              width: chartWidth,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 4.0),
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceEvenly,
+                    maxY: maxVolume,
+                    minY: 0,
+                    barTouchData: BarTouchData(enabled: false),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      bottomTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          interval: maxVolume / 2, // 只显示2个刻度
+                          getTitlesWidget: (value, meta) {
+                            // 只在最大值和中间值显示
+                            if (value == 0) return const SizedBox.shrink();
+                            
+                            if (value >= 100000000) {
+                              return Text(
+                                '${(value / 100000000).toStringAsFixed(1)}亿',
+                                style: const TextStyle(fontSize: 9, color: Colors.grey),
+                              );
+                            } else if (value >= 10000) {
+                              return Text(
+                                '${(value / 10000).toStringAsFixed(0)}万',
+                                style: const TextStyle(fontSize: 9, color: Colors.grey),
+                              );
+                            }
+                            return Text(
+                              value.toStringAsFixed(0),
+                              style: const TextStyle(fontSize: 9, color: Colors.grey),
+                            );
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: List.generate(
+                      candleData.length,
+                      (i) => BarChartGroupData(
+                        x: i,
+                        barRods: [
+                          BarChartRodData(
+                            toY: candleData[i].volume,
+                            color: candleData[i].close >= candleData[i].open
+                                ? Colors.red.withOpacity(0.7)
+                                : Colors.green.withOpacity(0.7),
+                            width: barWidth,
+                            borderRadius: BorderRadius.circular(barWidth / 4),
+                          ),
+                        ],
+                      ),
+                    ),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: maxVolume / 2,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: Colors.grey.withOpacity(0.1),
+                          strokeWidth: 1,
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
             ),
-            borderData: FlBorderData(show: false),
-            barGroups: List.generate(
-              candleData.length,
-              (i) => BarChartGroupData(
-                x: i,
-                barRods: [
-                  BarChartRodData(
-                    toY: candleData[i].volume,
-                    color: candleData[i].close >= candleData[i].open
-                        ? Colors.red.withOpacity(0.7)
-                        : Colors.green.withOpacity(0.7),
-                    width: barWidth,
-                    borderRadius: BorderRadius.circular(barWidth / 4),
-                  ),
-                ],
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              horizontalInterval: maxVolume / 2,
-              getDrawingHorizontalLine: (value) {
-                return FlLine(
-                  color: Colors.grey.withOpacity(0.1),
-                  strokeWidth: 1,
-                );
-              },
-            ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -238,23 +258,8 @@ class StockKLineChart extends StatelessWidget {
       var historyList = data['data'];
       if (historyList is List) {
         debugPrint('历史数据条数: ${historyList.length}');
-        // 根据数据量动态调整显示条数，让K线更紧凑
-        final int displayCount;
-        if (historyList.length > 120) {
-          displayCount = 120; // 最多显示120条，让K线更密集
-        } else if (historyList.length > 90) {
-          displayCount = 90;
-        } else if (historyList.length > 60) {
-          displayCount = 60;
-        } else {
-          displayCount = historyList.length;
-        }
-        final limitedList = historyList.length > displayCount 
-            ? historyList.sublist(historyList.length - displayCount) 
-            : historyList;
-        debugPrint('使用的历史数据条数: ${limitedList.length}');
-        
-        for (var item in limitedList) {
+        // 不再限制数据量，使用所有数据以便正确计算技术指标
+        for (var item in historyList) {
           if (item is Map<String, dynamic>) {
             historyData.add(item);
           }
@@ -264,19 +269,8 @@ class StockKLineChart extends StatelessWidget {
     // 处理直接传入历史数据数组的情况
     else if (data is List) {
       debugPrint('直接传入历史数据数组');
-      // 根据数据量动态调整显示条数
-      final int displayCount;
-      if (data.length > 120) {
-        displayCount = 120;
-      } else if (data.length > 90) {
-        displayCount = 90;
-      } else if (data.length > 60) {
-        displayCount = 60;
-      } else {
-        displayCount = data.length;
-      }
-      final limitedList = data.length > displayCount ? data.sublist(data.length - displayCount) : data;
-      for (var item in limitedList) {
+      // 不再限制数据量，使用所有数据以便正确计算技术指标
+      for (var item in data) {
         if (item is Map<String, dynamic>) {
           historyData.add(item);
         }
@@ -575,12 +569,21 @@ class StockKLineChart extends StatelessWidget {
       padding: const EdgeInsets.all(8.0),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          return CustomPaint(
-            size: Size(constraints.maxWidth, constraints.maxHeight),
-            painter: SubChartPainter(
-              candleData: candleData,
-              indicatorData: data,
-              isDark: isDark,
+          // 计算实际需要的宽度（更紧凑）
+          final double candleSpacing = 8.0;
+          final double totalWidth = candleData.length * candleSpacing;
+          final double chartWidth = totalWidth > constraints.maxWidth ? totalWidth : constraints.maxWidth;
+          
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            reverse: true, // 从右向左滚动，默认显示最新数据
+            child: CustomPaint(
+              size: Size(chartWidth, constraints.maxHeight),
+              painter: SubChartPainter(
+                candleData: candleData,
+                indicatorData: data,
+                isDark: isDark,
+              ),
             ),
           );
         },
@@ -630,11 +633,10 @@ class CandlestickChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (candleData.isEmpty) return;
     
-    final double chartWidth = size.width;
     final double chartHeight = size.height;
-    // 优化K线宽度：根据数据量动态调整，让K线更紧凑
-    final double candleSpacing = chartWidth / candleData.length;
-    final double candleWidth = (candleSpacing * 0.8).clamp(1.5, 12.0); // 限制最小1.5px，最大12px
+    // 更紧凑的K线间距和宽度
+    final double candleSpacing = 8.0; // 固定间距8像素（更紧凑）
+    final double candleWidth = 6.0; // 固定宽度6像素（更紧凑）
     
     // 绘制网格线
     _drawGrid(canvas, size);
@@ -672,11 +674,10 @@ class CandlestickChartPainter extends CustomPainter {
         linePaint,
       );
       
-      // 绘制实体
+      // 绘制实体（红涨绿跌都使用实心）
       final bodyPaint = Paint()
         ..color = color
-        ..style = isRising ? PaintingStyle.stroke : PaintingStyle.fill
-        ..strokeWidth = 1;
+        ..style = PaintingStyle.fill; // 统一使用实心填充
       
       final bodyTop = openY < closeY ? openY : closeY;
       final bodyBottom = openY > closeY ? openY : closeY;
@@ -779,9 +780,9 @@ class CandlestickChartPainter extends CustomPainter {
     
     debugPrint('📊 开始绘制指标，共 ${indicators.length} 个: ${indicators.keys.join(", ")}');
     
-    final chartWidth = size.width;
+    // final chartWidth = size.width;
     // final chartHeight = size.height;
-    final candleSpacing = chartWidth / candleData.length;
+    final candleSpacing = 8.0; // 固定间距（更紧凑）
     
     // 绘制均线指标
     indicators.forEach((key, value) {
@@ -1088,7 +1089,7 @@ class SubChartPainter extends CustomPainter {
     final range = maxVal - minVal;
     if (range == 0) return;
     
-    final candleSpacing = size.width / candleData.length;
+    final candleSpacing = 8.0; // 固定间距（更紧凑）
     
     // 绘制零轴
     final zeroY = size.height * (1 - (0 - minVal) / range);
@@ -1128,7 +1129,7 @@ class SubChartPainter extends CustomPainter {
     final minVal = 0.0;
     final maxVal = 100.0;
     final range = maxVal - minVal;
-    final candleSpacing = size.width / candleData.length;
+    final candleSpacing = 8.0; // 固定间距（更紧凑）
     
     // 绘制参考线（30, 50, 70）
     final linePaint = Paint()
@@ -1177,7 +1178,7 @@ class SubChartPainter extends CustomPainter {
     final range = maxVal - minVal;
     if (range == 0) return;
     
-    final candleSpacing = size.width / candleData.length;
+    final candleSpacing = 8.0; // 固定间距（更紧凑）
     
     // 绘制参考线
     final linePaint = Paint()
