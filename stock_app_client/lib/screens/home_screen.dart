@@ -18,6 +18,7 @@ import 'feedback_screen.dart';
 import 'watchlist_screen.dart';
 import 'kline_replay_screen.dart';
 import 'index_analysis_screen.dart';
+import 'limit_board_screen.dart';
 
 class MenuItem {
   final String title;
@@ -52,62 +53,74 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _authCheckTimer;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // 定义菜单项，使用结构化方式便于扩展
-  late List<MenuItem> _menuItems;
+    // 定义菜单项，使用结构化方式便于扩展
+    late List<MenuItem> _menuItems;
 
-  @override
-  void initState() {
-    super.initState();
-    
-    // 不自动打开侧边栏，让用户主动点击菜单按钮
-    
-    // 初始化菜单项（将盘感练习加入侧边栏）
-    _menuItems = [
-      MenuItem(
-        title: '技术量化',
-        icon: Icons.query_stats,
-        screen: const StockScannerScreen(),
-        actions: StockScannerScreen.buildActions,
-        needsAppBar: true, // 需要HomeScreen提供AppBar
-      ),
-      const MenuItem(
-        title: '消息量化',
-        icon: Icons.article,
-        screen: NewsAnalysisScreen(),
-      ),
-      const MenuItem(
-        title: '交易记录',
-        icon: Icons.receipt_long,
-        screen: TradeRecordScreen(),
-      ),
-      const MenuItem(
-        title: '交易策略',
-        icon: Icons.psychology,
-        screen: StrategyScreen(),
-      ),
-      const MenuItem(
-        title: 'K线回放',
-        icon: Icons.candlestick_chart,
-        screen: EnhancedKLineReplayScreen(),
-      ),
-      MenuItem(
-        title: '大盘分析',
-        icon: Icons.show_chart,
-        screen: const IndexAnalysisScreen(),
-        needsAppBar: false, // 大盘分析有自己的AppBar，不需要HomeScreen提供
-      ),
-      const MenuItem(
-        title: '交易概览',
-        icon: Icons.dashboard,
-        screen: AnalysisScreen(),
-      ),
-      // 添加设置页面
-      const MenuItem(
-        title: '系统设置',
-        icon: Icons.settings_suggest,
-        screen: SettingsScreen(), // 使用设置页面
-      ),
-    ];
+    @override
+    void initState() {
+      super.initState();
+      
+      // 不自动打开侧边栏，让用户主动点击菜单按钮
+      
+      // 初始化菜单项（将盘感练习加入侧边栏）
+      _menuItems = [
+        MenuItem(
+          title: '技术量化',
+          icon: Icons.query_stats,
+          screen: const StockScannerScreen(),
+          actions: StockScannerScreen.buildActions,
+          needsAppBar: true, // 需要HomeScreen提供AppBar
+        ),
+        const MenuItem(
+          title: '消息量化',
+          icon: Icons.article,
+          screen: NewsAnalysisScreen(),
+          needsAppBar: false, // 消息量化有自己的AppBar，不需要HomeScreen提供
+        ),
+        const MenuItem(
+          title: '交易记录',
+          icon: Icons.receipt_long,
+          screen: TradeRecordScreen(),
+          needsAppBar: false, // 交易记录有自己的AppBar，不需要HomeScreen提供
+        ),
+        const MenuItem(
+          title: '交易策略',
+          icon: Icons.psychology,
+          screen: StrategyScreen(),
+          needsAppBar: false, // 交易策略有自己的AppBar，不需要HomeScreen提供
+        ),
+        const MenuItem(
+          title: 'K线回放',
+          icon: Icons.candlestick_chart,
+          screen: EnhancedKLineReplayScreen(),
+          needsAppBar: false, // K线回放有自己的AppBar，不需要HomeScreen提供
+        ),
+        const MenuItem(
+          title: '打板数据',
+          icon: Icons.bolt,
+          screen: LimitBoardScreen(),
+          needsAppBar: false, // 打板数据有自己的AppBar，不需要HomeScreen提供
+        ),
+        MenuItem(
+          title: '大盘分析',
+          icon: Icons.show_chart,
+          screen: const IndexAnalysisScreen(),
+          needsAppBar: false, // 大盘分析有自己的AppBar，不需要HomeScreen提供
+        ),
+        const MenuItem(
+          title: '交易概览',
+          icon: Icons.dashboard,
+          screen: AnalysisScreen(),
+          needsAppBar: false, // 交易概览有自己的AppBar，不需要HomeScreen提供
+        ),
+        // 添加设置页面
+        const MenuItem(
+          title: '系统设置',
+          icon: Icons.settings_suggest,
+          screen: SettingsScreen(),
+          needsAppBar: false, // 系统设置有自己的AppBar，不需要HomeScreen提供
+        ),
+      ];
 
     // 加载数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -176,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Icons.receipt_long: Icons.receipt_long_outlined,
       Icons.psychology: Icons.psychology_outlined,
       Icons.candlestick_chart: Icons.candlestick_chart_outlined,
+      Icons.bolt: Icons.bolt_outlined,
       Icons.show_chart: Icons.show_chart_outlined,
       Icons.dashboard: Icons.dashboard_outlined,
       Icons.settings_suggest: Icons.settings_suggest_outlined,
@@ -194,11 +208,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final isKLineReplayScreen = _menuItems[_selectedIndex].title == 'K线回放';
 
     if (isMobile) {
-      // 移动设备使用底部导航栏（不包含K线回放和大盘分析）
-      final bottomNavItems = _menuItems.where((item) => item.title != 'K线回放' && item.title != '大盘分析').toList();
+      // 移动设备使用底部导航栏（不包含K线回放、打板数据和大盘分析，这些只在侧边栏显示）
+      final sidebarOnlyItems = ['K线回放', '打板数据', '大盘分析'];
+      final bottomNavItems = _menuItems.where((item) => !sidebarOnlyItems.contains(item.title)).toList();
       final bottomNavIndex = _selectedIndex >= bottomNavItems.length 
           ? 0 
-          : (_menuItems[_selectedIndex].title == 'K线回放' 
+          : (sidebarOnlyItems.contains(_menuItems[_selectedIndex].title)
               ? 0 
               : bottomNavItems.indexWhere((item) => item.title == _menuItems[_selectedIndex].title));
       
@@ -207,12 +222,23 @@ class _HomeScreenState extends State<HomeScreen> {
         return _menuItems[_selectedIndex].screen;
       }
       
+      // 根据页面是否需要AppBar来决定是否显示
+      final currentItem = _menuItems[_selectedIndex];
+      
       return Scaffold(
         key: _scaffoldKey,
-        appBar: AppBar(
-                title: Text(_menuItems[_selectedIndex].title),
-                actions: _menuItems[_selectedIndex].actions?.call(context),
-        ),
+        appBar: currentItem.needsAppBar 
+            ? AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    _scaffoldKey.currentState?.openDrawer();
+                  },
+                ),
+                title: Text(currentItem.title),
+                actions: currentItem.actions?.call(context),
+              )
+            : null, // 如果不需要AppBar，则设为null
         body: IndexedStack(
           index: _selectedIndex,
           children: _menuItems.map((item) => item.screen).toList(),
@@ -220,9 +246,13 @@ class _HomeScreenState extends State<HomeScreen> {
         bottomNavigationBar: NavigationBar(
           selectedIndex: bottomNavIndex.clamp(0, bottomNavItems.length - 1),
           onDestinationSelected: (int index) {
-            setState(() {
-              _selectedIndex = _menuItems.indexWhere((item) => item.title == bottomNavItems[index].title);
-            });
+            final selectedItem = bottomNavItems[index];
+            final newIndex = _menuItems.indexWhere((item) => item.title == selectedItem.title);
+            if (newIndex != -1) {
+              setState(() {
+                _selectedIndex = newIndex;
+              });
+            }
           },
           destinations: bottomNavItems.map((item) => NavigationDestination(
             icon: Icon(_getOutlinedIcon(item.icon)),
@@ -492,6 +522,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case '消息量化': return const Color(0xFFF59E0B);
       case '交易记录': return AppDesignSystem.downColor;
       case '交易策略': return const Color(0xFF0EA5E9);
+      case '打板数据': return const Color(0xFFEF4444); // 红色，表示打板
       case '大盘分析': return const Color(0xFFEC4899);
       case '交易概览': return const Color(0xFF6366F1);
       case '系统设置': return AppDesignSystem.lightText3;

@@ -74,18 +74,10 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) {
-            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
-            if (parentScaffold != null && parentScaffold.hasDrawer) {
-              return IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  parentScaffold.openDrawer();
-                },
-              );
-            }
-            return const SizedBox.shrink();
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer();
           },
         ),
         title: Text(_selectedStockName ?? '专业K线回放训练'),

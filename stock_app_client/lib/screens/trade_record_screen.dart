@@ -35,18 +35,12 @@ class _TradeRecordScreenState extends State<TradeRecordScreen> with SingleTicker
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF000000) : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) {
-            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
-            if (parentScaffold != null && parentScaffold.hasDrawer) {
-              return IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  parentScaffold.openDrawer();
-                },
-              );
-            }
-            return const SizedBox.shrink();
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            // 在移动设备模式下，这个页面需要自己的菜单按钮
+            // 通过Builder获取正确的context来访问HomeScreen的Scaffold
+            Scaffold.of(context).openDrawer();
           },
         ),
         title: const Text(

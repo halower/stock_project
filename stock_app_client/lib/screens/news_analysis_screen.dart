@@ -179,21 +179,19 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) {
-            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
-            if (parentScaffold != null && parentScaffold.hasDrawer) {
-              return IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  parentScaffold.openDrawer();
-                },
-              );
-            }
-            return const SizedBox.shrink();
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            // 在移动设备模式下，这个页面需要自己的菜单按钮
+            Scaffold.of(context).openDrawer();
           },
         ),
-        title: const Text('消息面量化分析'),
+        title: const Text(
+          '消息量化',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -647,123 +645,8 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 标题区域
             Container(
-              width: double.infinity,
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF1565C0),
-                    const Color(0xFF0D47A1),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1565C0).withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.analytics_outlined,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Text(
-                              '消息面AI深度分析',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.auto_awesome, color: Colors.white, size: 14),
-                                SizedBox(width: 4),
-                                Text(
-                                  'AI专业版',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                                ),
-                              ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        color: Colors.white.withOpacity(0.8),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '生成时间: ${DateTime.now().toString().substring(0, 19)}',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                          const Spacer(),
-                          Icon(
-                            Icons.trending_up,
-                            color: Colors.white.withOpacity(0.8),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '实时数据',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-                // 分析内容区域
-                Container(
-                  padding: const EdgeInsets.all(20),
                   child: MarkdownBody(
                     data: filteredContent,
                 styleSheet: MarkdownStyleSheet(

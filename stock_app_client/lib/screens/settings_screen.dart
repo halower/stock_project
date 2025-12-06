@@ -474,18 +474,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF0F1419) : const Color(0xFFF5F7FA),
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) {
-            final parentScaffold = context.findAncestorStateOfType<ScaffoldState>();
-            if (parentScaffold != null && parentScaffold.hasDrawer) {
-              return IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  parentScaffold.openDrawer();
-                },
-              );
-            }
-            return const SizedBox.shrink();
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            // 在移动设备模式下，这个页面需要自己的菜单按钮
+            Scaffold.of(context).openDrawer();
           },
         ),
         title: Row(

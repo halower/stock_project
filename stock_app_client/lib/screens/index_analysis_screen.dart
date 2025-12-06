@@ -1254,6 +1254,12 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
     
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer();
+          },
+        ),
         title: Row(
           children: [
             Icon(Icons.show_chart, size: 20),
