@@ -150,7 +150,7 @@ app.include_router(realtime_config.router, prefix="/api", tags=["实时行情配
 app.include_router(data_validation.router, tags=["数据验证"])
 app.include_router(websocket.router, tags=["WebSocket"])
 app.include_router(index_analysis.router, tags=["指数分析"])
-app.include_router(limit_board.router, prefix="/api", tags=["打板数据"])
+app.include_router(limit_board.router, prefix="/api", tags=["打板分析"])
 
 # 基础路由
 @app.get("/ping")

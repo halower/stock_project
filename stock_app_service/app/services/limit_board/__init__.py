@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""打板数据服务模块"""
+"""打板分析服务模块"""
 
 from .limit_board_service import LimitBoardService, limit_board_service
 

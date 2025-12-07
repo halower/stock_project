@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-打板数据服务
+打板分析服务
 基于Tushare打板专题接口，提供涨跌停、炸板、龙虎榜等数据
 
 Tushare打板专题接口：
@@ -23,7 +23,7 @@ from app.services.stock.unified_data_service import get_rate_limiter
 
 
 class LimitBoardService:
-    """打板数据服务"""
+    """打板分析服务"""
     
     def __init__(self):
         self.redis_cache = RedisCache()
@@ -344,13 +344,66 @@ class LimitBoardService:
     
     # ==================== 3. 连板统计 ====================
     
+    def _get_recent_trade_dates(self, end_date: str, days: int = 5) -> List[str]:
+        """
+        获取最近N个交易日（排除周末）
+        
+        Args:
+            end_date: 结束日期，格式YYYYMMDD
+            days: 需要的交易日数量
+            
+        Returns:
+            交易日期列表，从旧到新排序
+        """
+        trade_dates = []
+        current_date = datetime.strptime(end_date, '%Y%m%d')
+        
+        while len(trade_dates) < days:
+            # 跳过周末
+            if current_date.weekday() < 5:  # 0-4是周一到周五
+                trade_dates.append(current_date.strftime('%Y%m%d'))
+            current_date -= timedelta(days=1)
+        
+        # 从旧到新排序
+        trade_dates.reverse()
+        return trade_dates
+    
+    def _calculate_continuous_limit_days(
+        self,
+        ts_code: str,
+        recent_limit_data: List[Dict[str, Any]]
+    ) -> int:
+        """
+        计算连板天数
+        
+        Args:
+            ts_code: 股票代码
+            recent_limit_data: 最近几天的涨停数据列表（按日期从旧到新排序）
+            
+        Returns:
+            连板天数
+        """
+        continuous_days = 0
+        
+        # 从最新的一天往前数
+        for day_data in reversed(recent_limit_data):
+            # 检查这一天是否涨停
+            stock_data = next((item for item in day_data.get('data', []) if item.get('ts_code') == ts_code), None)
+            if stock_data:
+                continuous_days += 1
+            else:
+                # 一旦中断就停止计数
+                break
+        
+        return continuous_days
+    
     def get_continuous_limit_stats(
         self,
         trade_date: Optional[str] = None,
         use_cache: bool = True
     ) -> Dict[str, Any]:
         """
-        获取连板统计数据
+        获取连板统计数据（基于最近5天数据自己计算连板天数）
         
         Args:
             trade_date: 交易日期
@@ -363,22 +416,59 @@ class LimitBoardService:
             if trade_date is None:
                 trade_date = self._get_last_trade_date()
             
-            # 获取涨停数据
-            limit_data = self.get_limit_list(trade_date, 'U', use_cache)
+            cache_key = f"continuous_limit_stats_v2:{trade_date}"
             
-            if not limit_data.get('success') or not limit_data.get('data'):
-                return {
+            # 尝试从缓存获取
+            if use_cache:
+                cached = self.redis_cache.get_cache(cache_key)
+                if cached:
+                    logger.debug(f"从缓存获取连板统计: {cache_key}")
+                    return cached
+            
+            # 获取最近5个交易日
+            recent_dates = self._get_recent_trade_dates(trade_date, 5)
+            logger.info(f"获取最近5个交易日数据: {recent_dates}")
+            
+            # 获取每天的涨停数据
+            recent_limit_data = []
+            for date in recent_dates:
+                limit_data = self.get_limit_list(date, 'U', use_cache)
+                if limit_data.get('success'):
+                    recent_limit_data.append({
+                        'trade_date': date,
+                        'data': limit_data.get('data', [])
+                    })
+            
+            # 获取今天的涨停数据
+            today_limit_data = self.get_limit_list(trade_date, 'U', use_cache)
+            
+            if not today_limit_data.get('success') or not today_limit_data.get('data'):
+                result = {
                     'success': True,
                     'trade_date': trade_date,
                     'stats': {},
                     'top_continuous': []
                 }
+                self.redis_cache.set_cache(cache_key, result, ttl=3600)
+                return result
             
-            data = limit_data['data']
+            data = today_limit_data['data']
+            
+            # 为每只股票计算连板天数
+            stocks_with_continuous = []
+            for item in data:
+                ts_code = item.get('ts_code', '')
+                # 计算连板天数
+                continuous_days = self._calculate_continuous_limit_days(ts_code, recent_limit_data)
+                
+                # 添加连板天数字段
+                item_with_continuous = item.copy()
+                item_with_continuous['limit_times'] = continuous_days
+                stocks_with_continuous.append(item_with_continuous)
             
             # 统计各连板数量
             stats = {}
-            for item in data:
+            for item in stocks_with_continuous:
                 limit_times = item.get('limit_times', 1)
                 if limit_times < 1:
                     limit_times = 1
@@ -388,18 +478,27 @@ class LimitBoardService:
             # 按连板数排序
             sorted_stats = dict(sorted(stats.items(), key=lambda x: int(x[0].replace('连板', '')), reverse=True))
             
-            # 获取高连板股票（3连板以上）
-            top_continuous = [item for item in data if item.get('limit_times', 0) >= 3]
+            # 获取高连板股票（2连板以上）
+            top_continuous = [item for item in stocks_with_continuous if item.get('limit_times', 0) >= 2]
             top_continuous.sort(key=lambda x: x.get('limit_times', 0), reverse=True)
             
-            return {
+            result = {
                 'success': True,
                 'trade_date': trade_date,
                 'total_count': len(data),
                 'stats': sorted_stats,
                 'top_continuous': top_continuous[:20],  # 取前20只
+                'all_up_limit_with_times': stocks_with_continuous,  # 新增：所有涨停股票（包含limit_times）
+                'calculation_method': 'self_calculated',  # 标记为自己计算
+                'recent_dates': recent_dates,  # 记录使用的日期范围
                 'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
+            
+            # 缓存1小时
+            self.redis_cache.set_cache(cache_key, result, ttl=3600)
+            
+            logger.info(f"连板统计完成: {trade_date}, 总数: {len(data)}, 2连板以上: {len(top_continuous)}")
+            return result
             
         except Exception as e:
             logger.error(f"获取连板统计失败: {e}")
@@ -619,22 +718,36 @@ class LimitBoardService:
                     return cached
             
             # 获取各项数据
-            up_limit = self.get_limit_list(trade_date, 'U', use_cache)
             down_limit = self.get_limit_list(trade_date, 'D', use_cache)
             top_list = self.get_top_list(trade_date, use_cache)
             continuous_stats = self.get_continuous_limit_stats(trade_date, use_cache)
             sector_stats = self.get_sector_stats(trade_date, use_cache)
             
+            # 从 continuous_stats 中获取带有 limit_times 的完整涨停数据
+            up_limit_with_times = continuous_stats.get('all_up_limit_with_times', [])
+            
+            # 如果 continuous_stats 没有返回完整数据，则使用原始方法
+            if not up_limit_with_times:
+                up_limit = self.get_limit_list(trade_date, 'U', use_cache)
+                up_limit_with_times = up_limit.get('data', [])
+            
+            # 按连板天数排序（连板数高的排前面，同连板数按涨幅排序）
+            up_limit_sorted = sorted(
+                up_limit_with_times,
+                key=lambda x: (x.get('limit_times', 0), x.get('pct_chg', 0)),
+                reverse=True
+            )
+            
             result = {
                 'success': True,
                 'trade_date': trade_date,
                 'summary': {
-                    'up_limit_count': up_limit.get('count', 0),
+                    'up_limit_count': len(up_limit_with_times),
                     'down_limit_count': down_limit.get('count', 0),
                     'top_list_count': top_list.get('count', 0),
                     'continuous_stats': continuous_stats.get('stats', {}),
                 },
-                'up_limit': up_limit.get('data', [])[:30],  # 涨停前30只
+                'up_limit': up_limit_sorted,  # 所有涨停股票（按连板数排序，包含limit_times）
                 'down_limit': down_limit.get('data', [])[:10],  # 跌停前10只
                 'top_list': top_list.get('data', [])[:20],  # 龙虎榜前20只
                 'top_continuous': continuous_stats.get('top_continuous', []),  # 高连板股票

@@ -96,10 +96,10 @@ class _HomeScreenState extends State<HomeScreen> {
           needsAppBar: false, // K线回放有自己的AppBar，不需要HomeScreen提供
         ),
         const MenuItem(
-          title: '打板数据',
+          title: '打板分析',
           icon: Icons.bolt,
           screen: LimitBoardScreen(),
-          needsAppBar: false, // 打板数据有自己的AppBar，不需要HomeScreen提供
+          needsAppBar: false, // 打板分析有自己的AppBar，不需要HomeScreen提供
       ),
       MenuItem(
         title: '大盘分析',
@@ -208,8 +208,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final isKLineReplayScreen = _menuItems[_selectedIndex].title == 'K线回放';
 
     if (isMobile) {
-      // 移动设备使用底部导航栏（不包含K线回放、打板数据和大盘分析，这些只在侧边栏显示）
-      final sidebarOnlyItems = ['K线回放', '打板数据', '大盘分析'];
+      // 移动设备使用底部导航栏（不包含K线回放、打板分析和大盘分析，这些只在侧边栏显示）
+      final sidebarOnlyItems = ['K线回放', '打板分析', '大盘分析'];
       final bottomNavItems = _menuItems.where((item) => !sidebarOnlyItems.contains(item.title)).toList();
       
       // 计算底部导航栏的选中索引
@@ -512,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'v1.2.13',
+              'v1.2.15',
               style: TextStyle(
                 fontSize: 11,
                 color: isDark ? AppDesignSystem.darkText4 : AppDesignSystem.lightText4,
@@ -532,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case '消息量化': return const Color(0xFFF59E0B);
       case '交易记录': return AppDesignSystem.downColor;
       case '交易策略': return const Color(0xFF0EA5E9);
-      case '打板数据': return const Color(0xFFEF4444); // 红色，表示打板
+      case '打板分析': return const Color(0xFFEF4444); // 红色，表示打板
       case '大盘分析': return const Color(0xFFEC4899);
       case '交易概览': return const Color(0xFF6366F1);
       case '系统设置': return AppDesignSystem.lightText3;

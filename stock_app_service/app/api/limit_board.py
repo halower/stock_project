@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-打板数据API路由
+打板分析API路由
 提供涨跌停、龙虎榜、连板统计等接口
 """
 
@@ -11,7 +11,7 @@ from datetime import datetime
 from app.core.logging import logger
 from app.services.limit_board import limit_board_service
 
-router = APIRouter(prefix="/limit-board", tags=["打板数据"])
+router = APIRouter(prefix="/limit-board", tags=["打板分析"])
 
 
 @router.get("/limit-list")

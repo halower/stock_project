@@ -1,4 +1,4 @@
-/// 打板数据页面
+/// 打板分析页面
 /// 展示涨跌停、龙虎榜、连板统计等数据
 
 import 'package:flutter/material.dart';
@@ -29,7 +29,23 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    // 初始化时自动调整到最后一个交易日
+    _selectedDate = _getLastTradeDate(DateTime.now());
     _loadData();
+  }
+  
+  /// 获取最后一个交易日（排除周末）
+  DateTime _getLastTradeDate(DateTime date) {
+    // 如果是周六(6)，往前推1天到周五
+    if (date.weekday == DateTime.saturday) {
+      return date.subtract(const Duration(days: 1));
+    }
+    // 如果是周日(7)，往前推2天到周五
+    if (date.weekday == DateTime.sunday) {
+      return date.subtract(const Duration(days: 2));
+    }
+    // 工作日直接返回
+    return date;
   }
   
   @override
@@ -72,6 +88,10 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       locale: const Locale('zh', 'CN'),
+      selectableDayPredicate: (DateTime date) {
+        // 只允许选择工作日（周一到周五）
+        return date.weekday >= DateTime.monday && date.weekday <= DateTime.friday;
+      },
     );
     
     if (picked != null && picked != _selectedDate) {
@@ -94,7 +114,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
             Scaffold.of(context).openDrawer();
           },
         ),
-        title: const Text('打板数据'),
+        title: const Text('打板分析'),
         actions: [
           // 日期选择按钮
           TextButton.icon(
@@ -180,7 +200,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
               _buildSectorStatsSection(isDark),
             
             if (_summary!.sectorStats.isNotEmpty)
-              const SizedBox(height: 24),
+            const SizedBox(height: 24),
             
             // 高连板股票
             if (_summary!.topContinuous.isNotEmpty)
@@ -202,6 +222,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
             icon: Icons.trending_up,
             color: AppDesignSystem.upColor,
             isDark: isDark,
+            onTap: () => _tabController.animateTo(1), // 切换到涨停板Tab
           ),
         ),
         const SizedBox(width: 12),
@@ -212,6 +233,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
             icon: Icons.trending_down,
             color: AppDesignSystem.downColor,
             isDark: isDark,
+            onTap: () => _tabController.animateTo(2), // 切换到跌停板Tab
           ),
         ),
         const SizedBox(width: 12),
@@ -222,58 +244,93 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
             icon: Icons.leaderboard,
             color: Colors.orange,
             isDark: isDark,
+            onTap: () => _tabController.animateTo(3), // 切换到龙虎榜Tab
           ),
         ),
       ],
     );
   }
   
-  /// 构建单个统计卡片
+  /// 构建单个统计卡片（美化版，支持点击）
   Widget _buildStatCard({
     required String title,
     required String value,
     required IconData icon,
     required Color color,
     required bool isDark,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppDesignSystem.darkBg2 : Colors.white,
-        borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: [
+              color.withOpacity(0.1),
+              color.withOpacity(0.05),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 10,
+              color: color.withOpacity(0.2),
+              blurRadius: 12,
             offset: const Offset(0, 4),
+              spreadRadius: 0,
           ),
         ],
         border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
+            color: color.withOpacity(0.3),
+            width: 1.5,
         ),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
+            // 图标容器
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 12),
+            // 数值
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+                fontSize: 28,
               fontWeight: FontWeight.bold,
               color: color,
+                letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 4),
+            // 标题
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
-              color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isDark ? AppDesignSystem.darkText2 : AppDesignSystem.lightText2,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // 点击提示
+            if (onTap != null)
+              Text(
+                '点击查看',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color.withOpacity(0.7),
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -307,26 +364,65 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        // 美化的标题
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppDesignSystem.primary.withOpacity(0.1),
+                AppDesignSystem.primary.withOpacity(0.05),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppDesignSystem.primary.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Row(
           children: [
             Container(
-              width: 4,
-              height: 20,
+                padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
+                  color: AppDesignSystem.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.trending_up,
                 color: AppDesignSystem.primary,
-                borderRadius: BorderRadius.circular(2),
+                  size: 20,
               ),
             ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 12),
             Text(
               '连板梯队',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
                 color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
               ),
             ),
-          ],
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppDesignSystem.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${filteredKeys.length}个梯队',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppDesignSystem.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -348,49 +444,49 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
             return GestureDetector(
               onTap: () => _showContinuousStocks(days, isDark),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [bgColor, bgColor.withOpacity(0.8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: bgColor.withOpacity(0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [bgColor, bgColor.withOpacity(0.8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      key,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: bgColor.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    key,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$count只',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 12,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$count只',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
                 ),
               ),
             );
@@ -402,13 +498,25 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
   
   /// 显示连板股票列表
   void _showContinuousStocks(int days, bool isDark) {
+    debugPrint('点击连板梯队: ${days}连板');
+    debugPrint('涨停列表总数: ${_summary!.upLimitList.length}');
+    
     // 筛选出对应连板天数的股票
     final stocks = _summary!.upLimitList
         .where((stock) => stock.limitTimes == days)
         .toList()
       ..sort((a, b) => b.pctChg.compareTo(a.pctChg)); // 按涨幅排序
     
+    debugPrint('筛选出 ${stocks.length} 只${days}连板股票');
+    
     if (stocks.isEmpty) {
+      // 显示提示信息
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('暂无${days}连板股票'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
       return;
     }
     
@@ -482,6 +590,8 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
                       stocks[index],
                       isDark,
                       showContinuous: true,
+                      stockList: stocks,  // 传递连板股票列表
+                      listName: '$days连板',  // 传递列表名称
                     );
                   },
                 ),
@@ -498,34 +608,65 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 4,
-              height: 20,
-              decoration: BoxDecoration(
-                color: Colors.deepOrange,
-                borderRadius: BorderRadius.circular(2),
-              ),
+        // 美化的标题
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.deepOrange.withOpacity(0.1),
+                Colors.deepOrange.withOpacity(0.05),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
-            const SizedBox(width: 8),
-            Text(
-              '最强板块',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
-              ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.deepOrange.withOpacity(0.2),
+              width: 1,
             ),
-            const Spacer(),
-            Text(
-              '涨停数量',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.bar_chart,
+                  color: Colors.deepOrange,
+                  size: 20,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Text(
+                '最强板块',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppDesignSystem.darkText1 : AppDesignSystem.lightText1,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '涨停数量',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         ..._summary!.sectorStats.take(8).map((sector) => 
@@ -718,6 +859,8 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
                       sector.stocks[index],
                       isDark,
                       showContinuous: true,
+                      stockList: sector.stocks,  // 传递板块股票列表
+                      listName: sector.sectorName,  // 传递板块名称
                     );
                   },
                 ),
@@ -775,7 +918,12 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         padding: const EdgeInsets.all(12),
         itemCount: _summary!.upLimitList.length,
         itemBuilder: (context, index) {
-          return _buildClickableLimitStockItem(_summary!.upLimitList[index], isDark);
+          return _buildClickableLimitStockItem(
+            _summary!.upLimitList[index], 
+            isDark,
+            stockList: _summary!.upLimitList,  // 传递涨停股票列表
+            listName: '涨停板',  // 传递列表名称
+          );
         },
       ),
     );
@@ -793,7 +941,13 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         padding: const EdgeInsets.all(12),
         itemCount: _summary!.downLimitList.length,
         itemBuilder: (context, index) {
-          return _buildClickableLimitStockItem(_summary!.downLimitList[index], isDark, isDown: true);
+          return _buildClickableLimitStockItem(
+            _summary!.downLimitList[index], 
+            isDark, 
+            isDown: true,
+            stockList: _summary!.downLimitList,  // 传递跌停股票列表
+            listName: '跌停板',  // 传递列表名称
+          );
         },
       ),
     );
@@ -811,22 +965,41 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         padding: const EdgeInsets.all(12),
         itemCount: _summary!.topList.length,
         itemBuilder: (context, index) {
-          return _buildClickableTopListItem(_summary!.topList[index], isDark);
+          return _buildClickableTopListItem(
+            _summary!.topList[index], 
+            isDark,
+            stockList: _summary!.topList,  // 传递龙虎榜股票列表
+          );
         },
       ),
     );
   }
   
   /// 构建可点击的龙虎榜项（打开走势图）
-  Widget _buildClickableTopListItem(TopListStock stock, bool isDark) {
+  Widget _buildClickableTopListItem(
+    TopListStock stock, 
+    bool isDark, {
+    List<TopListStock>? stockList,  // 添加股票列表参数
+  }) {
     return GestureDetector(
       onTap: () {
+        // 准备股票列表
+        List<Map<String, String>>? availableStocks;
+        if (stockList != null && stockList.isNotEmpty) {
+          availableStocks = stockList.map((s) => {
+            'code': s.tsCode,
+            'name': s.name,
+          }).toList();
+        }
+        
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => StockDetailScreen(
               stockCode: stock.tsCode,
               stockName: stock.name,
+              availableStocks: availableStocks,
+              strategy: '龙虎榜',  // 使用龙虎榜作为策略标识
             ),
           ),
         );
@@ -836,15 +1009,33 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
   }
   
   /// 构建可点击的涨跌停股票项（打开走势图）
-  Widget _buildClickableLimitStockItem(LimitStock stock, bool isDark, {bool isDown = false, bool showContinuous = false}) {
+  Widget _buildClickableLimitStockItem(
+    LimitStock stock, 
+    bool isDark, {
+    bool isDown = false, 
+    bool showContinuous = false,
+    List<LimitStock>? stockList,  // 添加股票列表参数
+    String? listName,  // 添加列表名称参数
+  }) {
     return GestureDetector(
       onTap: () {
+        // 准备股票列表
+        List<Map<String, String>>? availableStocks;
+        if (stockList != null && stockList.isNotEmpty) {
+          availableStocks = stockList.map((s) => {
+            'code': s.tsCode,
+            'name': s.name,
+          }).toList();
+        }
+        
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => StockDetailScreen(
               stockCode: stock.tsCode,
               stockName: stock.name,
+              availableStocks: availableStocks,
+              strategy: listName,  // 使用列表名称作为策略标识
             ),
           ),
         );

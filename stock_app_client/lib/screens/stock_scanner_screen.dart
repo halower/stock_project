@@ -604,10 +604,10 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
                               const SizedBox(width: 4),
                               Text(
                                 '显示 ${_getResultCount(apiProvider)} 只股票',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.secondary,
+                                style: const TextStyle(
+                                  color: Color(0xFFE53935),  // 喜庆的红色
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const Spacer(),
@@ -925,13 +925,20 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.amber.shade700,
-                    Colors.amber.shade500,
-                    Colors.amber.shade700,
+                    Colors.blue.shade900.withOpacity(0.9),
+                    Colors.blue.shade800.withOpacity(0.8),
+                    Colors.blue.shade900.withOpacity(0.9),
                   ],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.shade900.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Material(
                 color: Colors.transparent,
@@ -939,9 +946,9 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.warning_amber_rounded,
-                        color: Colors.white,
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue.shade100,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
@@ -951,7 +958,7 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                        icon: Icon(Icons.close, color: Colors.blue.shade100, size: 16),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: () {

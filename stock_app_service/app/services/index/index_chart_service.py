@@ -463,11 +463,27 @@ class IndexChartService:
             avg_up = recent_20[recent_20['pct_chg'] > 0]['pct_chg'].mean() if up_days > 0 else 0
             avg_down = abs(recent_20[recent_20['pct_chg'] < 0]['pct_chg'].mean()) if down_days > 0 else 0
             
-            # 2. 多空力量对比（基于涨跌幅和天数）
-            bull_power = up_days * avg_up if up_days > 0 else 0
-            bear_power = down_days * avg_down if down_days > 0 else 0
+            # 2. 多空力量对比（改进算法：结合涨跌幅、成交量和天数）
+            # 计算上涨日的力量：涨幅 × 成交量 × 天数权重
+            up_days_data = recent_20[recent_20['pct_chg'] > 0]
+            down_days_data = recent_20[recent_20['pct_chg'] < 0]
+            
+            # 多方力量 = Σ(涨幅 × 成交量) / 总成交量
+            if len(up_days_data) > 0:
+                bull_power = (up_days_data['pct_chg'] * up_days_data['volume']).sum()
+            else:
+                bull_power = 0
+            
+            # 空方力量 = Σ(|跌幅| × 成交量) / 总成交量
+            if len(down_days_data) > 0:
+                bear_power = (abs(down_days_data['pct_chg']) * down_days_data['volume']).sum()
+            else:
+                bear_power = 0
+            
+            # 计算多空比例
             total_power = bull_power + bear_power
             bull_ratio = (bull_power / total_power * 100) if total_power > 0 else 50
+            bear_ratio = 100 - bull_ratio
             
             # 3. 成交量能量分析
             recent_vol = recent_5['volume'].mean()
@@ -545,7 +561,7 @@ class IndexChartService:
                 'sentiment_level': sentiment_level,
                 'sentiment_score': float(sentiment_score),
                 'bull_power_ratio': float(bull_ratio),
-                'bear_power_ratio': float(100 - bull_ratio),
+                'bear_power_ratio': float(bear_ratio),
                 'up_days_20': int(up_days),
                 'down_days_20': int(down_days),
                 'avg_gain': float(avg_up),
@@ -556,7 +572,18 @@ class IndexChartService:
                 'momentum_5d': float(momentum_5),
                 'momentum_20d': float(momentum_20),
                 'consecutive_up': int(consecutive_up),
-                'consecutive_down': int(consecutive_down)
+                'consecutive_down': int(consecutive_down),
+                # 新增：详细的多空力量数据
+                'bull_power_detail': {
+                    'total_power': float(bull_power),
+                    'avg_gain_with_volume': float(bull_power / len(up_days_data)) if len(up_days_data) > 0 else 0,
+                    'up_days': int(up_days)
+                },
+                'bear_power_detail': {
+                    'total_power': float(bear_power),
+                    'avg_loss_with_volume': float(bear_power / len(down_days_data)) if len(down_days_data) > 0 else 0,
+                    'down_days': int(down_days)
+                }
             }
             
         except Exception as e:

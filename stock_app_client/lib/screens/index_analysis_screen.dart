@@ -4,7 +4,7 @@ import 'dart:convert';
 import '../config/api_config.dart';
 import '../services/http_client.dart' as http_client;
 
-/// 专业指数分析页面 - TradingView级别的专业图表和分析
+/// 大盘分析页面 - TradingView级别的专业图表和分析
 /// 仅支持三大核心指数：上证指数、深证成指、创业板指
 class IndexAnalysisScreen extends StatefulWidget {
   const IndexAnalysisScreen({Key? key}) : super(key: key);
@@ -1264,7 +1264,7 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
           children: [
             Icon(Icons.show_chart, size: 20),
             const SizedBox(width: 8),
-            const Text('专业指数分析'),
+            const Text('大盘分析'),
           ],
         ),
         actions: [
