@@ -703,10 +703,10 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         ),
         child: Row(
           children: [
-            // 排名标识
+            // 涨停数量标识
             Container(
-              width: 32,
-              height: 32,
+              width: 42,
+              height: 36,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [color, color.withOpacity(0.7)],
@@ -715,15 +715,27 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Center(
-                child: Text(
-                  '${sector.count}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${sector.count}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      height: 1.0,
+                    ),
                   ),
-                ),
+                  const Text(
+                    '涨停',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 12),
@@ -999,7 +1011,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
               stockCode: stock.tsCode,
               stockName: stock.name,
               availableStocks: availableStocks,
-              strategy: '龙虎榜',  // 使用龙虎榜作为策略标识
+              strategy: 'volume_wave',  // 使用动量守恒策略，确保图表能正常加载
             ),
           ),
         );
@@ -1035,7 +1047,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
               stockCode: stock.tsCode,
               stockName: stock.name,
               availableStocks: availableStocks,
-              strategy: listName,  // 使用列表名称作为策略标识
+              strategy: 'volume_wave',  // 使用动量守恒策略，确保图表能正常加载
             ),
           ),
         );
