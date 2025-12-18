@@ -115,14 +115,19 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
 
       setState(() {
         // 正确访问嵌套的data.analysis字段
+        String rawAnalysis = '';
         if (result.containsKey('data') && result['data'] is Map<String, dynamic>) {
-          _analysisResult = result['data']['analysis'] ?? '分析报告内容为空';
-          debugPrint('已获取分析结果，长度: ${_analysisResult.length}');
+          rawAnalysis = result['data']['analysis'] ?? '分析报告内容为空';
+          debugPrint('已获取分析结果，长度: ${rawAnalysis.length}');
         } else {
           // 兼容可能的其他格式
-          _analysisResult = result['analysis'] ?? '分析报告内容为空';
-          debugPrint('使用备选字段获取分析结果，长度: ${_analysisResult.length}');
+          rawAnalysis = result['analysis'] ?? '分析报告内容为空';
+          debugPrint('使用备选字段获取分析结果，长度: ${rawAnalysis.length}');
         }
+        
+        // ✅ 清理思考过程标签和多余内容
+        _analysisResult = _cleanAnalysisContent(rawAnalysis);
+        debugPrint('清理后分析结果长度: ${_analysisResult.length}');
         _isLoading = false;
       });
     } catch (e) {
@@ -133,6 +138,30 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
         _isLoading = false;
       });
     }
+  }
+  
+  // 清理AI分析内容，移除思考过程标签
+  String _cleanAnalysisContent(String rawContent) {
+    if (rawContent.isEmpty) return rawContent;
+    
+    String cleaned = rawContent;
+    
+    // 移除思考过程标签（各种可能的格式）
+    cleaned = cleaned.replaceAll(RegExp(r'</?think>?', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'</think>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<think>', caseSensitive: false), '');
+    
+    // 移除可能的思考过程段落
+    cleaned = cleaned.replaceAll(RegExp(r'##?\s*思考过程.*?(?=##|$)', dotAll: true, multiLine: true), '');
+    cleaned = cleaned.replaceAll(RegExp(r'【思考过程】.*?(?=【|##|$)', dotAll: true, multiLine: true), '');
+    
+    // 移除连续的空行
+    cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n+'), '\n\n');
+    
+    // 移除开头和结尾的空白字符
+    cleaned = cleaned.trim();
+    
+    return cleaned;
   }
   
   // 加载最新财经资讯

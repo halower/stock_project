@@ -89,7 +89,8 @@ def get_completion_with_custom_params(
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
-        "temperature": temperature
+        "temperature": temperature,
+        "enable_thinking": False,  # 禁用思考过程，直接输出结论
     }
     
     # 添加其他自定义参数

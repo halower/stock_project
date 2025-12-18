@@ -213,8 +213,7 @@ class _AITradeAnalysisWidgetState extends State<AITradeAnalysisWidget> {
         ],
         'stream': false,
         'max_tokens': AIConfig.maxTokens,
-        'enable_thinking': true,
-        'thinking_budget': AIConfig.thinkingBudget,
+        'enable_thinking': false, // 禁用思考过程，直接输出结论
         'min_p': AIConfig.minP,
         'temperature': AIConfig.temperature,
         'top_p': AIConfig.topP,
@@ -884,8 +883,7 @@ $_analysisResult
         ],
         'stream': false,
         'max_tokens': AIConfig.maxTokens,
-        'enable_thinking': true,
-        'thinking_budget': AIConfig.thinkingBudget,
+        'enable_thinking': false, // 禁用思考过程，直接输出结论
         'min_p': AIConfig.minP,
         'temperature': AIConfig.temperature,
         'top_p': AIConfig.topP,

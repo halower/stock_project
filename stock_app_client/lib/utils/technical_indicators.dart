@@ -315,20 +315,20 @@ class TechnicalIndicators {
   /// [lows] 最低价列表
   /// [period] 回溯周期，默认20
   /// 返回 {support, resistance}
-  /// 计算支撑阻力位（专业版）
+  /// 计算支撑阻力位（专业版 - 优化算法）
   /// 基于多种方法综合判断，返回多个关键价位
   /// [highs] 最高价列表
   /// [lows] 最低价列表
   /// [closes] 收盘价列表
-  /// [period] 计算周期
+  /// [period] 计算周期（日线建议60天以上）
   /// 返回: {support1, support2, support3, resistance1, resistance2, resistance3}
   static Map<String, double> calculateSupportResistance(
     List<double> highs,
     List<double> lows, {
     List<double>? closes,
-    int period = 20,
+    int period = 60, // 改为60天，更适合日线分析
   }) {
-    if (highs.isEmpty || lows.isEmpty || highs.length < period) {
+    if (highs.isEmpty || lows.isEmpty || highs.length < 30) {
       return {
         'support': 0,
         'resistance': 0,
@@ -343,61 +343,137 @@ class TechnicalIndicators {
     
     final currentPrice = closes != null && closes.isNotEmpty ? closes.last : (highs.last + lows.last) / 2;
     
-    // 方法1：寻找局部高低点（波峰波谷）
-    final pivotHighs = _findPivotPoints(highs, period, true);
-    final pivotLows = _findPivotPoints(lows, period, false);
+    // 使用更长的历史数据来寻找关键价位
+    final lookbackPeriod = min(period, highs.length);
+    final start = max(0, highs.length - lookbackPeriod);
+    
+    // 方法1：寻找重要的波峰波谷（使用更大的lookback）
+    final pivotHighs = _findPivotPoints(highs.sublist(start), 8, true); // 使用8天判断波峰
+    final pivotLows = _findPivotPoints(lows.sublist(start), 8, false); // 使用8天判断波谷
     
     // 方法2：基于最近的高低点
-    final start = max(0, highs.length - period);
     final recentHighs = highs.sublist(start);
     final recentLows = lows.sublist(start);
     
     // 收集所有可能的阻力位（高于当前价）
     final resistanceCandidates = <double>[];
-    resistanceCandidates.addAll(pivotHighs.where((h) => h > currentPrice));
+    resistanceCandidates.addAll(pivotHighs.where((h) => h > currentPrice * 1.005)); // 至少高于当前价0.5%
     resistanceCandidates.add(recentHighs.reduce(max)); // 最近最高价
     
     // 收集所有可能的支撑位（低于当前价）
     final supportCandidates = <double>[];
-    supportCandidates.addAll(pivotLows.where((l) => l < currentPrice));
+    supportCandidates.addAll(pivotLows.where((l) => l < currentPrice * 0.995)); // 至少低于当前价0.5%
     supportCandidates.add(recentLows.reduce(min)); // 最近最低价
     
-    // 如果有收盘价，加入均线作为动态支撑阻力
+    // 方法3：加入均线作为动态支撑阻力（重要！）
     if (closes != null && closes.length >= 20) {
       final ma20 = calculateSMA(closes, 20);
       final ma60 = calculateSMA(closes, 60);
+      final ma120 = closes.length >= 120 ? calculateSMA(closes, 120) : null;
       
       if (ma20.last != null) {
         final ma20Value = ma20.last!;
-        if (ma20Value > currentPrice) {
+        if (ma20Value > currentPrice * 1.005) {
           resistanceCandidates.add(ma20Value);
-        } else if (ma20Value < currentPrice) {
+        } else if (ma20Value < currentPrice * 0.995) {
           supportCandidates.add(ma20Value);
         }
       }
       
       if (ma60.last != null) {
         final ma60Value = ma60.last!;
-        if (ma60Value > currentPrice) {
+        if (ma60Value > currentPrice * 1.005) {
           resistanceCandidates.add(ma60Value);
-        } else if (ma60Value < currentPrice) {
+        } else if (ma60Value < currentPrice * 0.995) {
           supportCandidates.add(ma60Value);
+        }
+      }
+      
+      if (ma120 != null && ma120.last != null) {
+        final ma120Value = ma120.last!;
+        if (ma120Value > currentPrice * 1.005) {
+          resistanceCandidates.add(ma120Value);
+        } else if (ma120Value < currentPrice * 0.995) {
+          supportCandidates.add(ma120Value);
         }
       }
     }
     
-    // 去重并排序
-    final uniqueResistances = resistanceCandidates.toSet().toList()..sort();
-    final uniqueSupports = supportCandidates.toSet().toList()..sort((a, b) => b.compareTo(a)); // 降序
+    // 方法4：识别整数关口（心理价位）
+    final nearestRoundNumbers = _findNearbyRoundNumbers(currentPrice);
+    for (final price in nearestRoundNumbers) {
+      if (price > currentPrice * 1.005) {
+        resistanceCandidates.add(price);
+      } else if (price < currentPrice * 0.995) {
+        supportCandidates.add(price);
+      }
+    }
     
-    // 选择最近的3个阻力位和支撑位
-    final resistance1 = uniqueResistances.isNotEmpty ? uniqueResistances.first : currentPrice * 1.05;
-    final resistance2 = uniqueResistances.length > 1 ? uniqueResistances[1] : currentPrice * 1.10;
-    final resistance3 = uniqueResistances.length > 2 ? uniqueResistances[2] : currentPrice * 1.15;
+    // 去重并按距离当前价排序
+    final uniqueResistances = resistanceCandidates.toSet().toList()
+      ..sort((a, b) => a.compareTo(b)); // 升序：最近的阻力位在前
     
-    final support1 = uniqueSupports.isNotEmpty ? uniqueSupports.first : currentPrice * 0.95;
-    final support2 = uniqueSupports.length > 1 ? uniqueSupports[1] : currentPrice * 0.90;
-    final support3 = uniqueSupports.length > 2 ? uniqueSupports[2] : currentPrice * 0.85;
+    final uniqueSupports = supportCandidates.toSet().toList()
+      ..sort((a, b) => b.compareTo(a)); // 降序：最近的支撑位在前
+    
+    // 选择最合理的支撑阻力位（优先选择距离当前价3-8%的位置）
+    double? findBestLevel(List<double> candidates, bool isResistance) {
+      if (candidates.isEmpty) return null;
+      
+      // 优先选择距离合理的价位（3-8%）
+      for (final candidate in candidates) {
+        final diff = ((candidate - currentPrice).abs() / currentPrice * 100);
+        if (diff >= 3 && diff <= 8) {
+          return candidate;
+        }
+      }
+      
+      // 如果没有3-8%范围的，选择最近的
+      return candidates.first;
+    }
+    
+    double resistance1, resistance2, resistance3;
+    double support1, support2, support3;
+    
+    // 阻力位：至少要高于当前价2%以上才有意义
+    if (uniqueResistances.isNotEmpty) {
+      resistance1 = findBestLevel(uniqueResistances, true) ?? uniqueResistances.first;
+      final remaining = uniqueResistances.where((r) => r > resistance1 * 1.01).toList();
+      resistance2 = remaining.isNotEmpty ? remaining.first : currentPrice * 1.10;
+      final remaining2 = remaining.where((r) => r > resistance2 * 1.01).toList();
+      resistance3 = remaining2.isNotEmpty ? remaining2.first : currentPrice * 1.15;
+    } else {
+      // 如果找不到合适的阻力位，使用合理的默认值
+      resistance1 = currentPrice * 1.05; // 5%
+      resistance2 = currentPrice * 1.10; // 10%
+      resistance3 = currentPrice * 1.15; // 15%
+    }
+    
+    // 支撑位：至少要低于当前价2%以上才有意义
+    if (uniqueSupports.isNotEmpty) {
+      support1 = findBestLevel(uniqueSupports, false) ?? uniqueSupports.first;
+      final remaining = uniqueSupports.where((s) => s < support1 * 0.99).toList();
+      support2 = remaining.isNotEmpty ? remaining.first : currentPrice * 0.93;
+      final remaining2 = remaining.where((s) => s < support2 * 0.99).toList();
+      support3 = remaining2.isNotEmpty ? remaining2.first : currentPrice * 0.88;
+    } else {
+      // 如果找不到合适的支撑位，使用合理的默认值
+      support1 = currentPrice * 0.95; // -5%
+      support2 = currentPrice * 0.92; // -8%
+      support3 = currentPrice * 0.88; // -12%
+    }
+    
+    // 🚨 关键修复：确保止损位不会离当前价太远
+    // 如果第1支撑位距离当前价超过8%，调整为当前价-5%
+    if ((currentPrice - support1) / currentPrice > 0.08) {
+      support1 = currentPrice * 0.95; // 强制设为-5%
+      print('⚠️ 支撑位调整：原值距离过远，调整为-5%');
+    }
+    
+    // 如果第2支撑位距离当前价超过10%，调整
+    if ((currentPrice - support2) / currentPrice > 0.10) {
+      support2 = currentPrice * 0.92; // 强制设为-8%
+    }
     
     return {
       'support': support1, // 最近支撑位（兼容旧版）
@@ -408,7 +484,47 @@ class TechnicalIndicators {
       'resistance1': resistance1,
       'resistance2': resistance2,
       'resistance3': resistance3,
+      // 附加信息：距离百分比
+      'support1_pct': ((support1 - currentPrice) / currentPrice * 100),
+      'resistance1_pct': ((resistance1 - currentPrice) / currentPrice * 100),
     };
+  }
+  
+  /// 寻找附近的整数关口（心理价位）
+  static List<double> _findNearbyRoundNumbers(double price) {
+    final results = <double>[];
+    
+    // 找出价格所在的数量级
+    if (price >= 100) {
+      // 100元以上：找10元的整数倍
+      final base = (price / 10).floor() * 10;
+      for (int i = -2; i <= 2; i++) {
+        final roundPrice = base + (i * 10);
+        if (roundPrice > 0 && (roundPrice - price).abs() / price < 0.15) {
+          results.add(roundPrice.toDouble());
+        }
+      }
+    } else if (price >= 10) {
+      // 10-100元：找5元的整数倍
+      final base = (price / 5).floor() * 5;
+      for (int i = -2; i <= 2; i++) {
+        final roundPrice = base + (i * 5);
+        if (roundPrice > 0 && (roundPrice - price).abs() / price < 0.15) {
+          results.add(roundPrice.toDouble());
+        }
+      }
+    } else {
+      // 10元以下：找1元的整数倍
+      final base = price.floor();
+      for (int i = -2; i <= 2; i++) {
+        final roundPrice = base + i;
+        if (roundPrice > 0 && (roundPrice - price).abs() / price < 0.15) {
+          results.add(roundPrice.toDouble());
+        }
+      }
+    }
+    
+    return results;
   }
   
   /// 寻找局部高低点（波峰波谷）

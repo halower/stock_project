@@ -502,10 +502,9 @@ class AIAssistantService {
           }
         ],
         'temperature': 0.7,
-        'max_tokens': 512,
+        'max_tokens': 1024, // 增加token以获得更完整的分析
         'stream': false,
-        'enable_thinking': true,
-        'thinking_budget': 4096,
+        'enable_thinking': false, // 禁用思考过程，直接输出结论
         'min_p': 0.05,
         'top_p': 0.7,
         'top_k': 50,
@@ -673,10 +672,9 @@ class AIAssistantService {
           }
         ],
         'temperature': 0.7,
-        'max_tokens': 512,
+        'max_tokens': 1024, // 增加token以获得更完整的分析
         'stream': false,
-        'enable_thinking': true,
-        'thinking_budget': 4096,
+        'enable_thinking': false, // 禁用思考过程，直接输出结论
         'min_p': 0.05,
         'top_p': 0.7,
         'top_k': 50,

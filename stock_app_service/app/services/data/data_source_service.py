@@ -53,8 +53,9 @@ def get_stock_history_tushare(stock_code: str, days: int = 120) -> List[Dict[str
             ts_code = f"{stock_code}.SH"
         elif stock_code.startswith('0') or stock_code.startswith('3'):
             ts_code = f"{stock_code}.SZ"
-        elif stock_code.startswith(('43', '83', '87', '88')):
-            ts_code = f"{stock_code}.BJ"  # 北交所
+        elif stock_code.startswith(('43', '83', '87', '88', '92')):
+            # 北交所：43、83、87、88开头是股票，92开头是指数
+            ts_code = f"{stock_code}.BJ"
         else:
             ts_code = f"{stock_code}.SZ"  # 默认深圳
         
@@ -65,8 +66,14 @@ def get_stock_history_tushare(stock_code: str, days: int = 120) -> List[Dict[str
         # 判断是否为ETF（5开头的上海ETF，1开头的深圳ETF）
         is_etf = stock_code.startswith(('5', '1')) and len(stock_code) == 6
         
-        # 获取历史数据 - ETF使用fund_daily接口，股票使用daily接口
-        if is_etf:
+        # 判断是否为指数（92开头的北交所指数，00/39开头的A股指数）
+        is_index = stock_code.startswith('92') or (stock_code.startswith(('00', '39')) and len(stock_code) == 6)
+        
+        # 获取历史数据 - 根据类型选择不同接口
+        if is_index:
+            logger.info(f"检测到指数 {stock_code}，使用index_daily接口")
+            df = pro.index_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+        elif is_etf:
             logger.info(f"检测到ETF {stock_code}，使用fund_daily接口")
             df = pro.fund_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
         else:

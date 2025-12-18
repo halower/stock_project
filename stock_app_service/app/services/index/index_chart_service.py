@@ -544,16 +544,26 @@ class IndexChartService:
             else:
                 vol_trend = "显著缩量"
             
-            # 8. 市场强度（基于连续涨跌）
+            # 8. 市场强度（基于连续涨跌）- 修复逻辑错误
             consecutive_up = 0
             consecutive_down = 0
+            
+            # 从最新的一天往前数，计算连续上涨或下跌天数
             for i in range(len(recent_5) - 1, -1, -1):
-                if recent_5.iloc[i]['pct_chg'] > 0:
+                pct_chg = recent_5.iloc[i]['pct_chg']
+                
+                if pct_chg > 0:
+                    # 如果当前是上涨，但之前已经在计算下跌天数，说明连续下跌中断
+                    if consecutive_down > 0:
+                        break
                     consecutive_up += 1
-                    break
-                elif recent_5.iloc[i]['pct_chg'] < 0:
+                elif pct_chg < 0:
+                    # 如果当前是下跌，但之前已经在计算上涨天数，说明连续上涨中断
+                    if consecutive_up > 0:
+                        break
                     consecutive_down += 1
                 else:
+                    # 如果是平盘（涨跌幅为0），中断连续计数
                     break
             
             return {

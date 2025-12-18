@@ -253,8 +253,8 @@ class StockAIAnalysisService:
         elif stock_code.startswith(('00', '30', '20')):
             # 深圳市场：00开头的主板，30开头的创业板，20开头的B股
             return f"{stock_code}.SZ"
-        elif stock_code.startswith(('43', '83', '87', '88')):
-            # 北交所：43、83、87、88开头
+        elif stock_code.startswith(('43', '83', '87', '88', '92')):
+            # 北交所：43、83、87、88开头是股票，92开头是指数
             return f"{stock_code}.BJ"
         else:
             # 默认深圳市场

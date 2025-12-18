@@ -1623,10 +1623,9 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
           }
         ],
         'temperature': 0.3, // 降低温度以获得更准确的分析
-        'max_tokens': 1024, // 增加token数以获得更详细分析
+        'max_tokens': 2048, // 增加token数以获得更详细分析
         'stream': false,
-        'enable_thinking': true,
-        'thinking_budget': 8192, // 增加思考预算让AI进行更深入分析
+        'enable_thinking': false, // 禁用思考过程，直接输出结论
         'min_p': 0.05,
         'top_p': 0.7,
         'top_k': 50,

@@ -869,25 +869,61 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     String? percentageText;
     Color? percentageColor;
     
-    // 从value中提取数字（去掉¥符号）
-    final priceMatch = RegExp(r'[\d.]+').firstMatch(value);
-    if (priceMatch != null && widget.stock.price != null) {
-      final price = double.tryParse(priceMatch.group(0)!);
-      if (price != null) {
-        final currentPrice = widget.stock.price!;
-        final percentage = ((price - currentPrice) / currentPrice * 100);
-        final absPercentage = percentage.abs();
-        
-        // 判断百分比是否合理
-        bool isReasonable = true;
-        if (label == '止损' && absPercentage > 10) {
-          isReasonable = false; // 止损超过10%不合理
+    // 首先尝试从AI分析结果中获取百分比（优先使用AI计算的，避免价格不一致）
+    final aiAnalysis = widget.stock.details['ai_analysis'];
+    if (aiAnalysis is Map) {
+      if (label == '止损' && aiAnalysis['stop_loss_pct'] != null) {
+        final pctValue = aiAnalysis['stop_loss_pct'];
+        if (pctValue is num) {
+          final pct = pctValue.toDouble();
+          percentageText = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
+          percentageColor = pct.abs() > 10 ? const Color(0xFFFF6B6B) : color;
+        } else if (pctValue is String) {
+          // 如果是字符串格式
+          final pct = double.tryParse(pctValue.replaceAll('%', '').replaceAll('+', ''));
+          if (pct != null) {
+            percentageText = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
+            percentageColor = pct.abs() > 10 ? const Color(0xFFFF6B6B) : color;
+          }
         }
-        
-        percentageText = '${percentage >= 0 ? '+' : ''}${percentage.toStringAsFixed(1)}%';
-        percentageColor = isReasonable 
-            ? color 
-            : const Color(0xFFFF6B6B); // 不合理用红色警告
+      } else if (label == '目标' && aiAnalysis['take_profit_pct'] != null) {
+        final pctValue = aiAnalysis['take_profit_pct'];
+        if (pctValue is num) {
+          final pct = pctValue.toDouble();
+          percentageText = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
+          percentageColor = color;
+        } else if (pctValue is String) {
+          final pct = double.tryParse(pctValue.replaceAll('%', '').replaceAll('+', ''));
+          if (pct != null) {
+            percentageText = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
+            percentageColor = color;
+          }
+        }
+      }
+    }
+    
+    // 如果AI没有返回百分比，则客户端计算（兜底方案）
+    if (percentageText == null) {
+      // 从value中提取数字（去掉¥符号）
+      final priceMatch = RegExp(r'[\d.]+').firstMatch(value);
+      if (priceMatch != null && widget.stock.price != null) {
+        final price = double.tryParse(priceMatch.group(0)!);
+        if (price != null) {
+          final currentPrice = widget.stock.price!;
+          final percentage = ((price - currentPrice) / currentPrice * 100);
+          final absPercentage = percentage.abs();
+          
+          // 判断百分比是否合理
+          bool isReasonable = true;
+          if (label == '止损' && absPercentage > 10) {
+            isReasonable = false; // 止损超过10%不合理
+          }
+          
+          percentageText = '${percentage >= 0 ? '+' : ''}${percentage.toStringAsFixed(1)}%';
+          percentageColor = isReasonable 
+              ? color 
+              : const Color(0xFFFF6B6B); // 不合理用红色警告
+        }
       }
     }
     
