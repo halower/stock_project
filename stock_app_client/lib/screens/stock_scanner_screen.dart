@@ -28,69 +28,75 @@ class StockScannerScreen extends StatefulWidget {
         },
       ),
       // 备选池按钮
-      Padding(
-        padding: const EdgeInsets.only(bottom: 4.0),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 4.0),
-          child: ValueListenableBuilder<int>(
-            valueListenable: WatchlistService.watchlistChangeNotifier,
-            builder: (context, changeCount, child) {
-              return FutureBuilder<int>(
-                future: WatchlistService.getWatchlistCount(),
-                builder: (context, snapshot) {
-                  final count = snapshot.data ?? 0;
-                  return Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.bookmark_border),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const WatchlistScreen()),
-                          );
-                        },
-                        tooltip: '我的备选池',
-                      ),
-                      if (count > 0)
-                        Positioned(
-                          right: 6,
-                          top: 6,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(10),
+      Container(
+        alignment: Alignment.center,
+        child: ValueListenableBuilder<int>(
+          valueListenable: WatchlistService.watchlistChangeNotifier,
+          builder: (context, changeCount, child) {
+            return FutureBuilder<int>(
+              future: WatchlistService.getWatchlistCount(),
+              builder: (context, snapshot) {
+                final count = snapshot.data ?? 0;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.stars_rounded),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const WatchlistScreen()),
+                        );
+                      },
+                      tooltip: '我的备选池',
+                    ),
+                    if (count > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF6B6B), Color(0xFFFF5252)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Text(
-                              count > 99 ? '99+' : count.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                              textAlign: TextAlign.center,
+                            ],
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            count > 99 ? '99+' : count.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
       // AI筛选按钮
-      Padding(
-        padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 4.0),
-          child: const AIFilterPanel(),
-        ),
+      Container(
+        alignment: Alignment.center,
+        margin: const EdgeInsets.only(right: 8.0),
+        child: const AIFilterPanel(),
       ),
     ];
   }
@@ -124,11 +130,12 @@ class StockScannerScreen extends StatefulWidget {
         break;
     }
     
-    return Padding(
+    return Container(
+      alignment: Alignment.center,
       padding: const EdgeInsets.only(right: 4.0),
       child: Tooltip(
         message: tooltip,
-        child: Icon(icon, color: color, size: 20),
+        child: Icon(icon, color: color, size: 22),
       ),
     );
   }

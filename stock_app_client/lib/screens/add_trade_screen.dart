@@ -746,7 +746,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: Theme.of(context).colorScheme.copyWith(
-                primary: const Color(0xFF6366F1),
+                primary: const Color(0xFF2563EB),  // 主题蓝色
                 onPrimary: Colors.white,
                 surface: Colors.white,
                 onSurface: Colors.black87,
@@ -772,7 +772,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('开仓时间已设置为：${picked.year}年${picked.month}月${picked.day}日 (${_getWeekdayName(picked.weekday)})'),
-              backgroundColor: const Color(0xFF6366F1),
+              backgroundColor: const Color(0xFF2563EB),  // 主题蓝色
               duration: const Duration(seconds: 2),
             ),
           );
@@ -1596,7 +1596,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
               交易理由：${_reasonController.text}
               用户判断的市场阶段：${_getMarketPhaseText()}
               预期趋势强度：${_getTrendStrengthText()}
-              预期入场难度：${_getDifficultyLabel(_selectedEntryDifficulty)}
+              预期入场质量：${_getDifficultyLabel(_selectedEntryDifficulty)}
               
               === 交易策略 ===
               策略名称：${_selectedStrategy?.name ?? '未指定'}
@@ -1858,7 +1858,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
         trend = "顶部阶段";
       } else {
         // 横盘整理：上涨下跌天数相当，价格在一定区间内波动
-        trend = "盘整阶段";
+        trend = "趋势阶段";
       }
 
       return trend;
@@ -1891,7 +1891,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
       case MarketPhase.topping:
         return '顶部阶段';
       case MarketPhase.consolidation:
-        return '盘整阶段';
+        return '趋势阶段';
       default:
         return '未知阶段';
     }
@@ -2716,7 +2716,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
       } else if (marketPhase == MarketPhase.buildingBottom) {
         baseSuccessRate += 5;
       } else if (marketPhase == MarketPhase.consolidation) {
-        baseSuccessRate += 2; // 盘整阶段买入风险中性，略微加分
+        baseSuccessRate += 2; // 趋势阶段买入风险中性，略微加分
       } else if (marketPhase == MarketPhase.topping) {
         baseSuccessRate -= 10;
       } else {
@@ -2731,7 +2731,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
       } else if (marketPhase == MarketPhase.topping) {
         baseSuccessRate += 5;
       } else if (marketPhase == MarketPhase.consolidation) {
-        baseSuccessRate += 2; // 盘整阶段卖出风险中性，略微加分
+        baseSuccessRate += 2; // 趋势阶段卖出风险中性，略微加分
       } else if (marketPhase == MarketPhase.buildingBottom) {
         baseSuccessRate -= 10;
       } else {
@@ -2765,7 +2765,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
       baseSuccessRate += 5;
     }
 
-    // 根据入场难度调整
+    // 根据入场质量调整
     if (entryDifficulty == EntryDifficulty.veryHard) {
       baseSuccessRate -= 10;
     } else if (entryDifficulty == EntryDifficulty.veryEasy) {
@@ -2817,8 +2817,8 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
         strengths.add("筑底阶段买入，有较好的风险收益比");
         suggestions.add("筑底阶段建议分批建仓降低风险");
       } else if (marketPhase == MarketPhase.consolidation) {
-        suggestions.add("盘整阶段买入，建议等待突破确认信号");
-        suggestions.add("盘整期间建议分批建仓，控制单次投入");
+        suggestions.add("趋势阶段买入，建议等待突破确认信号");
+        suggestions.add("趋势阶段建议分批建仓，控制单次投入");
       } else if (marketPhase == MarketPhase.topping) {
         warnings.add("顶部区域买入风险较高，建议谨慎");
       } else {
@@ -2836,8 +2836,8 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
       } else if (marketPhase == MarketPhase.topping) {
         strengths.add("顶部区域卖出，把握高位机会");
       } else if (marketPhase == MarketPhase.consolidation) {
-        suggestions.add("盘整阶段卖出，建议等待跌破确认信号");
-        suggestions.add("盘整期间可分批减仓，保留核心仓位");
+        suggestions.add("趋势阶段卖出，建议等待跌破确认信号");
+        suggestions.add("趋势阶段可分批减仓，保留核心仓位");
       } else if (marketPhase == MarketPhase.buildingBottom) {
         warnings.add("筑底阶段卖出风险较高，可能错过反弹");
       } else {
@@ -2908,10 +2908,10 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
       strengths.add("风险熔断设置合理，有效控制单笔亏损");
     }
 
-    // 6. 根据入场难度评估
+    // 6. 根据入场质量评估
     if (entryDifficulty == EntryDifficulty.veryHard ||
         entryDifficulty == EntryDifficulty.hard) {
-      suggestions.add("入场难度较高，建议耐心等待更明确的信号");
+      suggestions.add("入场质量较低，建议耐心等待更明确的信号");
     }
 
     // 7. 评估触发价类型
@@ -3132,7 +3132,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
 * 盈亏比调整: ${profitRiskRatio >= 3 ? '+10%' : profitRiskRatio >= 2 ? '+5%' : profitRiskRatio < 1 ? '-10%' : '0%'}
 * ATR设置调整: ${atrValue > 0 ? (atrMultiple >= 1.0 && atrMultiple <= 2.5 ? '+5%' : '-5%') : '0%'}
 * 仓位比例调整: ${positionPercentage <= 5 ? '+5%' : positionPercentage > 20 ? '-10%' : '0%'}
-* 入场难度调整: ${entryDifficulty == EntryDifficulty.veryHard ? '-10%' : entryDifficulty == EntryDifficulty.veryEasy ? '+5%' : '0%'}
+* 入场质量调整: ${entryDifficulty == EntryDifficulty.veryHard ? '-10%' : entryDifficulty == EntryDifficulty.veryEasy ? '+5%' : '0%'}
 * 价格设置合理性: ${priceSettingReasonable ? '0%' : '-15%'}
 * 最终成功率: $successRate
 """;
@@ -3191,9 +3191,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 if (_showKLineChart) const SizedBox(height: 20),
                 _buildModernMarketPhaseSection(),
                 const SizedBox(height: 20),
+                _buildModernStrategySection(),
+                const SizedBox(height: 20),
                 _buildModernTradeDetailsSection(),
                 const SizedBox(height: 20),
-                _buildModernStrategySection(),
+                // 交易详情总结卡片（在填写完止损止盈后显示）
+                _buildTradeSummarySection(),
                 const SizedBox(height: 20),
                 _buildModernRiskControlSection(),
                 const SizedBox(height: 20),
@@ -3729,220 +3732,6 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF059669)],  // 绿色 - 交易参数
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.3),
-                        blurRadius: 8,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.tune,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '交易参数设置',
-                    style: TextStyle(
-                          fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                      ),
-                      Text(
-                        'Trading Parameters',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // 添加实时预览区域
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('实时预览',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildPreviewItem(
-                          '交易方向',
-                          _tradeType == TradeType.buy ? '买入' : '卖出',
-                          _tradeType == TradeType.buy
-                              ? const Color(0xFFDC2626) // A股红色：买入
-                              : const Color(0xFF059669), // A股绿色：卖出
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildPreviewItem(
-                          '入场价格',
-                          _planPriceController.text.isEmpty
-                              ? '未设置'
-                              : '¥${_planPriceController.text}',
-                          const Color(0xFF667EEA),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildPreviewItem(
-                          '计划数量',
-                          _planQuantityController.text.isEmpty
-                              ? '未设置'
-                              : '${_planQuantityController.text}股',
-                          const Color(0xFF667EEA),
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildPreviewItem(
-                          '预计金额',
-                          _positionAmount > 0
-                              ? '¥${_positionAmount.toStringAsFixed(2)}'
-                              : '未计算',
-                          const Color(0xFF667EEA),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_positionAmount > 0) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildPreviewItem(
-                            '仓位比例',
-                            _positionPercentageController.text.isEmpty
-                                ? '未设置'
-                                : '${_positionPercentageController.text}%',
-                            const Color(0xFF667EEA),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildPreviewItem(
-                            '账户总额',
-                            _accountTotalController.text.isEmpty
-                                ? '未设置'
-                                : '¥${_accountTotalController.text}',
-                            const Color(0xFF667EEA),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (_stopLossPriceController.text.isNotEmpty &&
-                      _takeProfitPriceController.text.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildPreviewItem(
-                            '止损价格',
-                            '¥${_stopLossPriceController.text}',
-                            const Color(0xFF059669), // A股绿色：止损
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildPreviewItem(
-                            '止盈价格',
-                            '¥${_takeProfitPriceController.text}',
-                            const Color(0xFFDC2626), // A股红色：止盈价
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildPreviewItem(
-                            '盈亏比',
-                            _profitRiskRatio > 0
-                                ? _profitRiskRatio.toStringAsFixed(2)
-                                : '未计算',
-                            _profitRiskRatio >= 3
-                                ? const Color(0xFFDC2626) // A股红色：好的盈亏比
-                                : _profitRiskRatio > 0
-                                    ? Colors.orange
-                                    : Colors.grey,
-                          ),
-                        ),
-                        if (_useAtrForStopLoss &&
-                            _atrValueController.text.isNotEmpty)
-                          Expanded(
-                            child: _buildPreviewItem(
-                              'ATR倍数',
-                              '${_atrMultipleController.text}倍',
-                              const Color(0xFF667EEA),
-                            ),
-                          ),
-                      ],
-                    ),
-                    // 添加盈亏预测显示
-                    if (_canCalculateProfitLoss()) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildPreviewItem(
-                              '最大盈利',
-                              '+¥${_calculateMaxProfit().toStringAsFixed(2)}',
-                              const Color(0xFFDC2626), // A股红色：盈利
-                              Icons.trending_up,
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildPreviewItem(
-                              '最大亏损',
-                              '-¥${_calculateMaxLoss().toStringAsFixed(2)}',
-                              const Color(0xFF059669), // A股绿色：亏损
-                              Icons.trending_down,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
             // 开仓时间选择
             Container(
               decoration: BoxDecoration(
@@ -3961,7 +3750,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],  // 主题蓝色
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -3990,7 +3779,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 ),
                 trailing: const Icon(
                   Icons.calendar_today,
-                  color: Color(0xFF6366F1),
+                  color: Color(0xFF2563EB),  // 主题蓝色
                   size: 20,
                 ),
                 onTap: _showDatePicker,
@@ -4000,7 +3789,8 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             const SizedBox(height: 16),
 
             // 进场类型选择
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   '进场类型:',
@@ -4009,65 +3799,39 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 16),
-                ChoiceChip(
-                  label: const Text('突破'),
-                  selected: _selectedTriggerType == PriceTriggerType.breakout,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() {
-                        _selectedTriggerType = PriceTriggerType.breakout;
-                      });
-                    }
-                  },
-                  selectedColor: const Color(0xFFEF4444).withOpacity(0.2),
-                  backgroundColor: Colors.grey.shade100,
-                  labelStyle: TextStyle(
-                    color: _selectedTriggerType == PriceTriggerType.breakout 
-                        ? const Color(0xFFEF4444) 
-                        : Colors.grey.shade700,
-                    fontWeight: _selectedTriggerType == PriceTriggerType.breakout 
-                        ? FontWeight.w600 
-                        : FontWeight.normal,
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 1,
+                    ),
                   ),
-                  side: BorderSide(
-                    color: _selectedTriggerType == PriceTriggerType.breakout 
-                        ? const Color(0xFFEF4444) 
-                        : Colors.grey.shade300,
-                    width: 1.5,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ChoiceChip(
-                  label: const Text('回调'),
-                  selected: _selectedTriggerType == PriceTriggerType.pullback,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() {
-                        _selectedTriggerType = PriceTriggerType.pullback;
-                      });
-                    }
-                  },
-                  selectedColor: const Color(0xFF3B82F6).withOpacity(0.2),
-                  backgroundColor: Colors.grey.shade100,
-                  labelStyle: TextStyle(
-                    color: _selectedTriggerType == PriceTriggerType.pullback 
-                        ? const Color(0xFF3B82F6) 
-                        : Colors.grey.shade700,
-                    fontWeight: _selectedTriggerType == PriceTriggerType.pullback 
-                        ? FontWeight.w600 
-                        : FontWeight.normal,
-                  ),
-                  side: BorderSide(
-                    color: _selectedTriggerType == PriceTriggerType.pullback 
-                        ? const Color(0xFF3B82F6) 
-                        : Colors.grey.shade300,
-                    width: 1.5,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildToggleButton('突破', _selectedTriggerType == PriceTriggerType.breakout, () {
+                          setState(() {
+                            _selectedTriggerType = PriceTriggerType.breakout;
+                          });
+                        }),
+                      ),
+                      Expanded(
+                        child: _buildToggleButton('回调', _selectedTriggerType == PriceTriggerType.pullback, () {
+                          setState(() {
+                            _selectedTriggerType = PriceTriggerType.pullback;
+                          });
+                        }),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
 
             // 现代化仓位计算方式选择
@@ -4084,9 +3848,14 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 const SizedBox(height: 8),
                 Container(
                   width: double.infinity,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF667EEA).withOpacity(0.1),
+                    color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -4224,11 +3993,14 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     decoration: const InputDecoration(
                       labelText: '风险比例(%)',
                       hintText: '输入可承受的风险比例（默认2%）',
-                      prefixIcon: Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                      prefixIcon: Icon(Icons.info_outline, color: Color(0xFFFFB800), size: 20),  // 金色信息图标
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                    ],
                     onChanged: (_) {
                       _calculatePosition();
                     },
@@ -4252,11 +4024,14 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   decoration: const InputDecoration(
                     labelText: '仓位比例(%)',
                     hintText: '输入仓位比例',
-                    prefixIcon: Icon(Icons.pie_chart, color: Colors.deepOrange, size: 20),
+                    prefixIcon: Icon(Icons.pie_chart, color: Color(0xFFFFB800), size: 20),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   ),
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
                   onChanged: (_) {
                     _calculatePosition();
                   },
@@ -4281,11 +4056,14 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 decoration: const InputDecoration(
                   labelText: '计划数量',
                   hintText: '输入计划数量',
-                  prefixIcon: Icon(Icons.format_list_numbered, color: Colors.purple, size: 20),
+                  prefixIcon: Icon(Icons.format_list_numbered, color: Color(0xFF2563EB), size: 20),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
                 enabled: _positionCalculationMethod == PositionCalculationMethod.quantity, // 使用仓位比例时禁用手动输入
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -4373,17 +4151,10 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFF59E0B).withOpacity(0.12), // 金色渐变
-                      const Color(0xFFD97706).withOpacity(0.08),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFFF59E0B).withOpacity(0.3),
+                    color: const Color(0xFFE2E8F0),
                     width: 1,
                   ),
                 ),
@@ -4498,9 +4269,9 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                         labelText: 'ATR值',
                         hintText: 'ATR值（自动计算）',
                         border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.analytics, color: Colors.blue, size: 20),
+                        prefixIcon: const Icon(Icons.analytics, color: Color(0xFF2563EB), size: 20),
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.refresh, color: Colors.blue),
+                          icon: const Icon(Icons.refresh, color: Color(0xFF2563EB)),
                           tooltip: '自动获取ATR值',
                           onPressed: _stockCodeController.text.isNotEmpty
                               ? () => _fetchStockATR(_stockCodeController.text)
@@ -4518,10 +4289,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                         labelText: 'ATR倍数',
                         hintText: '输入ATR倍数',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.tune, color: Colors.orange, size: 20),
-                        helperText: '建议值: 0.8-2.0倍',
+                        prefixIcon: Icon(Icons.tune, color: Color(0xFFFFB800), size: 20),
                       ),
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                      ],
                       onChanged: (value) {
                         // 检查是否输入了过大的值
                         final double? parsedValue = double.tryParse(value);
@@ -4567,11 +4340,6 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                           // 触发风险熔断重新计算
                         });
                       },
-                      // 限制输入长度，防止输入过大的值
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d{0,1}(\.\d{0,2})?$')),
-                      ],
                     ),
                   ),
                 ],
@@ -4586,9 +4354,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 labelText: '入场价格',
                 hintText: '输入入场价格',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.login, color: Colors.green, size: 20),
+                prefixIcon: Icon(Icons.login, color: Color(0xFF2563EB), size: 20),
               ),
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+              ],
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return '请输入入场价格';
@@ -4611,6 +4382,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             ),
             const SizedBox(height: 16),
 
+            // 紧凑版K线图 - 用于辅助止损止盈设置
+            if (_stockHistoryData.isNotEmpty) ...[
+              _buildCompactKLineChart(),
+              const SizedBox(height: 16),
+            ],
+
             Row(
               children: [
                 Expanded(
@@ -4620,9 +4397,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                       labelText: '止损价格',
                       hintText: '输入止损价格',
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.trending_down, color: Colors.red, size: 20),
+                      prefixIcon: Icon(Icons.trending_down, color: Color(0xFF10B981), size: 20),  // A股绿色（下跌）
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+                    ],
                     enabled: !_useAtrForStopLoss, // 使用ATR时禁用手动输入
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -4636,7 +4416,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     onChanged: (_) {
                       _calculateProfitRiskRatio();
                       _updateATRToleranceRatio();
-                      setState(() {}); // 触发风险熔断重新计算
+                      setState(() {}); // 触发风险熔断重新计算和K线图更新
                     },
                   ),
                 ),
@@ -4648,9 +4428,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                       labelText: '止盈价格',
                       hintText: '输入止盈价格',
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.trending_up, color: Color(0xFFDC2626), size: 20),
+                      prefixIcon: Icon(Icons.trending_up, color: Color(0xFFEF4444), size: 20),  // A股红色（上涨）
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+                    ],
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return '请输入止盈价格';
@@ -4662,7 +4445,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     },
                     onChanged: (_) {
                       _calculateProfitRiskRatio();
-                      setState(() {}); // 触发风险熔断重新计算
+                      setState(() {}); // 触发风险熔断重新计算和K线图更新
                     },
                   ),
                 ),
@@ -4842,12 +4625,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],  // 紫色 - 策略
+                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],  // 主题蓝色 - 策略
                     ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                        color: const Color(0xFF2563EB).withOpacity(0.2),
                         blurRadius: 8,
                         spreadRadius: 0,
                       ),
@@ -4909,6 +4692,22 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   onChanged: (value) {
                     setState(() {
                       _selectedStrategy = value;
+                      // 自动填充进场理由和风险控制
+                      if (value != null) {
+                        // 填充进场理由（开仓理由）
+                        if (value.entryConditions.isNotEmpty) {
+                          _reasonController.text = value.entryConditions.join('\n');
+                        }
+                        // 填充风险控制到备注
+                        if (value.riskControls.isNotEmpty) {
+                          String riskControlText = '风险控制：\n' + value.riskControls.join('\n');
+                          if (_notesController.text.isNotEmpty) {
+                            _notesController.text = _notesController.text + '\n\n' + riskControlText;
+                          } else {
+                            _notesController.text = riskControlText;
+                          }
+                        }
+                      }
                     });
                   },
                   validator: (value) {
@@ -5327,12 +5126,12 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],  // 靛蓝色 - 市场分析
+                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],  // 主题蓝色 - 市场分析
                     ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6366F1).withOpacity(0.3),
+                        color: const Color(0xFF2563EB).withOpacity(0.2),
                         blurRadius: 8,
                         spreadRadius: 0,
                       ),
@@ -5404,8 +5203,8 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     phaseIcon = Icons.trending_up;
                     break;
                   case MarketPhase.consolidation:
-                    phaseName = '盘整阶段';
-                    phaseIcon = Icons.horizontal_rule;
+                    phaseName = '趋势阶段';
+                    phaseIcon = Icons.show_chart;
                     break;
                   case MarketPhase.topping:
                     phaseName = '做头阶段';
@@ -5484,13 +5283,13 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
 
             const SizedBox(height: 20),
 
-            // 入场难度
+            // 入场质量
             Row(
               children: [
-                const Icon(Icons.stars, size: 18, color: Color(0xFF1E40AF)),
+                const Icon(Icons.stars, size: 18, color: Color(0xFFFFB800)),
                 const SizedBox(width: 8),
             const Text(
-                  '入场难度评级',
+                  '入场质量评级',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -5500,46 +5299,95 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             ),
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.1),
-                    _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.05),
-                  ],
-                ),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.3),
-                  width: 1.5,
+                  color: const Color(0xFFE2E8F0),
+                  width: 1,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: _getDifficultyColor(_selectedEntryDifficulty),
-                      inactiveTrackColor: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.3),
-                      thumbColor: _getDifficultyColor(_selectedEntryDifficulty),
-                      overlayColor: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.2),
-                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
-                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
-                    ),
-                    child: Slider(
-              value: _selectedEntryDifficulty.index.toDouble(),
-              min: 0,
-              max: EntryDifficulty.values.length - 1.0,
-              divisions: EntryDifficulty.values.length - 1,
-              label: _getDifficultyLabel(_selectedEntryDifficulty),
-              onChanged: (value) {
-                setState(() {
-                  _selectedEntryDifficulty =
-                      EntryDifficulty.values[value.toInt()];
-                });
-              },
-            ),
+                  // 质量等级按钮组
+                  Row(
+                    children: EntryDifficulty.values.map((difficulty) {
+                      final isSelected = _selectedEntryDifficulty == difficulty;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedEntryDifficulty = difficulty;
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(
+                              right: difficulty != EntryDifficulty.values.last ? 8 : 0,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              gradient: isSelected
+                                  ? LinearGradient(
+                                      colors: [
+                                        _getDifficultyColor(difficulty),
+                                        _getDifficultyColor(difficulty).withOpacity(0.8),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : null,
+                              color: isSelected ? null : const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? _getDifficultyColor(difficulty)
+                                    : const Color(0xFFE2E8F0),
+                                width: isSelected ? 2 : 1,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: _getDifficultyColor(difficulty).withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  _getDifficultyStars(difficulty),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: isSelected ? Colors.white : _getDifficultyColor(difficulty),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _getDifficultyShortLabel(difficulty),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    color: isSelected ? Colors.white : const Color(0xFF64748B),
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 12),
             Row(
@@ -5563,26 +5411,54 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  // 当前选择的难度显示
+                  // 当前选中质量说明
                   Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.2), 
-                          _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.1)
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.3)),
+                      border: Border.all(
+                        color: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.2),
+                      ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildAnimatedDifficultyStars(_selectedEntryDifficulty),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _getDifficultyColor(_selectedEntryDifficulty).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.emoji_events_outlined,
+                            color: _getDifficultyColor(_selectedEntryDifficulty),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '入场质量: ${_getDifficultyLabel(_selectedEntryDifficulty)}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: _getDifficultyColor(_selectedEntryDifficulty),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _getDifficultyDescription(_selectedEntryDifficulty),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -5607,6 +5483,51 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
         return '较低质量';
       case EntryDifficulty.veryHard:
         return '低质量';
+    }
+  }
+
+  String _getDifficultyShortLabel(EntryDifficulty difficulty) {
+    switch (difficulty) {
+      case EntryDifficulty.veryEasy:
+        return '极高';
+      case EntryDifficulty.easy:
+        return '高';
+      case EntryDifficulty.medium:
+        return '中等';
+      case EntryDifficulty.hard:
+        return '较低';
+      case EntryDifficulty.veryHard:
+        return '低';
+    }
+  }
+
+  String _getDifficultyStars(EntryDifficulty difficulty) {
+    switch (difficulty) {
+      case EntryDifficulty.veryEasy:
+        return '⭐⭐⭐⭐⭐';
+      case EntryDifficulty.easy:
+        return '⭐⭐⭐⭐';
+      case EntryDifficulty.medium:
+        return '⭐⭐⭐';
+      case EntryDifficulty.hard:
+        return '⭐⭐';
+      case EntryDifficulty.veryHard:
+        return '⭐';
+    }
+  }
+
+  String _getDifficultyDescription(EntryDifficulty difficulty) {
+    switch (difficulty) {
+      case EntryDifficulty.veryEasy:
+        return '信号明确，形态完美，成功率高';
+      case EntryDifficulty.easy:
+        return '信号清晰，符合策略条件';
+      case EntryDifficulty.medium:
+        return '信号一般，需要密切观察';
+      case EntryDifficulty.hard:
+        return '信号较弱，建议谨慎操作';
+      case EntryDifficulty.veryHard:
+        return '信号模糊，不建议入场';
     }
   }
 
@@ -6171,7 +6092,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                       isCurved: true,
                       barWidth: 1.5,
                       dotData: const FlDotData(show: false),
-                      color: Colors.purple,
+                      color: Color(0xFF2563EB),  // 主题蓝色
                     ),
 
                     // 计划价格水平线
@@ -6917,6 +6838,621 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
 
 
 
+  // 紧凑版K线图 - 用于止损止盈设置区域
+  Widget _buildCompactKLineChart() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    // 获取有效的K线数据
+    final validKLineData = _stockHistoryData.where((data) {
+      return data['open'] != null &&
+          data['high'] != null &&
+          data['low'] != null &&
+          data['close'] != null;
+    }).toList();
+
+    if (validKLineData.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // 计算价格范围
+    double minPrice = double.infinity;
+    double maxPrice = 0;
+    
+    for (var data in validKLineData) {
+      final low = data['low'] as double? ?? 0.0;
+      final high = data['high'] as double? ?? 0.0;
+      if (low > 0 && low < minPrice) minPrice = low;
+      if (high > maxPrice) maxPrice = high;
+    }
+
+    // 获取止损止盈价格
+    final stopLossPrice = double.tryParse(_stopLossPriceController.text) ?? 0.0;
+    final takeProfitPrice = double.tryParse(_takeProfitPriceController.text) ?? 0.0;
+    final entryPrice = double.tryParse(_planPriceController.text) ?? 0.0;
+
+    // 扩展价格范围以包含止损止盈线
+    if (stopLossPrice > 0 && stopLossPrice < minPrice) minPrice = stopLossPrice;
+    if (stopLossPrice > maxPrice) maxPrice = stopLossPrice;
+    if (takeProfitPrice > 0 && takeProfitPrice < minPrice) minPrice = takeProfitPrice;
+    if (takeProfitPrice > maxPrice) maxPrice = takeProfitPrice;
+    if (entryPrice > 0 && entryPrice < minPrice) minPrice = entryPrice;
+    if (entryPrice > maxPrice) maxPrice = entryPrice;
+
+    final priceRange = maxPrice - minPrice;
+    final padding = priceRange * 0.1;
+    final minY = minPrice - padding;
+    final maxY = maxPrice + padding;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.show_chart,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '价格走势参考',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '最近${validKLineData.length}天',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // 价格标签说明
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                if (entryPrice > 0)
+                  _buildPriceLegend('入场', const Color(0xFF2563EB)),
+                if (stopLossPrice > 0)
+                  _buildPriceLegend('止损', const Color(0xFF10B981)),
+                if (takeProfitPrice > 0)
+                  _buildPriceLegend('止盈', const Color(0xFFEF4444)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: LineChart(
+                LineChartData(
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipRoundedRadius: 8,
+                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final index = spot.x.toInt();
+                          if (index >= 0 && index < validKLineData.length) {
+                            final data = validKLineData[index];
+                            String dateStr = '';
+                            if (data.containsKey('trade_date') && data['trade_date'] != null) {
+                              dateStr = data['trade_date'].toString();
+                            } else if (data.containsKey('date') && data['date'] != null) {
+                              dateStr = data['date'].toString();
+                            }
+                            return LineTooltipItem(
+                              '${dateStr}\n价格: ${spot.y.toStringAsFixed(2)}',
+                              const TextStyle(color: Colors.white, fontSize: 12),
+                            );
+                          }
+                          return null;
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: (maxY - minY) / 4,
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                        strokeWidth: 0.5,
+                      );
+                    },
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 22,
+                        interval: (validKLineData.length / 4).ceil().toDouble(),
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index >= 0 && index < validKLineData.length) {
+                            final data = validKLineData[index];
+                            String dateStr = '';
+                            if (data.containsKey('trade_date') && data['trade_date'] != null) {
+                              dateStr = data['trade_date'].toString();
+                            } else if (data.containsKey('date') && data['date'] != null) {
+                              dateStr = data['date'].toString();
+                            }
+                            if (dateStr.length >= 8) {
+                              dateStr = dateStr.substring(4, 8);
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                dateStr,
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            );
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 45,
+                        interval: (maxY - minY) / 4,
+                        getTitlesWidget: (value, meta) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Text(
+                              value.toStringAsFixed(2),
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(
+                      color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                    ),
+                  ),
+                  minX: 0,
+                  maxX: validKLineData.length.toDouble() - 1,
+                  minY: minY,
+                  maxY: maxY,
+                  lineBarsData: [
+                    // 收盘价线
+                    LineChartBarData(
+                      spots: List.generate(validKLineData.length, (index) {
+                        final data = validKLineData[index];
+                        return FlSpot(
+                          index.toDouble(),
+                          data['close'] as double,
+                        );
+                      }),
+                      isCurved: false,
+                      barWidth: 1.5,
+                      dotData: const FlDotData(show: false),
+                      color: isDarkMode ? Colors.blue[300] : Colors.blue,
+                    ),
+                  ],
+                  extraLinesData: ExtraLinesData(
+                    horizontalLines: [
+                      // 入场价格线
+                      if (entryPrice > 0)
+                        HorizontalLine(
+                          y: entryPrice,
+                          color: const Color(0xFF2563EB),
+                          strokeWidth: 1.5,
+                          dashArray: [5, 5],
+                          label: HorizontalLineLabel(
+                            show: true,
+                            alignment: Alignment.topRight,
+                            padding: const EdgeInsets.only(right: 4, bottom: 4),
+                            style: const TextStyle(
+                              color: Color(0xFF2563EB),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            labelResolver: (line) => entryPrice.toStringAsFixed(2),
+                          ),
+                        ),
+                      // 止损价格线
+                      if (stopLossPrice > 0)
+                        HorizontalLine(
+                          y: stopLossPrice,
+                          color: const Color(0xFF10B981),
+                          strokeWidth: 1.5,
+                          dashArray: [5, 5],
+                          label: HorizontalLineLabel(
+                            show: true,
+                            alignment: Alignment.topRight,
+                            padding: const EdgeInsets.only(right: 4, bottom: 4),
+                            style: const TextStyle(
+                              color: Color(0xFF10B981),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            labelResolver: (line) => stopLossPrice.toStringAsFixed(2),
+                          ),
+                        ),
+                      // 止盈价格线
+                      if (takeProfitPrice > 0)
+                        HorizontalLine(
+                          y: takeProfitPrice,
+                          color: const Color(0xFFEF4444),
+                          strokeWidth: 1.5,
+                          dashArray: [5, 5],
+                          label: HorizontalLineLabel(
+                            show: true,
+                            alignment: Alignment.topRight,
+                            padding: const EdgeInsets.only(right: 4, bottom: 4),
+                            style: const TextStyle(
+                              color: Color(0xFFEF4444),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            labelResolver: (line) => takeProfitPrice.toStringAsFixed(2),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 价格图例标签
+  Widget _buildPriceLegend(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 2,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 交易详情总结卡片
+  Widget _buildTradeSummarySection() {
+    // 检查是否有足够的数据显示
+    final hasEntryPrice = _planPriceController.text.isNotEmpty;
+    final hasStopLoss = _stopLossPriceController.text.isNotEmpty;
+    final hasTakeProfit = _takeProfitPriceController.text.isNotEmpty;
+    final hasQuantity = _planQuantityController.text.isNotEmpty;
+
+    // 如果没有填写关键数据，不显示此section
+    if (!hasEntryPrice && !hasStopLoss && !hasTakeProfit) {
+      return const SizedBox.shrink();
+    }
+
+    // 获取数据
+    final entryPrice = double.tryParse(_planPriceController.text) ?? 0.0;
+    final stopLossPrice = double.tryParse(_stopLossPriceController.text) ?? 0.0;
+    final takeProfitPrice = double.tryParse(_takeProfitPriceController.text) ?? 0.0;
+    final quantity = int.tryParse(_planQuantityController.text) ?? 0;
+
+    // 计算百分比
+    double stopLossPercent = 0.0;
+    double takeProfitPercent = 0.0;
+
+    if (entryPrice > 0) {
+      if (_tradeType == TradeType.buy) {
+        // 买入：止损在下方，止盈在上方
+        if (stopLossPrice > 0) {
+          stopLossPercent = ((entryPrice - stopLossPrice) / entryPrice) * 100;
+        }
+        if (takeProfitPrice > 0) {
+          takeProfitPercent = ((takeProfitPrice - entryPrice) / entryPrice) * 100;
+        }
+      } else {
+        // 卖出：止损在上方，止盈在下方
+        if (stopLossPrice > 0) {
+          stopLossPercent = ((stopLossPrice - entryPrice) / entryPrice) * 100;
+        }
+        if (takeProfitPrice > 0) {
+          takeProfitPercent = ((entryPrice - takeProfitPrice) / entryPrice) * 100;
+        }
+      }
+    }
+
+    // 计算金额
+    final totalAmount = entryPrice * quantity;
+    final stopLossAmount = stopLossPrice > 0 ? (entryPrice - stopLossPrice).abs() * quantity : 0.0;
+    final takeProfitAmount = takeProfitPrice > 0 ? (takeProfitPrice - entryPrice).abs() * quantity : 0.0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题栏
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Color(0xFFF1F5F9),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.assessment_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  '交易详情',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 内容区域
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // 交易类型和方向
+                _buildSummaryRow(
+                  icon: _tradeType == TradeType.buy ? Icons.arrow_upward : Icons.arrow_downward,
+                  iconColor: _tradeType == TradeType.buy ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  iconBgColor: _tradeType == TradeType.buy 
+                      ? const Color(0xFFEF4444).withOpacity(0.1)
+                      : const Color(0xFF10B981).withOpacity(0.1),
+                  label: '交易方向',
+                  value: _tradeType == TradeType.buy ? '做多（买入）' : '做空（卖出）',
+                  valueColor: _tradeType == TradeType.buy ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                ),
+                const SizedBox(height: 12),
+
+                // 入场价格
+                if (hasEntryPrice)
+                  _buildSummaryRow(
+                    icon: Icons.login_rounded,
+                    iconColor: const Color(0xFF3B82F6),
+                    iconBgColor: const Color(0xFF3B82F6).withOpacity(0.1),
+                    label: '入场价格',
+                    value: '¥${entryPrice.toStringAsFixed(2)}',
+                    valueColor: const Color(0xFF1E293B),
+                  ),
+                if (hasEntryPrice) const SizedBox(height: 12),
+
+                // 止损价格和百分比
+                if (hasStopLoss && stopLossPrice > 0)
+                  _buildSummaryRow(
+                    icon: Icons.trending_down_rounded,
+                    iconColor: const Color(0xFF10B981),
+                    iconBgColor: const Color(0xFF10B981).withOpacity(0.1),
+                    label: '止损价格',
+                    value: '¥${stopLossPrice.toStringAsFixed(2)}',
+                    subValue: '-${stopLossPercent.toStringAsFixed(2)}%',
+                    subValueColor: const Color(0xFF10B981),
+                    amount: stopLossAmount > 0 ? '亏损: ¥${stopLossAmount.toStringAsFixed(2)}' : null,
+                    valueColor: const Color(0xFF1E293B),
+                  ),
+                if (hasStopLoss && stopLossPrice > 0) const SizedBox(height: 12),
+
+                // 止盈价格和百分比
+                if (hasTakeProfit && takeProfitPrice > 0)
+                  _buildSummaryRow(
+                    icon: Icons.trending_up_rounded,
+                    iconColor: const Color(0xFFEF4444),
+                    iconBgColor: const Color(0xFFEF4444).withOpacity(0.1),
+                    label: '止盈价格',
+                    value: '¥${takeProfitPrice.toStringAsFixed(2)}',
+                    subValue: '+${takeProfitPercent.toStringAsFixed(2)}%',
+                    subValueColor: const Color(0xFFEF4444),
+                    amount: takeProfitAmount > 0 ? '盈利: ¥${takeProfitAmount.toStringAsFixed(2)}' : null,
+                    valueColor: const Color(0xFF1E293B),
+                  ),
+                if (hasTakeProfit && takeProfitPrice > 0) const SizedBox(height: 12),
+
+                // 数量和金额
+                if (hasQuantity && quantity > 0)
+                  _buildSummaryRow(
+                    icon: Icons.format_list_numbered_rounded,
+                    iconColor: const Color(0xFFF59E0B),
+                    iconBgColor: const Color(0xFFF59E0B).withOpacity(0.1),
+                    label: '交易数量',
+                    value: '$quantity 股',
+                    subValue: totalAmount > 0 ? '¥${totalAmount.toStringAsFixed(2)}' : null,
+                    valueColor: const Color(0xFF1E293B),
+                  ),
+                if (hasQuantity && quantity > 0) const SizedBox(height: 12),
+
+                // 盈亏比
+                if (_profitRiskRatio > 0)
+                  _buildSummaryRow(
+                    icon: Icons.balance_rounded,
+                    iconColor: _getRiskRewardBorderColor(),
+                    iconBgColor: _getRiskRewardBorderColor().withOpacity(0.1),
+                    label: '盈亏比',
+                    value: _profitRiskRatio.toStringAsFixed(2),
+                    subValue: _getRiskRewardLabel(),
+                    subValueColor: _getRiskRewardBorderColor(),
+                    valueColor: _getRiskRewardBorderColor(),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 总结行构建方法
+  Widget _buildSummaryRow({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String label,
+    required String value,
+    String? subValue,
+    Color? subValueColor,
+    String? amount,
+    Color? valueColor,
+  }) {
+    return Row(
+      children: [
+        // 图标
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconBgColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 12),
+        
+        // 标签
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        
+        // 值和百分比
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: valueColor ?? const Color(0xFF1E293B),
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  if (subValue != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (subValueColor ?? Colors.grey).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: (subValueColor ?? Colors.grey).withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        subValue,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: subValueColor ?? Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (amount != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  amount,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   // 智能风险熔断设置
   Widget _buildRiskMeltdownSection() {
     // 自动计算风险百分比
@@ -7569,19 +8105,33 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? const Color(0xFF667EEA) 
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          gradient: isSelected 
+              ? const LinearGradient(
+                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSelected ? null : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: const Color(0xFF2563EB).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
         ),
         child: Text(
           text,
+          textAlign: TextAlign.center,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF667EEA),
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 13,
+            letterSpacing: 0.2,
           ),
         ),
       ),
