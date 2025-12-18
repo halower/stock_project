@@ -662,9 +662,15 @@ class ModernTradeRecordCard extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDarkMode 
-                        ? Colors.grey.shade800.withOpacity(0.3)
-                        : Colors.grey.shade50,
+                        ? Colors.grey.shade800.withOpacity(0.2)
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDarkMode 
+                          ? Colors.grey.shade700.withOpacity(0.3)
+                          : const Color(0xFFE2E8F0),
+                      width: 1,
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -974,28 +980,43 @@ class ModernTradeRecordCard extends StatelessWidget {
     }
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: textColor.withOpacity(0.3),
-          width: 1,
+        gradient: LinearGradient(
+          colors: [
+            bgColor,
+            bgColor.withOpacity(0.7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: textColor.withOpacity(0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: textColor.withOpacity(0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: textColor),
-          const SizedBox(width: 6),
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: 4),
           Text(
             text,
-        style: TextStyle(
+            style: TextStyle(
               color: textColor,
-          fontWeight: FontWeight.bold,
-              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              letterSpacing: 0.3,
             ),
-        ),
+          ),
         ],
       ),
     );
@@ -1046,12 +1067,19 @@ class ModernTradeRecordCard extends StatelessWidget {
   
   Widget _buildModernChip(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withOpacity(0.4),
           width: 1,
         ),
       ),
@@ -1059,8 +1087,9 @@ class ModernTradeRecordCard extends StatelessWidget {
         text,
         style: TextStyle(
           fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.bold,
           color: color,
+          letterSpacing: 0.2,
         ),
       ),
     );

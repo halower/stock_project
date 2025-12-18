@@ -24,7 +24,7 @@ android {
         applicationId = "com.example.stock_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = flutter.minSdkVersion  // 明确指定 minSdk，修复 SharedPreferences 通道错误
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName

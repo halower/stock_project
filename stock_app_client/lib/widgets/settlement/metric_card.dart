@@ -23,31 +23,24 @@ class MetricCard extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        // 专业金融风格渐变背景
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  color.withOpacity(0.15),
-                  color.withOpacity(0.05),
-                ]
-              : [
-                  color.withOpacity(0.08),
-                  color.withOpacity(0.03),
-                ],
-        ),
-        borderRadius: BorderRadius.circular(14),
+        color: isDarkMode
+            ? Colors.grey.shade800.withOpacity(0.3)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: color.withOpacity(isDarkMode ? 0.3 : 0.2),
-          width: 1.5,
+          color: isDarkMode
+              ? Colors.grey.shade700.withOpacity(0.3)
+              : const Color(0xFFE2E8F0),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 6,
+            color: isDarkMode
+                ? Colors.black.withOpacity(0.2)
+                : Colors.grey.withOpacity(0.06),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -57,15 +50,15 @@ class MetricCard extends StatelessWidget {
         children: [
           // 图标容器
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(isDarkMode ? 0.2 : 0.15),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               color: color,
-              size: 20,
+              size: 18,
             ),
           ),
           const SizedBox(height: 8),
@@ -75,9 +68,9 @@ class MetricCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
+              color: isDarkMode ? Colors.grey[400] : const Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -89,9 +82,9 @@ class MetricCard extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+              color: isDarkMode ? Colors.white : Colors.black87,
               letterSpacing: 0.2,
             ),
             textAlign: TextAlign.center,

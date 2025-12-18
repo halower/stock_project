@@ -27,28 +27,23 @@ class TradeAnalysisCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1F2937).withOpacity(0.8),
-                  const Color(0xFF111827).withOpacity(0.9),
+                  const Color(0xFF2C2C2E),
+                  const Color(0xFF1C1C1E),
                 ]
               : [
+                  Colors.white,
                   const Color(0xFFFAFAFA),
-                  const Color(0xFFF5F5F5),
                 ],
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDarkMode
-              ? const Color(0xFF374151).withOpacity(0.5)
-              : const Color(0xFFE5E7EB),
-          width: 1.5,
-        ),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: isDarkMode
                 ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.15),
+                : Colors.grey.withOpacity(0.08),
             blurRadius: 20,
             offset: const Offset(0, 8),
+            spreadRadius: 0,
           ),
         ],
       ),
@@ -105,23 +100,24 @@ class TradeAnalysisCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isDarkMode
-                  ? [
-                      const Color(0xFF3B82F6).withOpacity(0.3),
-                      const Color(0xFF2563EB).withOpacity(0.2),
-                    ]
-                  : [
-                      const Color(0xFF93C5FD).withOpacity(0.5),
-                      const Color(0xFF60A5FA).withOpacity(0.4),
-                    ],
+            gradient: const LinearGradient(
+              colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3B82F6).withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 0,
+              ),
+            ],
           ),
-          child: Icon(
+          child: const Icon(
             Icons.analytics_outlined,
-            color: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-            size: 24,
+            color: Colors.white,
+            size: 22,
           ),
         ),
         const SizedBox(width: 12),
@@ -130,7 +126,7 @@ class TradeAnalysisCard extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+            color: isDarkMode ? Colors.white : Colors.black87,
           ),
         ),
       ],

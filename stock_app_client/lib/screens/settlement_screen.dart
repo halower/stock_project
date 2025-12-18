@@ -125,11 +125,11 @@ class _SettlementScreenState extends State<SettlementScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : null,
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('交易结算'),
-        elevation: isDarkMode ? 0 : 1,
-        backgroundColor: isDarkMode ? const Color(0xFF1A1A1A) : null,
+        elevation: isDarkMode ? 0 : 0,
+        backgroundColor: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -170,23 +170,33 @@ class _SettlementScreenState extends State<SettlementScreen> {
             end: Alignment.bottomRight,
             colors: isDarkMode 
               ? [
-                  const Color(0xFF1F2937).withOpacity(0.8),
-                  const Color(0xFF111827).withOpacity(0.9),
+                  const Color(0xFF2C2C2E),
+                  const Color(0xFF1C1C1E),
                 ]
               : [
-                  const Color(0xFFF8FAFC),
-                  const Color(0xFFF1F5F9),
+                  Colors.white,
+                  const Color(0xFFFAFAFA),
                 ],
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: isDarkMode 
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+              spreadRadius: 0,
+            ),
+          ],
         ),
-          child: Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isDarkMode ? Colors.blue[300]! : Colors.blue[600]!,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF3B82F6),
                 ),
               ),
               const SizedBox(height: 16),
@@ -194,6 +204,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 '正在加载K线数据...',
                 style: TextStyle(
                   fontSize: 16,
+                  fontWeight: FontWeight.w500,
                   color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
                 ),
               ),
@@ -212,35 +223,52 @@ class _SettlementScreenState extends State<SettlementScreen> {
             end: Alignment.bottomRight,
             colors: isDarkMode 
               ? [
-                  const Color(0xFF1F2937).withOpacity(0.8),
-                  const Color(0xFF111827).withOpacity(0.9),
+                  const Color(0xFF2C2C2E),
+                  const Color(0xFF1C1C1E),
                 ]
               : [
-                  const Color(0xFFF8FAFC),
-                  const Color(0xFFF1F5F9),
+                  Colors.white,
+                  const Color(0xFFFAFAFA),
                 ],
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: isDarkMode 
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+              spreadRadius: 0,
+            ),
+          ],
         ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-              Icon(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
                   Icons.candlestick_chart_outlined,
                   size: 48,
                   color: isDarkMode ? Colors.grey[400] : Colors.grey[500],
+                ),
               ),
               const SizedBox(height: 20),
-                Text(
-                  '暂无K线数据',
-                  style: TextStyle(
+              Text(
+                '暂无K线数据',
+                style: TextStyle(
                   color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  ),
                 ),
-                const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 8),
               Text(
                 '无法获取历史价格数据',
                 style: TextStyle(
@@ -249,22 +277,54 @@ class _SettlementScreenState extends State<SettlementScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton.icon(
-                  onPressed: _loadKLineData,
-                icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('重新加载'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode ? Colors.blue[700] : Colors.blue[600],
-                  foregroundColor: Colors.white,
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF3B82F6).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _loadKLineData,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh, size: 18, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            '重新加载',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ],
+              ),
+            ],
           ),
         ),
       );
     }
     
-    // 简化的K线图表显示
+    // 简化的K线图表显示 - 现代化设计
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -272,45 +332,99 @@ class _SettlementScreenState extends State<SettlementScreen> {
           end: Alignment.bottomRight,
           colors: isDarkMode 
             ? [
-                const Color(0xFF1F2937).withOpacity(0.8),
-                const Color(0xFF111827).withOpacity(0.9),
+                const Color(0xFF2C2C2E),
+                const Color(0xFF1C1C1E),
               ]
             : [
-                const Color(0xFFF8FAFC),
-                const Color(0xFFF1F5F9),
+                Colors.white,
+                const Color(0xFFFAFAFA),
               ],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+                ? Colors.black.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 图表标题
+            // 图表标题 - 现代化
             Row(
               children: [
-                Icon(
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF3B82F6).withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
                     Icons.candlestick_chart,
-                    color: isDarkMode ? Colors.blue[300] : Colors.blue[600],
-                    size: 24,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
-            Text(
-              'K线走势图',
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'K线走势图',
                         style: TextStyle(
                           fontSize: 18,
-                fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
-              ),
-            ),
-                const Spacer(),
-            Text(
-                  '${_kLineData.length}天数据',
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const Text(
+                        'Price Chart',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-              ),
+                          fontSize: 11,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF3B82F6).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '${_kLineData.length}天',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -331,7 +445,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
     );
   }
   
-  // 结算表单构建方法（保留原有代码，待后续提取为组件）
+  // 结算表单构建方法（现代化设计）
   Widget _buildSettlementForm() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
@@ -342,15 +456,25 @@ class _SettlementScreenState extends State<SettlementScreen> {
           end: Alignment.bottomRight,
           colors: isDarkMode 
             ? [
-                const Color(0xFF1F2937).withOpacity(0.8),
-                const Color(0xFF111827).withOpacity(0.9),
+                const Color(0xFF2C2C2E),
+                const Color(0xFF1C1C1E),
               ]
             : [
-                const Color(0xFFF8FAFC),
-                const Color(0xFFF1F5F9),
+                Colors.white,
+                const Color(0xFFFAFAFA),
               ],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+                ? Colors.black.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -359,26 +483,59 @@ class _SettlementScreenState extends State<SettlementScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 标题
+              // 标题部分 - 现代化
               Row(
-                  children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    color: isDarkMode ? Colors.blue[300] : Colors.blue[600],
-                        size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '交易结算',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 0,
+                        ),
+                      ],
                     ),
-                  ],
+                    child: const Icon(
+                      Icons.receipt_long,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '交易结算',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const Text(
+                          'Settlement Information',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               
               // ✅ 如果已结算，显示交易摘要组件
               if (widget.tradePlan.actualPrice != null && widget.tradePlan.actualQuantity != null)
@@ -389,118 +546,131 @@ class _SettlementScreenState extends State<SettlementScreen> {
                   ],
                 ),
               
-              // 出场价格（卖出价格）
-              TextFormField(
-                controller: _priceController,
-                decoration: InputDecoration(
-                  labelText: '出场价格',
-                  hintText: '请输入卖出价格',
-                  prefixIcon: const Icon(Icons.price_change_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // 出场价格和数量 - 双列布局
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildModernTextField(
+                      controller: _priceController,
+                      label: '出场价格',
+                      hint: '输入价格',
+                      icon: Icons.monetization_on,
+                      iconColor: const Color(0xFF3B82F6),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return '请输入价格';
+                        if (double.tryParse(value) == null) return '价格无效';
+                        return null;
+                      },
+                    ),
                   ),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '请输入出场价格';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return '请输入有效的价格';
-                  }
-                  return null;
-                },
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildModernTextField(
+                      controller: _quantityController,
+                      label: '出场数量',
+                      hint: '输入数量',
+                      icon: Icons.layers,
+                      iconColor: const Color(0xFF3B82F6),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return '请输入数量';
+                        if (int.tryParse(value) == null) return '数量无效';
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               
-              // 出场数量（卖出数量）
-              TextFormField(
-                controller: _quantityController,
-                decoration: InputDecoration(
-                  labelText: '出场数量',
-                  hintText: '请输入卖出数量',
-                  prefixIcon: const Icon(Icons.format_list_numbered_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // 佣金和税费 - 双列布局
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildModernTextField(
+                      controller: _commissionController,
+                      label: '佣金',
+                      hint: '输入佣金',
+                      icon: Icons.account_balance_wallet,
+                      iconColor: const Color(0xFF64748B),
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '请输入出场数量';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return '请输入有效的数量';
-                  }
-                  return null;
-                },
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildModernTextField(
+                      controller: _taxController,
+                      label: '税费',
+                      hint: '输入税费',
+                      icon: Icons.receipt,
+                      iconColor: const Color(0xFF64748B),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              
-              // 佣金
-              TextFormField(
-                controller: _commissionController,
-                decoration: InputDecoration(
-                  labelText: '佣金',
-                  hintText: '请输入佣金',
-                  prefixIcon: const Icon(Icons.account_balance_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                ),
-              const SizedBox(height: 16),
-              
-              // 税费
-              TextFormField(
-                controller: _taxController,
-                decoration: InputDecoration(
-                  labelText: '税费',
-                  hintText: '请输入税费',
-                  prefixIcon: const Icon(Icons.receipt_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                ),
               const SizedBox(height: 16),
               
               // 备注
-              TextFormField(
+              _buildModernTextField(
                 controller: _notesController,
-                decoration: InputDecoration(
-                  labelText: '备注',
-                  hintText: '请输入备注信息',
-                  prefixIcon: const Icon(Icons.note_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                label: '备注',
+                hint: '请输入备注信息',
+                icon: Icons.note_alt,
+                iconColor: const Color(0xFF64748B),
                 maxLines: 3,
               ),
               const SizedBox(height: 24),
               
-              // 提交按钮
-              SizedBox(
+              // 提交按钮 - 现代化设计
+              Container(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _handleSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDarkMode ? Colors.blue[700] : Colors.blue[600],
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: const Text(
-                    '确认结算',
-                        style: TextStyle(
-                      fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: _handleSubmit,
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            '确认结算',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -508,6 +678,117 @@ class _SettlementScreenState extends State<SettlementScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // 现代化输入框
+  Widget _buildModernTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required Color iconColor,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                icon,
+                size: 16,
+                color: iconColor,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          validator: validator,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: isDarkMode ? Colors.white : Colors.black87,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: isDarkMode 
+                ? Colors.grey[850]?.withOpacity(0.3)
+                : const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey[700]! : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey[700]! : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: iconColor,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: Color(0xFFEF4444),
+                width: 1,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: Color(0xFFEF4444),
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            errorStyle: const TextStyle(
+              fontSize: 11,
+              height: 1,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

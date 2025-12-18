@@ -26,31 +26,23 @@ class StockInfoCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: isDarkMode
               ? [
-                  const Color(0xFF1E3A8A).withOpacity(0.3),
-                  const Color(0xFF1E40AF).withOpacity(0.2),
-                  const Color(0xFF1D4ED8).withOpacity(0.1),
+                  const Color(0xFF2C2C2E),
+                  const Color(0xFF1C1C1E),
                 ]
               : [
-                  const Color(0xFFF0F9FF),
-                  const Color(0xFFE0F2FE),
-                  const Color(0xFFBAE6FD).withOpacity(0.3),
+                  Colors.white,
+                  const Color(0xFFFAFAFA),
                 ],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: isDarkMode
-                ? Colors.blue.withOpacity(0.1)
-                : Colors.blue.withOpacity(0.08),
+                ? Colors.black.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.08),
             blurRadius: 20,
             offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: isDarkMode
-                ? Colors.black.withOpacity(0.2)
-                : Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
         ],
       ),
@@ -84,92 +76,66 @@ class StockInfoCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 股票名称和代码
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDarkMode
-                        ? [
-                            const Color(0xFF1E40AF).withOpacity(0.3),
-                            const Color(0xFF3B82F6).withOpacity(0.2),
-                          ]
-                        : [
-                            const Color(0xFFDBEAFE),
-                            const Color(0xFFBFDBFE),
-                          ],
+              Row(
+                children: [
+                  // 股票图标
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF3B82F6).withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.candlestick_chart,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDarkMode
-                        ? const Color(0xFF3B82F6).withOpacity(0.5)
-                        : const Color(0xFF60A5FA).withOpacity(0.5),
-                    width: 1.5,
+                  const SizedBox(width: 16),
+                  
+                  // 股票名称和代码
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tradePlan.stockName,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode
+                                ? Colors.white
+                                : Colors.black87,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          tradePlan.stockCode,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: isDarkMode
+                                ? Colors.grey[400]
+                                : const Color(0xFF64748B),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isDarkMode ? Colors.blue : Colors.blue.shade300)
-                          .withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // 股票图标
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? const Color(0xFF3B82F6).withOpacity(0.2)
-                            : const Color(0xFF60A5FA).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.candlestick_chart,
-                        color: isDarkMode
-                            ? const Color(0xFF60A5FA)
-                            : const Color(0xFF2563EB),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    
-                    // 股票名称和代码
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tradePlan.stockName,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: isDarkMode
-                                  ? Colors.white
-                                  : const Color(0xFF1E40AF),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            tradePlan.stockCode,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: isDarkMode
-                                  ? Colors.grey[400]
-                                  : const Color(0xFF64748B),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ],
           ),
