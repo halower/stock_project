@@ -140,26 +140,47 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
     }
   }
   
-  // 清理AI分析内容，移除思考过程标签
+  // 清理AI分析内容，彻底移除所有思考过程
   String _cleanAnalysisContent(String rawContent) {
     if (rawContent.isEmpty) return rawContent;
     
     String cleaned = rawContent;
     
-    // 移除思考过程标签（各种可能的格式）
+    // 1. 移除 <think>...</think> 标签及其内容（最常见格式）
+    cleaned = cleaned.replaceAll(RegExp(r'<think>.*?</think>', caseSensitive: false, dotAll: true), '');
+    
+    // 2. 移除单独的 </think> 或 <think> 标签
     cleaned = cleaned.replaceAll(RegExp(r'</?think>?', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'</think>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'<think>', caseSensitive: false), '');
     
-    // 移除可能的思考过程段落
-    cleaned = cleaned.replaceAll(RegExp(r'##?\s*思考过程.*?(?=##|$)', dotAll: true, multiLine: true), '');
-    cleaned = cleaned.replaceAll(RegExp(r'【思考过程】.*?(?=【|##|$)', dotAll: true, multiLine: true), '');
+    // 3. 移除 "思考过程" 章节（## 或 ### 开头）
+    cleaned = cleaned.replaceAll(RegExp(r'#{1,3}\s*思考过程.*?(?=#{1,3}|\Z)', caseSensitive: false, dotAll: true, multiLine: true), '');
     
-    // 移除连续的空行
+    // 4. 移除 "【思考过程】" 段落
+    cleaned = cleaned.replaceAll(RegExp(r'【思考过程】.*?(?=【|##|\Z)', caseSensitive: false, dotAll: true, multiLine: true), '');
+    
+    // 5. 移除 "2. 思考过程：" 这种格式
+    cleaned = cleaned.replaceAll(RegExp(r'\d+\.\s*思考过程[：:].+?(?=\d+\.|##|\Z)', caseSensitive: false, dotAll: true, multiLine: true), '');
+    
+    // 6. 移除 "思考：" 开头的段落
+    cleaned = cleaned.replaceAll(RegExp(r'思考[：:].+?(?=\n\n|##|\Z)', caseSensitive: false, dotAll: true, multiLine: true), '');
+    
+    // 7. 移除包含 "thinking" 的英文标记
+    cleaned = cleaned.replaceAll(RegExp(r'</?thinking>?', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<thinking>.*?</thinking>', caseSensitive: false, dotAll: true), '');
+    
+    // 8. 移除 "分析思路" 或 "分析逻辑" 章节（如果包含）
+    cleaned = cleaned.replaceAll(RegExp(r'#{1,3}\s*(分析思路|分析逻辑|思路分析).*?(?=#{1,3}|\Z)', caseSensitive: false, dotAll: true, multiLine: true), '');
+    
+    // 9. 移除多余的空行（超过2个连续换行）
     cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n+'), '\n\n');
     
-    // 移除开头和结尾的空白字符
+    // 10. 移除开头的空白字符和结尾的空白字符
     cleaned = cleaned.trim();
+    
+    // 11. 如果开头还有残留的标签，再次清理
+    if (cleaned.startsWith(RegExp(r'</?think', caseSensitive: false))) {
+      cleaned = cleaned.replaceFirst(RegExp(r'^</?think>?\s*', caseSensitive: false), '');
+    }
     
     return cleaned;
   }

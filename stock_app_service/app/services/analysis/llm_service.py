@@ -90,8 +90,24 @@ def get_completion_with_custom_params(
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
-        "enable_thinking": False,  # 禁用思考过程，直接输出结论
     }
+    
+    # 智能添加思考控制参数（仅对支持的模型）
+    # 硅基流动的推理模型（QwQ、DeepSeek-R1等）支持思考控制
+    thinking_models = [
+        'QwQ', 'qwq',  # Qwen推理模型
+        'DeepSeek-R1', 'deepseek-r1', 'DeepSeek-R', 'deepseek-r',  # DeepSeek推理模型
+        'R1-Distill', 'r1-distill',  # R1蒸馏版本
+    ]
+    
+    # 检查模型名称是否包含推理模型关键词
+    is_thinking_model = any(keyword in model for keyword in thinking_models)
+    
+    if is_thinking_model:
+        # 对于支持思考的模型，只设置 enable_thinking=False
+        # 不设置 thinking_budget，让API使用默认值
+        payload["enable_thinking"] = False
+        logger.info(f"检测到推理模型 {model}，已设置 enable_thinking=False")
     
     # 添加其他自定义参数
     for key, value in kwargs.items():
