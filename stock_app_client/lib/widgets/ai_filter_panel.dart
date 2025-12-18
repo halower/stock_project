@@ -124,14 +124,29 @@ class _AIFilterPanelState extends State<AIFilterPanel> {
           // 保存Overlay的setState函数以便在进度流监听器中使用
           _overlaySetState = setStateOverlay;
           
-          return Positioned(
-            top: position.dy + size.height,
-            right: 8,
-            width: MediaQuery.of(context).size.width * 0.85,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(12),
-              child: _buildPopupContent(setStateOverlay),
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              // 点击背景区域关闭弹框
+              _removeOverlay();
+            },
+            child: Stack(
+              children: [
+                Positioned(
+                  top: position.dy + size.height,
+                  right: 8,
+                  width: MediaQuery.of(context).size.width * 0.85,
+                  child: GestureDetector(
+                    // 阻止点击事件冒泡到背景
+                    onTap: () {},
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(12),
+                      child: _buildPopupContent(setStateOverlay),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         }

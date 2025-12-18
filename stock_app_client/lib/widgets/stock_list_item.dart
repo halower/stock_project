@@ -183,10 +183,10 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
       animation: _shimmerAnimation,
       builder: (context, child) {
     return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Material(
         color: Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
         elevation: 0,
       child: InkWell(
         onTap: () {
@@ -201,61 +201,41 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
             ),
           );
         },
-              borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            children: [
-                  // 背景光晕效果
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: CustomPaint(
-                        painter: _ShimmerPainter(
-                          animation: _shimmerAnimation.value,
-                          color: _getPriceColor().withOpacity(0.1),
-                          isDarkMode: isDarkMode,
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  // 主内容容器
-              Container(
+              borderRadius: BorderRadius.circular(16),
+          child: Container(
             decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: isDarkMode
                             ? [
-                                const Color(0xFF1A1F2E).withOpacity(0.95),
-                                const Color(0xFF0F1419).withOpacity(0.98),
+                                const Color(0xFF1E1E2E).withOpacity(0.98),
+                                const Color(0xFF1A1A28).withOpacity(1.0),
                               ]
                             : [
-                                Colors.white.withOpacity(0.95),
-                                const Color(0xFFFAFBFC).withOpacity(0.98),
+                                const Color(0xFFFFFFFF),
+                                const Color(0xFFFAFBFD),
                               ],
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                        width: 1.5,
-                        color: _getPriceColor().withOpacity(0.4), // 增加边框不透明度
+                        width: 1,
+                        color: isDarkMode 
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.black.withOpacity(0.06),
               ),
               boxShadow: [
                 BoxShadow(
-                          color: _getPriceColor().withOpacity(0.25), // 增加阴影不透明度
-                          blurRadius: 16, // 增加模糊
-                          spreadRadius: 1,
-                          offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                          color: Colors.black.withOpacity(isDarkMode ? 0.4 : 0.08), // 增加深度
-                          blurRadius: 24,
-                          spreadRadius: 0,
-                          offset: const Offset(0, 8),
+                  color: isDarkMode 
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-                    padding: const EdgeInsets.all(14),
-          child: Column(
+            padding: const EdgeInsets.all(16),
+            child: Column(
             children: [
                 // 主要信息行
               Row(
@@ -634,58 +614,10 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                 ],
               ],
             ),
-              ),
-              
-                  // 行业标识条 - 左边缘彩色条带（带脉冲效果）
-              if (widget.stock.industry != null)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: _buildIndustryStripe(),
-                ),
-                  
-                  // 顶部科技光效 - 增强
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(14),
-                        topRight: Radius.circular(14),
-                      ),
-                      child: Container(
-                        height: 3, // 增加高度
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.transparent,
-                              _getPriceColor().withOpacity(0.8), // 增加不透明度
-                              _getPriceColor(), // 中心完全不透明
-                              _getPriceColor().withOpacity(0.8),
-                              Colors.transparent,
-                            ],
-                            stops: const [0.0, 0.3, 0.5, 0.7, 1.0],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _getPriceColor().withOpacity(0.5),
-                              blurRadius: 8,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
-        );
+        ),
+      ),
+    );
       },
     );
   }
