@@ -69,9 +69,8 @@ class WatchlistItem {
       else if (prefix == '900' || prefix == '200') {
         return 'B股';
       }
-      // ETF（通常以51、15开头）
-      else if (prefix == '510' || prefix == '511' || prefix == '512' || prefix == '513' || 
-               prefix == '515' || prefix == '518' || prefix == '159') {
+      // ETF（5开头的上海ETF，15开头的深圳ETF）- 与后端逻辑保持一致
+      else if (stockCode.startsWith('5') || stockCode.startsWith('15')) {
         return 'ETF';
       }
     }
@@ -79,9 +78,15 @@ class WatchlistItem {
     // 根据市场代码推断
     switch (marketCode.toUpperCase()) {
       case 'SH':
-        return stockCode.startsWith('688') ? '科创板' : '主板';
+        // 上海：688=科创板，5开头=ETF，其他=主板
+        if (stockCode.startsWith('688')) return '科创板';
+        if (stockCode.startsWith('5')) return 'ETF';
+        return '主板';
       case 'SZ':
-        return stockCode.startsWith('300') ? '创业板' : '主板';
+        // 深圳：300=创业板，15开头=ETF，其他=主板
+        if (stockCode.startsWith('300')) return '创业板';
+        if (stockCode.startsWith('15')) return 'ETF';
+        return '主板';
       case 'BJ':
         return '北交所';
       case 'ETF':

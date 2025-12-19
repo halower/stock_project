@@ -460,46 +460,88 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return Container(
-            height: MediaQuery.of(context).size.height * 0.65,
+            height: MediaQuery.of(context).size.height * 0.7,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? [const Color(0xFF1A1A2E), const Color(0xFF16213E)]
+                    : [Colors.white, const Color(0xFFF8FAFC)],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.5 : 0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, -10),
+                ),
+              ],
             ),
             child: Column(
               children: [
                 // 拖拽指示器
                 Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
+                  margin: const EdgeInsets.only(top: 16),
+                  width: 48,
+                  height: 5,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
+                    gradient: LinearGradient(
+                      colors: isDark
+                          ? [Colors.white.withOpacity(0.3), Colors.white.withOpacity(0.1)]
+                          : [Colors.grey.shade400, Colors.grey.shade300],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 
                 // 标题
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                            colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF3B82F6).withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Icon(Icons.add_circle_outline, color: Colors.white, size: 24),
+                        child: const Icon(Icons.add_circle_outline, color: Colors.white, size: 26),
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '手动添加股票',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black87,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '手动添加股票',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black87,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '搜索并添加到备选池',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -508,124 +550,241 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                 
                 // 搜索框
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    controller: codeController,
-                    decoration: InputDecoration(
-                      hintText: '输入股票代码或名称搜索',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: isSearching 
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: Padding(
-                                padding: EdgeInsets.all(12),
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark 
+                              ? Colors.black.withOpacity(0.3)
+                              : Colors.grey.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    onChanged: (value) async {
-                      if (value.length >= 2) {
-                        setModalState(() => isSearching = true);
-                        try {
-                          // 搜索股票
-                          final results = await _searchStocks(value);
-                          setModalState(() {
-                            searchResults = results;
-                            isSearching = false;
-                          });
-                        } catch (e) {
-                          setModalState(() => isSearching = false);
+                    child: TextField(
+                      controller: codeController,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '输入股票代码或名称搜索',
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
+                          fontSize: 15,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: const Color(0xFF3B82F6),
+                          size: 24,
+                        ),
+                        suffixIcon: isSearching 
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Padding(
+                                  padding: EdgeInsets.all(14),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+                                  ),
+                                ),
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: isDark 
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.grey.shade50,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(
+                            color: isDark 
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.grey.shade200,
+                            width: 1.5,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(
+                            color: isDark 
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.grey.shade200,
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF3B82F6),
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      ),
+                      onChanged: (value) async {
+                        if (value.length >= 2) {
+                          setModalState(() => isSearching = true);
+                          try {
+                            // 搜索股票
+                            final results = await _searchStocks(value);
+                            setModalState(() {
+                              searchResults = results;
+                              isSearching = false;
+                            });
+                          } catch (e) {
+                            setModalState(() => isSearching = false);
+                          }
+                        } else {
+                          setModalState(() => searchResults = []);
                         }
-                      } else {
-                        setModalState(() => searchResults = []);
-                      }
-                    },
+                      },
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // 策略选择
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)]
+                            : [Colors.blue.shade50.withOpacity(0.5), Colors.white],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark 
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.blue.shade100,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.analytics_outlined,
+                            color: const Color(0xFF3B82F6),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '策略：',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark 
+                                  ? Colors.white.withOpacity(0.08)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDark 
+                                    ? Colors.white.withOpacity(0.1)
+                                    : Colors.grey.shade200,
+                                width: 1,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedStrategy,
+                                isExpanded: true,
+                                dropdownColor: isDark ? const Color(0xFF2A2A3E) : Colors.white,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                                icon: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: const Color(0xFF3B82F6),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'volume_wave', child: Text('动量守恒')),
+                                  DropdownMenuItem(value: 'volume_wave_enhanced', child: Text('动量守恒增强版')),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setModalState(() => selectedStrategy = value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 
                 const SizedBox(height: 16),
                 
-                // 策略选择
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Text(
-                        '选择策略：',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedStrategy,
-                              isExpanded: true,
-                              dropdownColor: isDark ? Colors.grey.shade800 : Colors.white,
-                              items: const [
-                                DropdownMenuItem(value: 'volume_wave', child: Text('动量守恒')),
-                                DropdownMenuItem(value: 'volume_wave_enhanced', child: Text('动量守恒增强版')),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setModalState(() => selectedStrategy = value);
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-                
                 // 提示信息
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50.withOpacity(0.5),
-                      border: Border.all(
-                        color: Colors.orange.shade300,
-                        width: 1,
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFFFF8C00).withOpacity(0.15), const Color(0xFFFF8C00).withOpacity(0.08)]
+                            : [Colors.orange.shade50, Colors.orange.shade50.withOpacity(0.3)],
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark 
+                            ? const Color(0xFFFF8C00).withOpacity(0.3)
+                            : Colors.orange.shade200,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: Colors.orange.shade700,
-                          size: 20,
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isDark 
+                                ? const Color(0xFFFF8C00).withOpacity(0.2)
+                                : Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.lightbulb_outline_rounded,
+                            color: isDark ? const Color(0xFFFFB84D) : Colors.orange.shade700,
+                            size: 18,
+                          ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             '建议从技术量化页面添加符合策略的股票',
                             style: TextStyle(
-                              color: Colors.orange.shade700,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                              color: isDark ? const Color(0xFFFFB84D) : Colors.orange.shade800,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
                             ),
                           ),
                         ),
@@ -660,72 +819,166 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
                           itemCount: searchResults.length,
                           itemBuilder: (context, index) {
                             final stock = searchResults[index];
                             final code = stock['code'] ?? stock['ts_code'] ?? '';
                             final name = stock['name'] ?? '';
                             
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isDark
+                                      ? [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.04)]
+                                      : [Colors.white, Colors.grey.shade50],
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: isDark 
+                                      ? Colors.white.withOpacity(0.1)
+                                      : Colors.grey.shade200,
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isDark 
+                                        ? Colors.black.withOpacity(0.2)
+                                        : Colors.grey.withOpacity(0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                              color: isDark ? Colors.grey.shade800 : Colors.grey.shade50,
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                leading: Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.blue.shade400,
-                                        Colors.blue.shade600,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(18),
+                                  onTap: () async {
+                                    // 添加股票逻辑（方法内部会自动关闭对话框）
+                                    await _addStockToWatchlist(
+                                      code: code.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
+                                      name: name,
+                                      strategy: selectedStrategy,
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      children: [
+                                        // 图标
+                                        Container(
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(14),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF3B82F6).withOpacity(0.3),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 3),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              name.isNotEmpty ? name[0] : '?',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        // 股票信息
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                name,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: isDark ? Colors.white : Colors.black87,
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                code.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // 添加按钮
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                                            ),
+                                            borderRadius: BorderRadius.circular(12),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF3B82F6).withOpacity(0.3),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 3),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius: BorderRadius.circular(12),
+                                              onTap: () async {
+                                                await _addStockToWatchlist(
+                                                  code: code.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
+                                                  name: name,
+                                                  strategy: selectedStrategy,
+                                                );
+                                                // 方法内部会自动关闭对话框
+                                              },
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: const [
+                                                    Icon(
+                                                      Icons.add_rounded,
+                                                      color: Colors.white,
+                                                      size: 18,
+                                                    ),
+                                                    SizedBox(width: 4),
+                                                    Text(
+                                                      '添加',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Center(
-                                    child: Text(
-                                      name.isNotEmpty ? name[0] : '?',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                title: Text(
-                                  name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : Colors.black87,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  code,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                  ),
-                                ),
-                                trailing: ElevatedButton(
-                                  onPressed: () => _addStockToWatchlist(
-                                    code: code.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
-                                    name: name,
-                                    strategy: selectedStrategy,
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6366F1),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  ),
-                                  child: const Text('添加'),
                                 ),
                               ),
                             );
@@ -870,16 +1123,19 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
   void _showSortOptions() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
-          return Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          return SafeArea(
+            child: Container(
+              padding: const EdgeInsets.only(bottom: 16, top: 16),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Row(
@@ -939,6 +1195,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                   subtitle: '先显示跌幅较大的股票',
                 ),
               ],
+            ),
+          ),
             ),
           );
         },
@@ -1059,8 +1317,27 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF8F9FA),
-      body: Column(
+      body: Container(
+        // 🎨 动态渐变背景
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF1E293B),
+                    const Color(0xFF334155),
+                  ]
+                : [
+                    const Color(0xFFF0F9FF), // Sky 50
+                    const Color(0xFFE0F2FE), // Sky 100
+                    const Color(0xFFF8FAFC), // Slate 50
+                  ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: Column(
         children: [
           // 使用专业的头部组件
           ProfessionalWatchlistHeader(
@@ -1085,6 +1362,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
           // 主要内容区域
           Expanded(child: _buildBody()),
         ],
+      ),
       ),
     );
   }

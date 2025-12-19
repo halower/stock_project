@@ -107,7 +107,11 @@ async def get_stock_history_data(
         # 构造ts_code
         if stock_code.startswith('6'):
             ts_code = f"{stock_code}.SH"
-        elif stock_code.startswith(('43', '83', '87', '88')):
+        elif stock_code.startswith('5'):
+            # 5开头是上海ETF（如510300、512880、560050）
+            ts_code = f"{stock_code}.SH"
+        elif stock_code.startswith(('43', '83', '87', '88', '92')):
+            # 北交所：43、83、87、88开头是股票，92开头是指数
             ts_code = f"{stock_code}.BJ"
         else:
             ts_code = f"{stock_code}.SZ"
@@ -337,7 +341,11 @@ async def get_batch_stock_price(
                 # 构造ts_code
                 if code.startswith('6'):
                     ts_code = f"{code}.SH"
-                elif code.startswith(('43', '83', '87', '88')):
+                elif code.startswith('5'):
+                    # 5开头是上海ETF（如510300、512880、560050）
+                    ts_code = f"{code}.SH"
+                elif code.startswith(('43', '83', '87', '88', '92')):
+                    # 北交所：43、83、87、88开头是股票，92开头是指数
                     ts_code = f"{code}.BJ"
                 else:
                     ts_code = f"{code}.SZ"

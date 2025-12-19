@@ -34,18 +34,32 @@ class ProfessionalWatchlistHeader extends StatelessWidget {
     
     return Container(
       decoration: BoxDecoration(
+        // 🌈 多彩渐变背景
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: isDark
-              ? [const Color(0xFF1A1A2E), const Color(0xFF16213E)]
-              : [Colors.white, const Color(0xFFF8FAFC)],
+              ? [
+                  const Color(0xFF1E293B).withOpacity(0.95),
+                  const Color(0xFF0F172A).withOpacity(0.9),
+                ]
+              : [
+                  Colors.white.withOpacity(0.95),
+                  const Color(0xFFF0F9FF).withOpacity(0.9),
+                ],
         ),
+        // 🌟 霓虹光效阴影
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF3B82F6).withOpacity(isDark ? 0.3 : 0.15),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -168,8 +182,8 @@ class ProfessionalWatchlistHeader extends StatelessWidget {
               onTap: () => onSignalFilterSelected(null),
               isDark: isDark,
               gradientColors: [
-                const Color(0xFF667EEA),
-                const Color(0xFF764BA2),
+                const Color(0xFF3B82F6),
+                const Color(0xFF2563EB),
               ],
               icon: Icons.apps_rounded,
             ),
@@ -380,7 +394,7 @@ class ProfessionalWatchlistHeader extends StatelessWidget {
     bool isPrimary = false,
   }) {
     final Color primaryColor = isPrimary
-        ? const Color(0xFF6366F1)
+        ? const Color(0xFF3B82F6)  // 改为蓝色
         : isDestructive
             ? const Color(0xFFEF4444)
             : isDark
@@ -395,7 +409,7 @@ class ProfessionalWatchlistHeader extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: isPrimary
               ? const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],  // 蓝色渐变
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import '../models/watchlist_item.dart';
 import '../screens/stock_detail_screen.dart';
 import '../services/strategy_config_service.dart';
@@ -30,42 +31,68 @@ class WatchlistItemWidget extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
+          // 🎨 玻璃拟态效果 - 毛玻璃背景
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isDark
                 ? [
-                    const Color(0xFF1E1E1E),
-                    const Color(0xFF2D2D2D),
+                    const Color(0xFF1E293B).withOpacity(0.7),
+                    const Color(0xFF334155).withOpacity(0.5),
                   ]
                 : [
-                    Colors.white,
-                    const Color(0xFFF8F9FA),
+                    Colors.white.withOpacity(0.9),
+                    const Color(0xFFF8FAFC).withOpacity(0.8),
                   ],
           ),
           borderRadius: BorderRadius.circular(24),
+          // 🌟 高级阴影系统 - 三层阴影
           boxShadow: [
+            // 第一层：主阴影 - 彩色光晕
             BoxShadow(
               color: isDark 
-                  ? Colors.black.withOpacity(0.6)
-                  : Colors.grey.withOpacity(0.15),
-              blurRadius: 25,
+                  ? const Color(0xFF3B82F6).withOpacity(0.15)
+                  : const Color(0xFF3B82F6).withOpacity(0.12),
+              blurRadius: 30,
               offset: const Offset(0, 12),
+              spreadRadius: -5,
+            ),
+            // 第二层：深度阴影
+            BoxShadow(
+              color: isDark 
+                  ? Colors.black.withOpacity(0.5)
+                  : Colors.grey.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+              spreadRadius: -2,
+            ),
+            // 第三层：细节阴影
+            BoxShadow(
+              color: isDark 
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
               spreadRadius: 0,
             ),
           ],
+          // 🎭 玻璃边框 - 半透明高光
           border: Border.all(
             color: isDark 
-                ? Colors.white.withOpacity(0.08) 
-                : Colors.grey.withOpacity(0.08),
+                ? Colors.white.withOpacity(0.1) 
+                : Colors.white.withOpacity(0.6),
             width: 1.5,
           ),
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(24),
-            onTap: () {
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () {
               List<Map<String, String>>? availableStocks;
               if (allWatchlistItems != null && allWatchlistItems!.isNotEmpty) {
                 availableStocks = allWatchlistItems!.map((watchlistItem) => {
@@ -96,33 +123,6 @@ class WatchlistItemWidget extends StatelessWidget {
                   // 第一行：股票基本信息
                   Row(
                     children: [
-                      // 左侧行业色块指示器（美化版）
-                      if (industryColor != null)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 400),
-                          width: 5,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                industryColor,
-                                industryColor.withOpacity(0.8),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: [
-                              BoxShadow(
-                                color: industryColor.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (industryColor != null) const SizedBox(width: 16),
-                      
                       // 股票信息
                       Expanded(
                         child: Column(
@@ -236,44 +236,77 @@ class WatchlistItemWidget extends StatelessWidget {
           ),
         ),
       ),
+      ),
+    ),
     );
   }
 
-  // 构建市场标签（缩小版）
+  // 构建市场标签 - 🎨 霓虹光效3D设计
   Widget _buildMarketBadge(String market) {
     final marketColor = _getMarketColor(market);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
+        // 🌈 多层渐变
         gradient: LinearGradient(
           colors: [
             marketColor,
-            Color.lerp(marketColor, Colors.black, 0.1)!,
+            Color.lerp(marketColor, Colors.white, 0.1)!,
+            marketColor,
           ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.5, 1.0],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.4), width: 1),
+        // 🎭 玻璃边框
+        border: Border.all(
+          color: Colors.white.withOpacity(0.6),
+          width: 1.5,
+        ),
+        // 🌟 霓虹光晕 - 三层阴影
         boxShadow: [
+          // 外层光晕
           BoxShadow(
-            color: marketColor.withOpacity(0.3),
-            blurRadius: 6,
+            color: marketColor.withOpacity(0.6),
+            blurRadius: 20,
+            offset: const Offset(0, 0),
+            spreadRadius: 2,
+          ),
+          // 中层光晕
+          BoxShadow(
+            color: marketColor.withOpacity(0.4),
+            blurRadius: 10,
             offset: const Offset(0, 2),
             spreadRadius: 0,
+          ),
+          // 内层阴影（3D效果）
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+            spreadRadius: -1,
           ),
         ],
       ),
       child: Center(
         child: Text(
           _getMarketShortName(market),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: Colors.white,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+            // 文字阴影增强立体感
+            shadows: [
+              Shadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
         ),
       ),
@@ -364,28 +397,53 @@ class WatchlistItemWidget extends StatelessWidget {
     );
   }
 
-  // 构建价格变化标签（缩小版）
+  // 构建价格变化标签 - 🎨 动态霓虹效果
   Widget _buildPriceChangeBadge(double changePercent) {
     final priceColor = _getPriceColor(changePercent);
+    final isPositive = changePercent >= 0;
+    
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
+        // 🌈 动态渐变
         gradient: LinearGradient(
           colors: [
             priceColor,
-            Color.lerp(priceColor, Colors.black, 0.15)!,
+            Color.lerp(priceColor, Colors.white, 0.2)!,
+            priceColor,
           ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.5, 1.0],
         ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        borderRadius: BorderRadius.circular(12),
+        // 玻璃边框
+        border: Border.all(
+          color: Colors.white.withOpacity(0.6),
+          width: 1.5,
+        ),
+        // 🌟 强烈的霓虹光晕
         boxShadow: [
+          // 外层强光
           BoxShadow(
-            color: priceColor.withOpacity(0.3),
+            color: priceColor.withOpacity(0.8),
+            blurRadius: 25,
+            offset: const Offset(0, 0),
+            spreadRadius: 3,
+          ),
+          // 中层光晕
+          BoxShadow(
+            color: priceColor.withOpacity(0.5),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+          // 内层阴影
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 4,
-            offset: const Offset(0, 1),
+            offset: const Offset(0, 2),
+            spreadRadius: -1,
           ),
         ],
       ),
@@ -393,18 +451,32 @@ class WatchlistItemWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            changePercent >= 0 ? Icons.trending_up : Icons.trending_down,
-            size: 12,
+            isPositive ? Icons.trending_up : Icons.trending_down,
+            size: 13,
             color: Colors.white,
+            shadows: [
+              Shadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Text(
-            '${changePercent >= 0 ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
-            style: const TextStyle(
-              fontSize: 10,
+            '${isPositive ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
+            style: TextStyle(
+              fontSize: 11,
               color: Colors.white,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
           ),
         ],
@@ -525,9 +597,9 @@ class WatchlistItemWidget extends StatelessWidget {
     );
   }
 
-  // 构建关注时长标签（缩小版）
+  // 构建关注时长标签（缩小版）- 优化为蓝色系
   Widget _buildWatchDurationBadge(String duration) {
-    const durationColor = Color(0xFF8E24AA);
+    const durationColor = Color(0xFF6366F1); // 靛蓝色
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       height: 26,
@@ -535,18 +607,18 @@ class WatchlistItemWidget extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            durationColor.withOpacity(0.2),
-            durationColor.withOpacity(0.1),
-            durationColor.withOpacity(0.05),
+            durationColor.withOpacity(0.15),
+            durationColor.withOpacity(0.08),
+            durationColor.withOpacity(0.03),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: durationColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: durationColor.withOpacity(0.25), width: 1),
         boxShadow: [
           BoxShadow(
-            color: durationColor.withOpacity(0.15),
+            color: durationColor.withOpacity(0.12),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -558,13 +630,13 @@ class WatchlistItemWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: durationColor.withOpacity(0.2),
+              color: durationColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Icon(
               Icons.calendar_today,
               size: 12,
-              color: Color(0xFF8E24AA),
+              color: Color(0xFF6366F1),
             ),
           ),
           const SizedBox(width: 4),
@@ -572,7 +644,7 @@ class WatchlistItemWidget extends StatelessWidget {
             duration,
             style: const TextStyle(
               fontSize: 11,
-              color: Color(0xFF8E24AA),
+              color: Color(0xFF6366F1),
               fontWeight: FontWeight.w700,
               letterSpacing: 0.2,
             ),
@@ -582,16 +654,16 @@ class WatchlistItemWidget extends StatelessWidget {
     );
   }
 
-  // 获取市场颜色
+  // 获取市场颜色 - 统一蓝色系主题
   Color _getMarketColor(String market) {
-    if (market.contains('创业板')) return const Color(0xFFFF9800);
-    if (market.contains('科创板')) return const Color(0xFFE91E63);
-    if (market.contains('北交所')) return const Color(0xFF9C27B0);
-    if (market.contains('深证主板') || market.contains('主板') && market.contains('深')) return const Color(0xFF4CAF50);
-    if (market.contains('上证主板') || market.contains('主板') && market.contains('上')) return const Color(0xFF2196F3);
-    if (market.contains('ETF')) return const Color(0xFF9C27B0); // ETF使用紫色
-    if (market.contains('主板')) return const Color(0xFF3B82F6); // 通用的主板颜色
-    return const Color(0xFF607D8B);
+    if (market.contains('创业板')) return const Color(0xFF3B82F6); // 蓝色
+    if (market.contains('科创板')) return const Color(0xFF6366F1); // 靛蓝
+    if (market.contains('北交所')) return const Color(0xFF8B5CF6); // 紫罗兰
+    if (market.contains('深证主板') || market.contains('主板') && market.contains('深')) return const Color(0xFF0EA5E9); // 天蓝
+    if (market.contains('上证主板') || market.contains('主板') && market.contains('上')) return const Color(0xFF2563EB); // 宝蓝
+    if (market.contains('ETF')) return const Color(0xFF7C3AED); // 紫色
+    if (market.contains('主板')) return const Color(0xFF3B82F6); // 通用蓝色
+    return const Color(0xFF64748B); // 灰蓝
   }
 
   // 获取市场显示名称

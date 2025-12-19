@@ -601,9 +601,13 @@ class UnifiedDataService:
                     # 根据代码前缀判断市场
                     if code.startswith('6'):
                         ts_code = f"{code}.SH"
+                    elif code.startswith('5'):
+                        # 5开头是上海ETF
+                        ts_code = f"{code}.SH"
                     elif code.startswith(('0', '3')):
                         ts_code = f"{code}.SZ"
-                    elif code.startswith(('43', '83', '87', '88')):
+                    elif code.startswith(('43', '83', '87', '88', '92')):
+                        # 北交所
                         ts_code = f"{code}.BJ"
                     else:
                         continue
