@@ -912,7 +912,13 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         ),
         const SizedBox(height: 12),
         ..._summary!.topContinuous.take(10).map((stock) => 
-          _buildLimitStockItem(stock, isDark, showContinuous: true)
+          _buildClickableLimitStockItem(
+            stock, 
+            isDark, 
+            showContinuous: true,
+            stockList: _summary!.topContinuous,  // 传递高连板股票列表
+            listName: '高连板龙头',  // 传递列表名称
+          )
         ),
       ],
     );
@@ -1031,20 +1037,25 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
   }) {
     return GestureDetector(
       onTap: () {
+        // 清理股票代码（移除.SH/.SZ/.BJ后缀）
+        final cleanCode = stock.tsCode.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', '');
+        
         // 准备股票列表
         List<Map<String, String>>? availableStocks;
         if (stockList != null && stockList.isNotEmpty) {
           availableStocks = stockList.map((s) => {
-            'code': s.tsCode,
+            'code': s.tsCode.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
             'name': s.name,
           }).toList();
         }
+        
+        debugPrint('点击涨跌停股票: $cleanCode - ${stock.name}');
         
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => StockDetailScreen(
-              stockCode: stock.tsCode,
+              stockCode: cleanCode,
               stockName: stock.name,
               availableStocks: availableStocks,
               strategy: 'volume_wave',  // 使用动量守恒策略，确保图表能正常加载

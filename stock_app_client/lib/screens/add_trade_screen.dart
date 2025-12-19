@@ -5167,10 +5167,10 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
             ),
             const SizedBox(height: 20),
 
-            // 盘趋阶段
+            // 趋势类型
             DropdownButtonFormField<MarketPhase>(
               decoration: InputDecoration(
-                labelText: '盘趋阶段',
+                labelText: '趋势类型',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
@@ -5181,7 +5181,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
+                  borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
                 ),
                 filled: true,
                 fillColor: isDarkMode 
@@ -5189,7 +5189,7 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     : Colors.grey[50],
               ),
               value: _selectedMarketPhase,
-              items: MarketPhase.values.map((phase) {
+              items: MarketPhase.values.where((phase) => phase != MarketPhase.consolidation).map((phase) {
                 String phaseName = '';
                 IconData phaseIcon;
                 switch (phase) {
@@ -5201,10 +5201,6 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     phaseName = '上升阶段';
                     phaseIcon = Icons.trending_up;
                     break;
-                  case MarketPhase.consolidation:
-                    phaseName = '趋势阶段';
-                    phaseIcon = Icons.show_chart;
-                    break;
                   case MarketPhase.topping:
                     phaseName = '做头阶段';
                     phaseIcon = Icons.show_chart;
@@ -5213,12 +5209,16 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                     phaseName = '下降阶段';
                     phaseIcon = Icons.trending_down;
                     break;
+                  case MarketPhase.consolidation:
+                    phaseName = ''; // 不应该出现
+                    phaseIcon = Icons.show_chart;
+                    break;
                 }
                 return DropdownMenuItem<MarketPhase>(
                   value: phase,
                   child: Row(
                     children: [
-                      Icon(phaseIcon, size: 18, color: Colors.grey[600]),
+                      Icon(phaseIcon, size: 18, color: const Color(0xFF3B82F6)),
                       const SizedBox(width: 8),
                       Text(phaseName),
                     ],
@@ -5230,54 +5230,6 @@ class _AddTradeScreenState extends State<AddTradeScreen> {
                   _selectedMarketPhase = value!;
                 });
               },
-            ),
-
-            const SizedBox(height: 20),
-
-            // 趋势强度
-            Row(
-              children: [
-                const Icon(Icons.show_chart, size: 18, color: Color(0xFF1E40AF)),
-                const SizedBox(width: 8),
-            const Text(
-              '趋势强度',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTrendStrengthOption(
-                    TrendStrength.strong,
-                    '强势',
-                    const Color(0xFFDC2626), // A股红色
-                    Icons.keyboard_double_arrow_up,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildTrendStrengthOption(
-                    TrendStrength.medium,
-                    '中性',
-                    const Color(0xFF1E40AF), // 深蓝色
-                    Icons.trending_up,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildTrendStrengthOption(
-                    TrendStrength.weak,
-                    '弱势',
-                    const Color(0xFF10B981), // A股绿色
-                    Icons.trending_flat,
-                  ),
-                ),
-              ],
             ),
 
             const SizedBox(height: 20),

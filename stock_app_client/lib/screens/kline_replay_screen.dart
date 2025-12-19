@@ -19,7 +19,7 @@ class EnhancedKLineReplayScreen extends StatefulWidget {
   State<EnhancedKLineReplayScreen> createState() => _EnhancedKLineReplayScreenState();
 }
 
-class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
+class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> with WidgetsBindingObserver {
   final KLineReplayService _replayService = KLineReplayService();
   String? _selectedStockCode;
   String? _selectedStockName;
@@ -38,14 +38,40 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
   @override
   void initState() {
     super.initState();
-    // 自动加载股票并开始训练
+    // 添加生命周期监听
+    WidgetsBinding.instance.addObserver(this);
+    // 自动加载股票，但不自动开始播放
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _autoLoadAndStartTraining();
+      _loadRandomStock();
     });
   }
   
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 当应用进入后台或页面不可见时，暂停播放
+    if (state == AppLifecycleState.paused || 
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _pausePlayback();
+    }
+  }
+  
+  /// 暂停播放
+  void _pausePlayback() {
+    _autoPlayTimer?.cancel();
+    _autoPlayTimer = null;
+    _replayService.pause();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+  
+  @override
   void dispose() {
+    // 移除生命周期监听
+    WidgetsBinding.instance.removeObserver(this);
+    
     // 取消定时器
     _autoPlayTimer?.cancel();
     _autoPlayTimer = null;
@@ -61,14 +87,6 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
     
     debugPrint('K线回放页面已退出，所有资源已清理');
     super.dispose();
-  }
-  
-  /// 自动加载股票并开始训练
-  Future<void> _autoLoadAndStartTraining() async {
-    await _loadRandomStock();
-    if (_selectedStockCode != null) {
-      _startTraining();
-    }
   }
   
   @override
@@ -812,13 +830,9 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> {
       );
     });
     
-    // 启动回放并自动开始播放
+    // 启动回放，但不自动开始播放（等待用户点击播放按钮）
     _replayService.startReplay();
-    // 自动启动播放定时器，使用当前设置的播放速度
-    _autoPlayTimer = Timer.periodic(
-      Duration(milliseconds: _replayService.playSpeed),
-      (_) => _nextCandle(),
-    );
+    // 不自动启动播放，让用户手动点击播放按钮
   }
   
   /// 计算总资产（现金 + 持仓市值）
