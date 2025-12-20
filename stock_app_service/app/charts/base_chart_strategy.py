@@ -336,26 +336,41 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     transform: translateX(-50%);
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    gap: 16px;
                     z-index: 100;
+                    background-color: {colors['tooltipBg']};
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                }}
+                
+                .title-left {{
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
                 }}
                 
                 .stock-name {{
                     font-size: 16px;
                     font-weight: bold;
                     color: {colors['text']};
-                    background-color: {colors['tooltipBg']};
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+                }}
+                
+                .strategy-tag {{
+                    font-size: 12px;
+                    color: {colors['text']};
+                    opacity: 0.7;
+                    padding: 2px 8px;
+                    background: rgba(0, 0, 0, 0.05);
+                    border-radius: 4px;
                 }}
                 
                 .analysis-btn {{
-                    background: rgba(0, 0, 0, 0.7);
+                    background: rgba(0, 0, 0, 0.65);
                     color: white;
                     border: none;
-                    padding: 6px 12px;
-                    border-radius: 6px;
+                    padding: 6px 14px;
+                    border-radius: 4px;
                     font-size: 13px;
                     font-weight: 500;
                     cursor: pointer;
@@ -363,13 +378,51 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     backdrop-filter: blur(10px);
                     -webkit-backdrop-filter: blur(10px);
                     white-space: nowrap;
-                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
                 }}
                 
                 .analysis-btn:hover {{
-                    background: rgba(0, 0, 0, 0.8);
+                    background: rgba(0, 0, 0, 0.75);
                     transform: translateY(-1px);
-                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                }}
+                
+                /* 竖屏模式优化 */
+                @media (max-width: 768px) and (orientation: portrait) {{
+                    .chart-title {{
+                        flex-direction: row;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        padding: 8px 12px;
+                        left: 10px;
+                        right: 10px;
+                        transform: none;
+                        width: auto;
+                        max-width: calc(100% - 20px);
+                    }}
+                    
+                    .title-left {{
+                        flex: 1;
+                        min-width: 0;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                    }}
+                    
+                    .stock-name {{
+                        font-size: 15px;
+                    }}
+                    
+                    .strategy-tag {{
+                        font-size: 11px;
+                        padding: 2px 6px;
+                        white-space: nowrap;
+                    }}
+                    
+                    .analysis-btn {{
+                        padding: 6px 12px;
+                        font-size: 13px;
+                        flex-shrink: 0;
+                    }}
                 }}
                 .strategy-info {{
                     position: absolute;
@@ -642,6 +695,28 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     border-radius: 2px;
                 }}
                 
+                /* 横屏模式 - 平板和大屏手机 */
+                @media (max-width: 1024px) and (orientation: landscape) {{
+                    .chart-title {{
+                        padding: 6px 12px;
+                        gap: 12px;
+                    }}
+                    
+                    .stock-name {{
+                        font-size: 14px;
+                    }}
+                    
+                    .strategy-tag {{
+                        font-size: 11px;
+                    }}
+                    
+                    .analysis-btn {{
+                        padding: 5px 12px;
+                        font-size: 12px;
+                    }}
+                }}
+                
+                /* 通用移动端 */
                 @media (max-width: 768px) {{
                     .side-panel {{
                         width: 100%;
@@ -664,26 +739,15 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                         font-size: 13px;
                         padding: 8px 12px;
                     }}
-                    
-                    .stock-name {{
-                        font-size: 15px;
-                        padding: 5px 10px;
-                    }}
-                    
-                    .analysis-btn {{
-                        padding: 5px 10px;
-                        font-size: 12px;
-                    }}
-                    
-                    .chart-title {{
-                        gap: 10px;
-                    }}
                 }}
             </style>
         </head>
         <body>
             <div class="chart-title">
-                <span class="stock-name">{stock['name']}({stock['code']})</span>
+                <div class="title-left">
+                    <span class="stock-name">{stock['name']}({stock['code']})</span>
+                    <span class="strategy-tag">{strategy_name}</span>
+                </div>
                 <button class="analysis-btn" onclick="toggleIndicatorPanel()">分析工具</button>
             </div>
             <div class="strategy-info">
