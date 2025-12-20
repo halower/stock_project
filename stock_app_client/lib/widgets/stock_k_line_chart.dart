@@ -893,7 +893,7 @@ class CandlestickChartPainter extends CustomPainter {
     if (trades == null || trades!.isEmpty) return;
     
     final double chartHeight = size.height;
-    final double candleSpacing = size.width / candleData.length;
+    final double candleSpacing = 8.0; // 与绘制K线时保持一致
     
     for (final trade in trades!) {
       // 查找交易对应的K线索引（使用date字段）
