@@ -74,6 +74,7 @@ class IndicatorRegistry:
 
 from app.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
 from app.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
+from app.indicators.tradingview.divergence_detector import calculate_divergence_detector
 
 # Volume Profile Pivot Anchored（TradingView移植 - 完整版）
 IndicatorRegistry.register(IndicatorDefinition(
@@ -188,6 +189,20 @@ IndicatorRegistry.register(IndicatorDefinition(
     description='',
     calculate_func=calculate_pivot_order_blocks,
     default_params={'left': 15, 'right': 8, 'box_count': 2, 'percentage_change': 6.0, 'box_extend_to_end': True},
+    render_type='overlay',
+    enabled_by_default=False
+))
+
+# Divergence Detector（TradingView移植 - 多指标背离检测）
+IndicatorRegistry.register(IndicatorDefinition(
+    id='divergence_detector',
+    name='背离检测',
+    category='oscillator',
+    description='',
+    calculate_func=calculate_divergence_detector,
+    default_params={'pivot_period': 5, 'max_pivot_points': 10, 'max_bars': 100, 
+                    'check_macd': True, 'check_rsi': True, 'check_stoch': True, 
+                    'check_cci': True, 'check_momentum': True},
     render_type='overlay',
     enabled_by_default=False
 ))

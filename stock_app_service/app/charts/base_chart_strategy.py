@@ -842,8 +842,8 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     autoSize: true,
                 }});
                 
-                // 创建K线图
-                const candleSeries = chart.addCandlestickSeries({{
+                // 创建K线图（使用全局变量，供指标池使用）
+                window.candleSeries = chart.addCandlestickSeries({{
                     upColor: '{colors['upColor']}',    // A股红色，涨
                     downColor: '{colors['downColor']}',  // A股绿色，跌
                     borderUpColor: '{colors['upColor']}',
@@ -858,7 +858,7 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                 }});
                 
                 // 设置烛线数据
-                candleSeries.setData(chartData);
+                window.candleSeries.setData(chartData);
                 
                 // 创建成交量图，放在主图的30%区域
                 const volumeSeries = chart.addHistogramSeries({{
@@ -877,9 +877,16 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                 
                 {additional_series}
                 
+                // 保存初始买卖标记到全局变量（供指标池使用）
+                window.initialMarkers = markers || [];
+                console.log('📍 初始买卖标记数量:', window.initialMarkers.length);
+                
                 // 添加买卖标记
-                if (markers.length > 0) {{
-                    candleSeries.setMarkers(markers);
+                if (window.initialMarkers.length > 0) {{
+                    window.candleSeries.setMarkers(window.initialMarkers);
+                    console.log('✅ 买卖标记已设置到图表');
+                }} else {{
+                    console.log('⚠️ 没有买卖标记数据');
                 }}
                 
                 // 自动适配显示全部数据
@@ -891,7 +898,12 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                         return;
                     }}
                     
-                    const data = param.seriesData.get(candleSeries);
+                    // 安全检查 seriesData 和 candleSeries
+                    if (!param.seriesData || !window.candleSeries) {{
+                        return;
+                    }}
+                    
+                    const data = param.seriesData.get(window.candleSeries);
                     if (data) {{
                         const date = new Date(param.time * 1000);
                         const dateStr = date.getFullYear() + '-' + 

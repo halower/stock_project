@@ -80,6 +80,20 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     'strength': block.get('strength', 0.8)
                 })
             
+            # 计算背离检测
+            from app.indicators.tradingview.divergence_detector import calculate_divergence_detector
+            divergence_data = calculate_divergence_detector(
+                df,
+                pivot_period=5,
+                max_pivot_points=10,
+                max_bars=100,
+                check_macd=True,
+                check_rsi=True,
+                check_stoch=True,
+                check_cci=True,
+                check_momentum=True
+            )
+            
             # 不再自动绘制指标，所有指标通过指标池控制
             # 用户可以在指标池中选择启用/禁用指标
             additional_series = ""
@@ -89,7 +103,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             
             # 生成指标池配置和逻辑
             indicator_pool_scripts = cls._generate_indicator_pool_scripts(
-                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, volume_profile, pivot_order_blocks_for_pool
+                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, volume_profile, pivot_order_blocks_for_pool, divergence_data
             )
             additional_scripts += indicator_pool_scripts
             

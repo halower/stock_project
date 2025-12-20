@@ -12,11 +12,11 @@ class IndicatorPoolMixin:
     @classmethod
     def _generate_indicator_pool_scripts(cls, ema6_data, ema12_data, ema18_data, 
                                         ema144_data, ema169_data, volume_profile_data, 
-                                        pivot_order_blocks_data=None) -> str:
+                                        pivot_order_blocks_data=None, divergence_data=None) -> str:
         """生成指标池完整的JavaScript代码（包括配置和逻辑）"""
         indicator_config = cls._generate_indicator_config_js(
             ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, 
-            volume_profile_data, pivot_order_blocks_data
+            volume_profile_data, pivot_order_blocks_data, divergence_data
         )
         indicator_logic = cls._generate_indicator_pool_logic_js()
         return f"\n{indicator_config}\n{indicator_logic}\n"
@@ -24,7 +24,7 @@ class IndicatorPoolMixin:
     @classmethod
     def _generate_indicator_config_js(cls, ema6_data, ema12_data, ema18_data, 
                                       ema144_data, ema169_data, volume_profile_data, 
-                                      pivot_order_blocks_data=None) -> str:
+                                      pivot_order_blocks_data=None, divergence_data=None) -> str:
         """生成指标配置JavaScript"""
         from app.indicators.indicator_registry import IndicatorRegistry
         
@@ -39,7 +39,8 @@ class IndicatorPoolMixin:
             'ema144': ema144_data,
             'ema169': ema169_data,
             'volume_profile_pivot': volume_profile_data,
-            'pivot_order_blocks': pivot_order_blocks_data if pivot_order_blocks_data is not None else []
+            'pivot_order_blocks': pivot_order_blocks_data if pivot_order_blocks_data is not None else [],
+            'divergence_detector': divergence_data if divergence_data is not None else []
         }
         
         for ind_id, ind_def in all_indicators.items():
@@ -51,6 +52,8 @@ class IndicatorPoolMixin:
                 render_function = 'renderPivotOrderBlocks'
             elif ind_id == 'volume_profile_pivot' and data:
                 render_function = 'renderVolumeProfilePivot'
+            elif ind_id == 'divergence_detector' and data:
+                render_function = 'renderDivergence'
             
             config[ind_id] = {
                 'name': str(ind_def.name),
@@ -333,12 +336,146 @@ class IndicatorPoolMixin:
             return seriesList;
         }
         
+        // Divergence 渲染函数
+        function renderDivergence(divData, chart) {
+            console.log('🔍 [Divergence] 开始渲染，数据长度:', divData ? divData.length : 0);
+            
+            if (!divData || !Array.isArray(divData) || divData.length === 0) {
+                console.warn('⚠️ [Divergence] 无数据');
+                return [];
+            }
+            
+            const seriesList = [];
+            const markers = [];
+            
+            // 颜色映射
+            const colorMap = {
+                'bullish': 'rgba(255, 215, 0, 0.9)',           // 金色 - 正背离（看涨）
+                'bearish': 'rgba(0, 51, 153, 0.9)',            // 深蓝 - 负背离（看跌）
+                'bullish_hidden': 'rgba(0, 255, 0, 0.9)',      // 绿色 - 隐藏正背离
+                'bearish_hidden': 'rgba(255, 0, 0, 0.9)'       // 红色 - 隐藏负背离
+            };
+            
+            const labelColorMap = {
+                'bullish': '#FFD700',           // 金色
+                'bearish': '#003399',           // 深蓝
+                'bullish_hidden': '#00FF00',    // 绿色
+                'bearish_hidden': '#FF0000'     // 红色
+            };
+            
+            // 为每个背离组绘制连线和标签
+            divData.forEach((divGroup, idx) => {
+                console.log('渲染背离组 #' + (idx + 1) + ':', divGroup);
+                
+                const color = colorMap[divGroup.color] || 'rgba(128, 128, 128, 0.8)';
+                const labelColor = labelColorMap[divGroup.color] || '#888888';
+                
+                try {
+                    // 绘制所有背离线（如果有多个指标检测到）
+                    if (divGroup.lines && Array.isArray(divGroup.lines)) {
+                        divGroup.lines.forEach((line) => {
+                            const divLine = chart.addLineSeries({
+                                color: color,
+                                lineWidth: 2,
+                                lineStyle: divGroup.type.includes('hidden') ? 2 : 0,
+                                lastValueVisible: false,
+                                priceLineVisible: false,
+                                crosshairMarkerVisible: false,
+                                title: '',
+                            });
+                            
+                            divLine.setData([
+                                { time: line.start_time, value: line.start_price },
+                                { time: line.end_time, value: line.end_price }
+                            ]);
+                            
+                            seriesList.push(divLine);
+                        });
+                    } else {
+                        // 兼容旧格式
+                        const divLine = chart.addLineSeries({
+                            color: color,
+                            lineWidth: 2,
+                            lineStyle: divGroup.type.includes('hidden') ? 2 : 0,
+                            lastValueVisible: false,
+                            priceLineVisible: false,
+                            crosshairMarkerVisible: false,
+                            title: '',
+                        });
+                        
+                        divLine.setData([
+                            { time: divGroup.start_time, value: divGroup.start_price },
+                            { time: divGroup.end_time, value: divGroup.end_price }
+                        ]);
+                        
+                        seriesList.push(divLine);
+                    }
+                    
+                    // 添加标签标记（使用与买卖信号相同的箭头样式）
+                    if (divGroup.label_text) {
+                        const isBullish = divGroup.type.includes('bullish');
+                        // LightweightCharts不支持多行文本，将换行符替换为逗号+空格，更紧凑易读
+                        const singleLineText = divGroup.label_text.replace(/\\n/g, ', ');
+                        markers.push({
+                            time: divGroup.end_time,
+                            position: isBullish ? 'belowBar' : 'aboveBar',
+                            color: labelColor,
+                            shape: isBullish ? 'arrowUp' : 'arrowDown',
+                            text: singleLineText
+                        });
+                        console.log('📝 [Divergence] 标签:', singleLineText, '@', divGroup.end_time);
+                    }
+                    
+                    console.log('✅ 背离组 #' + (idx + 1) + ' 已添加');
+                } catch (e) {
+                    console.error('渲染背离失败:', e);
+                }
+            });
+            
+            // 将markers应用到K线图上（不覆盖原有的买卖标签）
+            if (markers.length > 0 && window.candleSeries) {
+                try {
+                    // 使用全局保存的初始买卖标记
+                    const buySellMarkers = window.initialMarkers || [];
+                    console.log('📊 [Divergence] 买卖信号:', buySellMarkers.length, '个');
+                    
+                    // 合并买卖标签和新的背离标签
+                    const allMarkers = [...buySellMarkers, ...markers];
+                    
+                    // 按时间排序
+                    allMarkers.sort((a, b) => {
+                        if (a.time < b.time) return -1;
+                        if (a.time > b.time) return 1;
+                        return 0;
+                    });
+                    
+                    window.candleSeries.setMarkers(allMarkers);
+                    console.log('✅ [Divergence] 完成: 买卖信号', buySellMarkers.length, '个 + 背离标签', markers.length, '个 = 总计', allMarkers.length, '个');
+                } catch (e) {
+                    console.error('❌ [Divergence] 设置markers失败:', e);
+                }
+            } else {
+                console.log('⚠️ [Divergence] 没有标签需要添加');
+            }
+            
+            console.log('✅ [Divergence] 渲染完成:', seriesList.length, '条线，', markers.length, '个标签');
+            return seriesList;
+        }
+        
         // 指标系列管理
         const indicatorSeries = new Map();
         let userPreferences = {};
         
         // 初始化指标池
         function initIndicatorPool() {
+            console.log('🎬 [初始化] 指标池');
+            
+            // 检查背离检测数据
+            if (INDICATOR_POOL['divergence_detector']) {
+                const divConfig = INDICATOR_POOL['divergence_detector'];
+                console.log('📊 [初始化] 背离检测数据:', divConfig.data ? divConfig.data.length : 0, '组');
+            }
+            
             loadUserPreferences();
             
             Object.keys(INDICATOR_POOL).forEach(id => {
@@ -405,6 +542,11 @@ class IndicatorPoolMixin:
                     const elements = renderVolumeProfilePivot(config.data, chart);
                     indicatorSeries.set(id, elements);
                     console.log('✅ 覆盖层指标已渲染:', config.name);
+                } else if (config.renderFunction === 'renderDivergence') {
+                    console.log('🎯 [启用指标] 背离检测 - 数据:', config.data ? config.data.length : 0, '组');
+                    const elements = renderDivergence(config.data, chart);
+                    indicatorSeries.set(id, elements);
+                    console.log('✅ [启用指标] 背离检测渲染完成');
                 }
             } else if (config.renderType === 'overlay') {
                 // overlay类型指标没有渲染函数，仅标记为已启用
@@ -461,6 +603,19 @@ class IndicatorPoolMixin:
                         }
                     });
                 }
+                
+                // 如果是背离检测，只清除背离标签（保留买卖标签）
+                if (id === 'divergence_detector' && window.candleSeries) {
+                    try {
+                        // 恢复初始买卖标记
+                        const buySellMarkers = window.initialMarkers || [];
+                        window.candleSeries.setMarkers(buySellMarkers);
+                        console.log('✅ [禁用指标] 背离检测 - 恢复买卖信号', buySellMarkers.length, '个');
+                    } catch (e) {
+                        console.error('❌ [禁用指标] 清除markers失败:', e);
+                    }
+                }
+                
                 indicatorSeries.delete(id);
                 console.log('✅ 覆盖层指标已移除:', config.name);
             } else {
@@ -556,8 +711,16 @@ class IndicatorPoolMixin:
             }
         }
         
-        // 初始化指标池（在INDICATOR_POOL定义之后立即执行）
-        initIndicatorPool();
+        // 延迟初始化指标池，确保 candleSeries 和 initialMarkers 已完全创建
+        setTimeout(function() {
+            if (window.candleSeries && window.initialMarkers !== undefined) {
+                console.log('✅ [初始化] candleSeries 和 initialMarkers 已就绪');
+                initIndicatorPool();
+            } else {
+                console.warn('⚠️ [初始化] 等待 candleSeries 就绪...');
+                setTimeout(initIndicatorPool, 500);
+            }
+        }, 100);
         """
     
     @classmethod
@@ -569,10 +732,11 @@ class IndicatorPoolMixin:
         
         # 定义哪些指标应该显示给用户（隐藏内部使用的指标）
         visible_indicators = [
-            'ma_combo',           # 移动均线组合
-            'vegas_tunnel',       # Vegas隧道
+            'ma_combo',              # 移动均线组合
+            'vegas_tunnel',          # Vegas隧道
             'volume_profile_pivot',  # Volume Profile
-            'pivot_order_blocks'  # Pivot Order Blocks
+            'pivot_order_blocks',    # Pivot Order Blocks
+            'divergence_detector'    # 背离检测
         ]
         
         # 按分类分组（只包含可见指标）
@@ -618,9 +782,18 @@ class IndicatorPoolMixin:
         # 支撑阻力
         if 'support_resistance' in by_category:
             html += '<div class="indicator-category">'
-            html += '<div class="category-header">支撑阻力</div>'
+            html += '<div class="category-header">支撑阻力分析</div>'
             html += '<div class="indicator-list">'
             for ind in by_category['support_resistance']:
+                html += cls._generate_indicator_item_html(ind)
+            html += '</div></div>'
+        
+        # 振荡分析
+        if 'oscillator' in by_category:
+            html += '<div class="indicator-category">'
+            html += '<div class="category-header">振荡分析</div>'
+            html += '<div class="indicator-list">'
+            for ind in by_category['oscillator']:
                 html += cls._generate_indicator_item_html(ind)
             html += '</div></div>'
         
