@@ -20,16 +20,6 @@ NEWS_CACHE_TTL = 3600  # 新闻缓存1小时
 
 router = APIRouter(tags=["新闻资讯"])
 
-# 尝试导入akshare用于新闻功能（可选依赖）
-try:
-    import akshare as ak
-    import pandas as pd
-    AKSHARE_AVAILABLE = True
-    logger.info("akshare可用，新闻功能已启用")
-except ImportError:
-    AKSHARE_AVAILABLE = False
-    logger.warning("akshare未安装，新闻功能不可用。如需使用新闻功能，请安装: pip install akshare")
-
 @router.get(
     "/api/public/stock_news", 
     dependencies=[Depends(verify_token)],
@@ -79,49 +69,80 @@ async def get_stock_news(
             return cache_entry["data"]
     
     try:
-        # 检查akshare是否可用
-        if not AKSHARE_AVAILABLE:
-            logger.warning(f"akshare未安装，无法获取股票 {symbol} 的新闻数据")
-            return {
-                "error": "新闻功能不可用",
-                "message": "akshare库未安装。本系统主要使用Tushare，akshare仅用于新闻功能（可选）。如需使用新闻功能，请安装: pip install akshare",
-                "data": []
-            }
-        
-        # 直接使用akshare获取新闻数据，不再依赖外部API
-        logger.info(f"使用akshare获取股票 {symbol} 的新闻资讯数据")
+        # 使用东方财富API获取新闻数据
+        logger.info(f"使用东方财富API获取股票 {symbol} 的新闻资讯数据")
         
         try:
-            # 使用asyncio在线程池中执行阻塞的akshare调用，并设置超时
-            import asyncio
-            import concurrent.futures
+            # 东方财富个股新闻API
+            url = "https://search-api-web.eastmoney.com/search/jsonp"
+            params = {
+                "cb": "jQuery",
+                "param": json.dumps({
+                    "uid": "",
+                    "keyword": symbol,
+                    "type": ["cmsArticleWebOld"],
+                    "client": "web",
+                    "clientType": "web",
+                    "clientVersion": "curr",
+                    "param": {
+                        "cmsArticleWebOld": {
+                            "searchScope": "default",
+                            "sort": "default",
+                            "pageIndex": 1,
+                            "pageSize": 100,
+                            "preTag": "<em>",
+                            "postTag": "</em>"
+                        }
+                    }
+                }),
+                "_": str(int(time.time() * 1000))
+            }
             
-            loop = asyncio.get_event_loop()
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                # 在线程池中执行阻塞调用，设置30秒超时避免长时间阻塞
-                try:
-                    news_df = await asyncio.wait_for(
-                        loop.run_in_executor(executor, ak.stock_news_em, symbol),
-                        timeout=30.0  # 30秒超时
-                    )
-                except asyncio.TimeoutError:
-                    logger.error(f"获取股票 {symbol} 的新闻数据超时（30秒）")
-                    return []
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Referer': 'https://so.eastmoney.com/'
+            }
             
-            # 转换为字典列表
-            news_data = news_df.to_dict('records')
+            response = requests.get(url, params=params, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            # 解析JSONP响应
+            text = response.text
+            # 移除JSONP包装
+            if text.startswith('jQuery'):
+                text = text[text.index('(') + 1:text.rindex(')')]
+            
+            data = json.loads(text)
+            
+            # 提取新闻列表
+            news_list = []
+            if data.get('result') and data['result'].get('cmsArticleWebOld'):
+                articles = data['result']['cmsArticleWebOld']
+                for article in articles:
+                    news_item = {
+                        '关键词': symbol,
+                        '新闻标题': article.get('title', ''),
+                        '新闻内容': article.get('content', ''),
+                        '发布时间': article.get('date', ''),
+                        '文章来源': article.get('mediaName', ''),
+                        '新闻链接': article.get('url', '')
+                    }
+                    news_list.append(news_item)
             
             # 缓存结果
             news_cache[cache_key] = {
-                "data": news_data,
+                "data": news_list,
                 "timestamp": current_time
             }
             
-            return news_data
+            logger.info(f"成功获取股票 {symbol} 的 {len(news_list)} 条新闻")
+            return news_list
             
+        except requests.Timeout:
+            logger.error(f"获取股票 {symbol} 的新闻数据超时（30秒）")
+            return []
         except Exception as e:
-            logger.error(f"使用akshare获取股票 {symbol} 的新闻数据失败: {str(e)}")
-            # 如果akshare获取失败，返回空列表
+            logger.error(f"使用东方财富API获取股票 {symbol} 的新闻数据失败: {str(e)}")
             return []
     
     except Exception as e:
