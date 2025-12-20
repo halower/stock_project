@@ -416,7 +416,7 @@ class IndicatorPoolMixin:
                     const series = chart.addLineSeries({
                         color: config.color || '#888888',
                         lineWidth: 2,
-                        title: config.name,
+                        title: '',
                         priceLineVisible: false,
                         lastValueVisible: false,
                     });
