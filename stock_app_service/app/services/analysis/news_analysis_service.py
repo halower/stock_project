@@ -368,13 +368,13 @@ def analyze_news_by_titles(news_list: List[Dict[str, Any]], use_cache: bool = Tr
     # 构造提示词 - 优化为专业交易指导报告
     prompt = f"""
 你是一位资深的A股交易分析师，拥有15年市场经验。请基于以下{len(news_titles)}条最新财经新闻，撰写一份专业的交易指导分析报告。
-
+    
 【今日财经新闻】
-{titles_text}
-
+    {titles_text}
+    
 请按以下结构输出简洁、专业、实用的分析报告：
     
-## 1. 市场整体情绪分析
+    ## 1. 市场整体情绪分析
 **市场情绪：** [积极/中性偏分化/谨慎观望/乐观向上]
 • **科技行业：** [具体分析政策影响、龙头股表现]
 • **金融行业：** [具体分析银行、券商、保险表现]
@@ -404,8 +404,8 @@ def analyze_news_by_titles(news_list: List[Dict[str, Any]], use_cache: bool = Tr
 ### 国际环境
 • **美联储政策：** [加息预期、对A股影响]
 • **地缘政治：** [国际关系、贸易摩擦]
-
-## 4. 风险因素识别
+    
+    ## 4. 风险因素识别
 ### 🚨 高风险（需高度警惕）
 1. **[风险名称]：** [具体内容] | 影响：[全市场/特定板块] | 风险等级：⚠️⚠️⚠️ | 应对：[操作建议]
 2. [其他高风险因素]
@@ -452,7 +452,7 @@ def analyze_news_by_titles(news_list: List[Dict[str, Any]], use_cache: bool = Tr
 
 ---
 **要求：** 1.内容专业客观实用 2.数据有理有据 3.操作建议具体明确 4.风险提示全面 5.语言简洁专业 6.篇幅1500-2500字
-"""
+    """
     
     # 调用AI进行分析
     analysis_result = get_completion_with_custom_params(

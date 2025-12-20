@@ -88,11 +88,11 @@ class WatchlistItemWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: () {
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () {
               List<Map<String, String>>? availableStocks;
               if (allWatchlistItems != null && allWatchlistItems!.isNotEmpty) {
                 availableStocks = allWatchlistItems!.map((watchlistItem) => {
@@ -233,11 +233,11 @@ class WatchlistItemWidget extends StatelessWidget {
                 ],
               ),
             ),
+              ),
+            ),
           ),
         ),
       ),
-      ),
-    ),
     );
   }
 

@@ -79,63 +79,63 @@ class StockInfoCard extends StatelessWidget {
               Row(
                 children: [
                   // 股票图标
-                  Container(
+              Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
+                decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
+                  boxShadow: [
+                    BoxShadow(
                           color: const Color(0xFF3B82F6).withOpacity(0.3),
-                          blurRadius: 8,
+                      blurRadius: 8,
                           spreadRadius: 0,
-                        ),
-                      ],
                     ),
+                  ],
+                ),
                     child: const Icon(
-                      Icons.candlestick_chart,
+                        Icons.candlestick_chart,
                       color: Colors.white,
-                      size: 24,
+                        size: 24,
+                      ),
                     ),
-                  ),
                   const SizedBox(width: 16),
-                  
-                  // 股票名称和代码
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tradePlan.stockName,
-                          style: TextStyle(
+                    
+                    // 股票名称和代码
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tradePlan.stockName,
+                            style: TextStyle(
                             fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode
-                                ? Colors.white
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode
+                                  ? Colors.white
                                 : Colors.black87,
-                            letterSpacing: 0.5,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          tradePlan.stockCode,
-                          style: TextStyle(
+                          const SizedBox(height: 4),
+                          Text(
+                            tradePlan.stockCode,
+                            style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: isDarkMode
-                                ? Colors.grey[400]
-                                : const Color(0xFF64748B),
-                            letterSpacing: 0.5,
+                              fontWeight: FontWeight.w500,
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : const Color(0xFF64748B),
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
               ),
             ],
           ),

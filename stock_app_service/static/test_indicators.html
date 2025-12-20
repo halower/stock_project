@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>指标测试 - Volume Profile & Order Blocks</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: #fff;
+        }
+        #chart-container { 
+            width: 100%; 
+            height: 600px; 
+            border: 1px solid #333;
+            position: relative;
+            background: #131722;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #2a2e39;
+            border-radius: 8px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #2962FF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1e53e5;
+        }
+        button.danger {
+            background: #f23645;
+        }
+        button.danger:hover {
+            background: #d32f2f;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2a2e39;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-success { color: #4caf50; }
+        .log-error { color: #f44336; }
+        .log-info { color: #2196f3; }
+        .vp-box {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .order-block {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h2>📊 指标渲染测试</h2>
+    
+    <div class="controls">
+        <button onclick="testVolumeProfile()">测试 Volume Profile</button>
+        <button onclick="testOrderBlocks()">测试 Pivot Order Blocks</button>
+        <button onclick="testEMA()">测试 EMA 线条</button>
+        <button class="danger" onclick="clearAll()">清除所有指标</button>
+        <button onclick="clearLog()">清除日志</button>
+    </div>
+    
+    <div id="chart-container"></div>
+    <div id="log"></div>
+    
+    <script>
+        let chart;
+        let vpElements = [];
+        let obElements = [];
+        let emaSeriesList = [];
+        
+        function log(msg, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const className = 'log-' + type;
+            logDiv.innerHTML = `<div class="${className}">[${time}] ${msg}</div>` + logDiv.innerHTML;
+            console.log(msg);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // 创建图表
+        log('初始化图表...', 'info');
+        const chartContainer = document.getElementById('chart-container');
+        const { createChart } = LightweightCharts;
+        
+        chart = createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: 600,
+            layout: {
+                background: { color: '#131722' },
+                textColor: '#d1d4dc',
+            },
+            grid: {
+                vertLines: { color: '#2B2B43' },
+                horzLines: { color: '#2B2B43' },
+            },
+        });
+        
+        // 添加K线数据
+        const candleSeries = chart.addCandlestickSeries({
+            upColor: '#26a69a',
+            downColor: '#ef5350',
+            borderVisible: false,
+            wickUpColor: '#26a69a',
+            wickDownColor: '#ef5350',
+        });
+        
+        // 生成测试数据
+        const testData = [];
+        const basePrice = 100;
+        for (let i = 0; i < 100; i++) {
+            const date = new Date(2024, 0, i + 1);
+            const dateStr = date.getFullYear() + '-' + 
+                           String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                           String(date.getDate()).padStart(2, '0');
+            const randomChange = (Math.random() - 0.5) * 5;
+            const open = basePrice + randomChange;
+            const close = open + (Math.random() - 0.5) * 3;
+            const high = Math.max(open, close) + Math.random() * 2;
+            const low = Math.min(open, close) - Math.random() * 2;
+            
+            testData.push({
+                time: dateStr,
+                open: open,
+                high: high,
+                low: low,
+                close: close
+            });
+        }
+        
+        candleSeries.setData(testData);
+        chart.timeScale().fitContent();
+        
+        log('✅ 图表创建成功，K线数据: ' + testData.length + ' 根', 'success');
+        
+        // 测试 Volume Profile
+        function testVolumeProfile() {
+            log('🔧 开始测试 Volume Profile...', 'info');
+            
+            // 清除旧的
+            vpElements.forEach(el => el.remove());
+            vpElements = [];
+            
+            // 模拟 Volume Profile 数据
+            const priceMin = 95;
+            const priceMax = 105;
+            const numBars = 20;
+            const priceStep = (priceMax - priceMin) / numBars;
+            
+            for (let i = 0; i < numBars; i++) {
+                const priceLow = priceMin + i * priceStep;
+                const priceHigh = priceLow + priceStep;
+                const volume = Math.random() * 1000 + 500;
+                const inValueArea = i >= 8 && i <= 12; // 中间部分是 Value Area
+                
+                const box = document.createElement('div');
+                box.className = 'vp-box';
+                box.style.position = 'absolute';
+                box.style.pointerEvents = 'none';
+                box.style.zIndex = '5';
+                
+                if (inValueArea) {
+                    box.style.backgroundColor = 'rgba(67, 70, 81, 0.5)';
+                    box.style.border = '1px solid rgba(67, 70, 81, 0.7)';
+                } else {
+                    box.style.backgroundColor = 'rgba(251, 192, 45, 0.5)';
+                    box.style.border = '1px solid rgba(251, 192, 45, 0.7)';
+                }
+                
+                box.dataset.priceLow = priceLow;
+                box.dataset.priceHigh = priceHigh;
+                box.dataset.volume = volume;
+                
+                chartContainer.appendChild(box);
+                vpElements.push(box);
+            }
+            
+            log('✅ 创建了 ' + numBars + ' 个 Volume Profile 柱', 'success');
+            
+            // 更新位置
+            updateVPPositions();
+            
+            // 监听图表变化
+            chart.timeScale().subscribeVisibleLogicalRangeChange(updateVPPositions);
+        }
+        
+        function updateVPPositions() {
+            try {
+                const timeScale = chart.timeScale();
+                const visibleRange = timeScale.getVisibleLogicalRange();
+                
+                if (!visibleRange) return;
+                
+                const rightX = timeScale.logicalToCoordinate(visibleRange.to);
+                const chartHeight = chartContainer.clientHeight;
+                const priceRange = chart.priceScale('right').getVisiblePriceRange();
+                
+                if (!priceRange) return;
+                
+                const priceMin = priceRange.from;
+                const priceMax = priceRange.to;
+                const priceSpan = priceMax - priceMin;
+                
+                const maxVolume = Math.max(...vpElements.map(el => parseFloat(el.dataset.volume)));
+                const maxWidth = 150;
+                
+                vpElements.forEach(box => {
+                    const priceLow = parseFloat(box.dataset.priceLow);
+                    const priceHigh = parseFloat(box.dataset.priceHigh);
+                    const volume = parseFloat(box.dataset.volume);
+                    
+                    const y1 = chartHeight * (1 - (priceHigh - priceMin) / priceSpan);
+                    const y2 = chartHeight * (1 - (priceLow - priceMin) / priceSpan);
+                    const width = (volume / maxVolume) * maxWidth;
+                    
+                    if (rightX !== null && !isNaN(y1) && !isNaN(y2)) {
+                        box.style.left = (rightX - width) + 'px';
+                        box.style.top = Math.min(y1, y2) + 'px';
+                        box.style.width = width + 'px';
+                        box.style.height = Math.abs(y2 - y1) + 'px';
+                        box.style.display = 'block';
+                    }
+                });
+            } catch (e) {
+                log('❌ 更新 VP 位置失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 测试 Order Blocks
+        function testOrderBlocks() {
+            log('🔧 开始测试 Pivot Order Blocks...', 'info');
+            
+            // 清除旧的
+            obElements.forEach(el => el.remove());
+            obElements = [];
+            
+            // 创建2个订单块
+            const blocks = [
+                { type: 'support', priceHigh: 98, priceLow: 96, startTime: '2024-01-20', endTime: '2024-03-31' },
+                { type: 'resistance', priceHigh: 104, priceLow: 102, startTime: '2024-02-01', endTime: '2024-03-31' }
+            ];
+            
+            blocks.forEach(block => {
+                const box = document.createElement('div');
+                box.className = 'order-block';
+                box.style.position = 'absolute';
+                box.style.pointerEvents = 'none';
+                box.style.zIndex = '10';
+                box.style.border = '2px solid';
+                box.style.borderRadius = '4px';
+                
+                if (block.type === 'support') {
+                    box.style.backgroundColor = 'rgba(0, 255, 0, 0.15)';
+                    box.style.borderColor = 'rgba(0, 255, 0, 0.6)';
+                } else {
+                    box.style.backgroundColor = 'rgba(255, 0, 0, 0.15)';
+                    box.style.borderColor = 'rgba(255, 0, 0, 0.6)';
+                }
+                
+                box.dataset.type = block.type;
+                box.dataset.priceHigh = block.priceHigh;
+                box.dataset.priceLow = block.priceLow;
+                box.dataset.startTime = block.startTime;
+                box.dataset.endTime = block.endTime;
+                
+                chartContainer.appendChild(box);
+                obElements.push(box);
+            });
+            
+            log('✅ 创建了 ' + blocks.length + ' 个 Order Blocks', 'success');
+            
+            // 更新位置
+            updateOBPositions();
+            
+            // 监听图表变化
+            chart.timeScale().subscribeVisibleLogicalRangeChange(updateOBPositions);
+        }
+        
+        function updateOBPositions() {
+            try {
+                const timeScale = chart.timeScale();
+                const chartHeight = chartContainer.clientHeight;
+                const priceRange = chart.priceScale('right').getVisiblePriceRange();
+                
+                if (!priceRange) return;
+                
+                const priceMin = priceRange.from;
+                const priceMax = priceRange.to;
+                const priceSpan = priceMax - priceMin;
+                
+                obElements.forEach(box => {
+                    const priceHigh = parseFloat(box.dataset.priceHigh);
+                    const priceLow = parseFloat(box.dataset.priceLow);
+                    const startTime = box.dataset.startTime;
+                    const endTime = box.dataset.endTime;
+                    
+                    const x1 = timeScale.timeToCoordinate(startTime);
+                    const x2 = timeScale.timeToCoordinate(endTime);
+                    const y1 = chartHeight * (1 - (priceHigh - priceMin) / priceSpan);
+                    const y2 = chartHeight * (1 - (priceLow - priceMin) / priceSpan);
+                    
+                    if (x1 !== null && x2 !== null && !isNaN(y1) && !isNaN(y2)) {
+                        box.style.left = Math.min(x1, x2) + 'px';
+                        box.style.top = Math.min(y1, y2) + 'px';
+                        box.style.width = Math.abs(x2 - x1) + 'px';
+                        box.style.height = Math.abs(y2 - y1) + 'px';
+                        box.style.display = 'block';
+                    }
+                });
+            } catch (e) {
+                log('❌ 更新 OB 位置失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 测试 EMA
+        function testEMA() {
+            log('🔧 开始测试 EMA 线条...', 'info');
+            
+            // 清除旧的
+            emaSeriesList.forEach(series => chart.removeSeries(series));
+            emaSeriesList = [];
+            
+            // 计算简单的EMA（这里用SMA代替）
+            const ema12Data = [];
+            const ema18Data = [];
+            const period12 = 12;
+            const period18 = 18;
+            
+            for (let i = 0; i < testData.length; i++) {
+                if (i >= period12 - 1) {
+                    let sum = 0;
+                    for (let j = 0; j < period12; j++) {
+                        sum += testData[i - j].close;
+                    }
+                    ema12Data.push({ time: testData[i].time, value: sum / period12 });
+                }
+                
+                if (i >= period18 - 1) {
+                    let sum = 0;
+                    for (let j = 0; j < period18; j++) {
+                        sum += testData[i - j].close;
+                    }
+                    ema18Data.push({ time: testData[i].time, value: sum / period18 });
+                }
+            }
+            
+            // 添加 EMA12
+            const ema12Series = chart.addLineSeries({
+                color: '#FFD700',
+                lineWidth: 2,
+                title: 'EMA12',
+                priceLineVisible: false,
+                lastValueVisible: false,
+            });
+            ema12Series.setData(ema12Data);
+            emaSeriesList.push(ema12Series);
+            
+            // 添加 EMA18
+            const ema18Series = chart.addLineSeries({
+                color: '#2962FF',
+                lineWidth: 2,
+                title: 'EMA18',
+                priceLineVisible: false,
+                lastValueVisible: false,
+            });
+            ema18Series.setData(ema18Data);
+            emaSeriesList.push(ema18Series);
+            
+            log('✅ 添加了 2 条 EMA 线', 'success');
+        }
+        
+        function clearAll() {
+            log('🗑️ 清除所有指标...', 'info');
+            
+            vpElements.forEach(el => el.remove());
+            vpElements = [];
+            
+            obElements.forEach(el => el.remove());
+            obElements = [];
+            
+            emaSeriesList.forEach(series => chart.removeSeries(series));
+            emaSeriesList = [];
+            
+            log('✅ 已清除所有指标', 'success');
+        }
+        
+        // 自动测试
+        log('📝 点击上方按钮测试各个指标', 'info');
+    </script>
+</body>
+</html>

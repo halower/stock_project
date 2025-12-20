@@ -50,23 +50,48 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             ema144_data = cls._prepare_ema_data(df, 'ema144')
             ema169_data = cls._prepare_ema_data(df, 'ema169')
             
-            # 计算 Volume Profile
-            from app.indicators.volume_profile import calculate_volume_profile
-            volume_profile = calculate_volume_profile(df, num_bars=150, row_size=24, percent=70.0)
-            
-            # 生成EMA系列和Vegas隧道的JavaScript代码
-            ema_series_code = cls._generate_enhanced_ema_series_code(
-                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, colors
+            # 计算 Volume Profile Pivot Anchored（新版）
+            from app.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
+            volume_profile = calculate_volume_profile_pivot_anchored(
+                df, 
+                pivot_length=20, 
+                profile_levels=25, 
+                value_area_percent=68.0, 
+                profile_width=0.30
             )
             
-            # 生成 Volume Profile 覆盖层代码
-            volume_profile_code = cls._generate_volume_profile_overlay(volume_profile, colors, chart_data)
+            # 计算 Pivot Order Blocks
+            from app.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
+            pivot_order_blocks = calculate_pivot_order_blocks(
+                df, left=15, right=8, box_count=2, percentage_change=6.0, box_extend_to_end=True
+            )
+            if pivot_order_blocks is None:
+                pivot_order_blocks = []
             
-            # 合并所有附加系列代码
-            additional_series = ema_series_code + volume_profile_code
+            # 转换 Pivot Order Blocks 格式
+            pivot_order_blocks_for_pool = []
+            for block in pivot_order_blocks:
+                pivot_order_blocks_for_pool.append({
+                    'type': 'resistance' if block['type'] == 'resistance' else 'support',
+                    'price_high': block['price_high'],
+                    'price_low': block['price_low'],
+                    'start_time': cls._get_time_string(df, block['start_index']),
+                    'end_time': cls._get_time_string(df, block['end_index']),
+                    'strength': block.get('strength', 0.8)
+                })
+            
+            # 不再自动绘制指标，所有指标通过指标池控制
+            # 用户可以在指标池中选择启用/禁用指标
+            additional_series = ""
             
             # 生成增强的图例代码（已隐藏）
             additional_scripts = cls._generate_enhanced_legend_code()
+            
+            # 生成指标池配置和逻辑
+            indicator_pool_scripts = cls._generate_indicator_pool_scripts(
+                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, volume_profile, pivot_order_blocks_for_pool
+            )
+            additional_scripts += indicator_pool_scripts
             
             return cls._generate_base_html_template(
                 stock=stock,
@@ -82,7 +107,35 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             
         except Exception as e:
             logger.error(f"生成量价波动图表时出错: {str(e)}")
+            import traceback
+            logger.error(f"完整错误堆栈:\n{traceback.format_exc()}")
             return ""
+    
+    @classmethod
+    def _get_time_string(cls, df: pd.DataFrame, idx: int) -> str:
+        """获取时间字符串（YYYY-MM-DD 格式）"""
+        try:
+            if idx < 0 or idx >= len(df):
+                return str(idx)
+            
+            if 'date' in df.columns:
+                date_value = df.iloc[idx]['date']
+            elif 'trade_date' in df.columns:
+                date_value = df.iloc[idx]['trade_date']
+            else:
+                return str(idx)
+            
+            if hasattr(date_value, 'strftime'):
+                return date_value.strftime('%Y-%m-%d')
+            else:
+                date_str = str(date_value)
+                if len(date_str) == 8:  # 20251128 格式
+                    return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                return date_str
+                
+        except Exception as e:
+            logger.warning(f"获取时间字符串失败: {e}")
+            return str(idx)
     
     @classmethod
     def _prepare_ema_data(cls, df, ema_column: str) -> list:

@@ -198,7 +198,7 @@ def calculate_volume_profile(
                 'volume_down': float(volumes_down[i]),
                 'total_volume': float(total_volumes[i]),
                 'volume_percent': float(total_volumes[i] / max_volume * 100) if max_volume > 0 else 0,
-                'in_value_area': down_idx <= i <= up_idx
+                'in_value_area': bool(down_idx <= i <= up_idx)
             })
         
         result = {

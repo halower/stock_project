@@ -524,12 +524,12 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '手动添加股票',
-                              style: TextStyle(
+                      Text(
+                        '手动添加股票',
+                        style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white : Colors.black87,
+                          color: isDark ? Colors.white : Colors.black87,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -564,15 +564,15 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                         ),
                       ],
                     ),
-                    child: TextField(
-                      controller: codeController,
+                  child: TextField(
+                    controller: codeController,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                         color: isDark ? Colors.white : Colors.black87,
                       ),
-                      decoration: InputDecoration(
-                        hintText: '输入股票代码或名称搜索',
+                    decoration: InputDecoration(
+                      hintText: '输入股票代码或名称搜索',
                         hintStyle: TextStyle(
                           color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
                           fontSize: 15,
@@ -582,24 +582,24 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                           color: const Color(0xFF3B82F6),
                           size: 24,
                         ),
-                        suffixIcon: isSearching 
-                            ? const SizedBox(
+                      suffixIcon: isSearching 
+                          ? const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: Padding(
+                              child: Padding(
                                   padding: EdgeInsets.all(14),
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
                                     valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
                                   ),
-                                ),
-                              )
-                            : null,
-                        filled: true,
+                              ),
+                            )
+                          : null,
+                      filled: true,
                         fillColor: isDark 
                             ? Colors.white.withOpacity(0.08)
                             : Colors.grey.shade50,
-                        border: OutlineInputBorder(
+                      border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: BorderSide(
                             color: isDark 
@@ -623,26 +623,26 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                             color: Color(0xFF3B82F6),
                             width: 2,
                           ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       ),
-                      onChanged: (value) async {
-                        if (value.length >= 2) {
-                          setModalState(() => isSearching = true);
-                          try {
-                            // 搜索股票
-                            final results = await _searchStocks(value);
-                            setModalState(() {
-                              searchResults = results;
-                              isSearching = false;
-                            });
-                          } catch (e) {
-                            setModalState(() => isSearching = false);
-                          }
-                        } else {
-                          setModalState(() => searchResults = []);
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    ),
+                    onChanged: (value) async {
+                      if (value.length >= 2) {
+                        setModalState(() => isSearching = true);
+                        try {
+                          // 搜索股票
+                          final results = await _searchStocks(value);
+                          setModalState(() {
+                            searchResults = results;
+                            isSearching = false;
+                          });
+                        } catch (e) {
+                          setModalState(() => isSearching = false);
                         }
-                      },
+                      } else {
+                        setModalState(() => searchResults = []);
+                      }
+                    },
                     ),
                   ),
                 ),
@@ -668,8 +668,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                         width: 1.5,
                       ),
                     ),
-                    child: Row(
-                      children: [
+                  child: Row(
+                    children: [
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -683,34 +683,34 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(
+                      Text(
                           '策略：',
-                          style: TextStyle(
+                        style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
-                          ),
                         ),
+                      ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
+                      Expanded(
+                        child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                            decoration: BoxDecoration(
+                          decoration: BoxDecoration(
                               color: isDark 
                                   ? Colors.white.withOpacity(0.08)
                                   : Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isDark 
                                     ? Colors.white.withOpacity(0.1)
                                     : Colors.grey.shade200,
                                 width: 1,
                               ),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: selectedStrategy,
-                                isExpanded: true,
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedStrategy,
+                              isExpanded: true,
                                 dropdownColor: isDark ? const Color(0xFF2A2A3E) : Colors.white,
                                 style: TextStyle(
                                   fontSize: 14,
@@ -721,20 +721,20 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                                   Icons.keyboard_arrow_down_rounded,
                                   color: const Color(0xFF3B82F6),
                                 ),
-                                items: const [
-                                  DropdownMenuItem(value: 'volume_wave', child: Text('动量守恒')),
-                                  DropdownMenuItem(value: 'volume_wave_enhanced', child: Text('动量守恒增强版')),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setModalState(() => selectedStrategy = value);
-                                  }
-                                },
-                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'volume_wave', child: Text('动量守恒')),
+                                DropdownMenuItem(value: 'volume_wave_enhanced', child: Text('动量守恒增强版')),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setModalState(() => selectedStrategy = value);
+                                }
+                              },
                             ),
                           ),
                         ),
-                      ],
+                      ),
+                    ],
                     ),
                   ),
                 ),
@@ -828,8 +828,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                             
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
                                   colors: isDark
                                       ? [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.04)]
                                       : [Colors.white, Colors.grey.shade50],
@@ -876,7 +876,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                                               colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
                                               begin: Alignment.topLeft,
                                               end: Alignment.bottomRight,
-                                            ),
+                                    ),
                                             borderRadius: BorderRadius.circular(14),
                                             boxShadow: [
                                               BoxShadow(
@@ -885,18 +885,18 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                                                 offset: const Offset(0, 3),
                                               ),
                                             ],
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              name.isNotEmpty ? name[0] : '?',
-                                              style: const TextStyle(
-                                                color: Colors.white,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      name.isNotEmpty ? name[0] : '?',
+                                      style: const TextStyle(
+                                        color: Colors.white,
                                                 fontSize: 22,
                                                 fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                                         const SizedBox(width: 14),
                                         // 股票信息
                                         Expanded(
@@ -904,23 +904,23 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                name,
-                                                style: TextStyle(
+                                  name,
+                                  style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w700,
-                                                  color: isDark ? Colors.white : Colors.black87,
+                                    color: isDark ? Colors.white : Colors.black87,
                                                   letterSpacing: 0.3,
-                                                ),
-                                              ),
+                                  ),
+                                ),
                                               const SizedBox(height: 4),
                                               Text(
                                                 code.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
-                                                style: TextStyle(
+                                  style: TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w500,
-                                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                                ),
-                                              ),
+                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                  ),
+                                ),
                                             ],
                                           ),
                                         ),
@@ -945,9 +945,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                                               borderRadius: BorderRadius.circular(12),
                                               onTap: () async {
                                                 await _addStockToWatchlist(
-                                                  code: code.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
-                                                  name: name,
-                                                  strategy: selectedStrategy,
+                                    code: code.replaceAll('.SH', '').replaceAll('.SZ', '').replaceAll('.BJ', ''),
+                                    name: name,
+                                    strategy: selectedStrategy,
                                                 );
                                                 // 方法内部会自动关闭对话框
                                               },
@@ -1133,9 +1133,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
             child: Container(
               padding: const EdgeInsets.only(bottom: 16, top: 16),
               child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Row(

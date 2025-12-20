@@ -904,25 +904,25 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
     
     // 如果AI没有返回百分比，则客户端计算（兜底方案）
     if (percentageText == null) {
-      // 从value中提取数字（去掉¥符号）
-      final priceMatch = RegExp(r'[\d.]+').firstMatch(value);
-      if (priceMatch != null && widget.stock.price != null) {
-        final price = double.tryParse(priceMatch.group(0)!);
-        if (price != null) {
-          final currentPrice = widget.stock.price!;
-          final percentage = ((price - currentPrice) / currentPrice * 100);
-          final absPercentage = percentage.abs();
-          
-          // 判断百分比是否合理
-          bool isReasonable = true;
-          if (label == '止损' && absPercentage > 10) {
-            isReasonable = false; // 止损超过10%不合理
-          }
-          
-          percentageText = '${percentage >= 0 ? '+' : ''}${percentage.toStringAsFixed(1)}%';
-          percentageColor = isReasonable 
-              ? color 
-              : const Color(0xFFFF6B6B); // 不合理用红色警告
+    // 从value中提取数字（去掉¥符号）
+    final priceMatch = RegExp(r'[\d.]+').firstMatch(value);
+    if (priceMatch != null && widget.stock.price != null) {
+      final price = double.tryParse(priceMatch.group(0)!);
+      if (price != null) {
+        final currentPrice = widget.stock.price!;
+        final percentage = ((price - currentPrice) / currentPrice * 100);
+        final absPercentage = percentage.abs();
+        
+        // 判断百分比是否合理
+        bool isReasonable = true;
+        if (label == '止损' && absPercentage > 10) {
+          isReasonable = false; // 止损超过10%不合理
+        }
+        
+        percentageText = '${percentage >= 0 ? '+' : ''}${percentage.toStringAsFixed(1)}%';
+        percentageColor = isReasonable 
+            ? color 
+            : const Color(0xFFFF6B6B); // 不合理用红色警告
         }
       }
     }

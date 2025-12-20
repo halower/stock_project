@@ -51,11 +51,31 @@ class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
             opens = df['open'].values
             closes = df['close'].values
             
-            # 获取时间索引
-            if 'trade_date' in df.columns:
-                times = df['trade_date'].values
-            elif 'date' in df.columns:
-                times = df['date'].values
+            # 获取时间索引，统一转换为 YYYY-MM-DD 格式
+            if 'date' in df.columns:
+                times = []
+                for _, row in df.iterrows():
+                    date_value = row['date']
+                    if hasattr(date_value, 'strftime'):
+                        times.append(date_value.strftime('%Y-%m-%d'))
+                    else:
+                        date_str = str(date_value)
+                        if len(date_str) == 8:  # 20251128 格式
+                            times.append(f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}")
+                        else:
+                            times.append(date_str)
+            elif 'trade_date' in df.columns:
+                times = []
+                for _, row in df.iterrows():
+                    date_value = row['trade_date']
+                    if hasattr(date_value, 'strftime'):
+                        times.append(date_value.strftime('%Y-%m-%d'))
+                    else:
+                        date_str = str(date_value)
+                        if len(date_str) == 8:  # 20251128 格式
+                            times.append(f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}")
+                        else:
+                            times.append(date_str)
             else:
                 times = list(range(len(df)))
             
@@ -99,10 +119,16 @@ class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
                                     candle_idx = idx
                                     break
                         
+                        # 根据配置决定end_time
+                        if cls.PIVOT_CONFIG.get('box_extend_to_end', True):
+                            end_idx = n - 1  # 延伸到最新K线
+                        else:
+                            end_idx = min(n - 1, i + right)
+                        
                         order_blocks.append({
                             'type': 'high',
                             'start_time': str(times[candle_idx]),
-                            'end_time': str(times[min(n - 1, i + right)]),
+                            'end_time': str(times[end_idx]),
                             'high': float(highs[candle_idx]),
                             'low': float(lows[candle_idx]),
                             'pivot_index': i
@@ -146,10 +172,16 @@ class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
                                     candle_idx = idx
                                     break
                         
+                        # 根据配置决定end_time
+                        if cls.PIVOT_CONFIG.get('box_extend_to_end', True):
+                            end_idx = n - 1  # 延伸到最新K线
+                        else:
+                            end_idx = min(n - 1, i + right)
+                        
                         order_blocks.append({
                             'type': 'low',
                             'start_time': str(times[candle_idx]),
-                            'end_time': str(times[min(n - 1, i + right)]),
+                            'end_time': str(times[end_idx]),
                             'high': float(highs[candle_idx]),
                             'low': float(lows[candle_idx]),
                             'pivot_index': i
@@ -351,29 +383,43 @@ class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
             ema144_data = cls._prepare_ema_data(df, 'ema144')
             ema169_data = cls._prepare_ema_data(df, 'ema169')
             
-            # 计算 Volume Profile
-            from app.indicators.volume_profile import calculate_volume_profile
-            volume_profile = calculate_volume_profile(df, num_bars=150, row_size=24, percent=70.0)
+            # 计算 Volume Profile Pivot Anchored（新版）
+            from app.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
+            volume_profile = calculate_volume_profile_pivot_anchored(
+                df, 
+                pivot_length=20, 
+                profile_levels=25, 
+                value_area_percent=68.0, 
+                profile_width=0.30
+            )
             
             # 计算 Pivot Order Blocks
             order_blocks = cls._calculate_pivot_order_blocks(df)
             
-            # 生成EMA系列和Vegas隧道的JavaScript代码
-            ema_series_code = cls._generate_enhanced_ema_series_code(
-                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, colors
-            )
-            
-            # 生成 Volume Profile 覆盖层代码
-            volume_profile_code = cls._generate_volume_profile_overlay(volume_profile, colors, chart_data)
-            
-            # 生成 Pivot Order Blocks 代码
-            pivot_ob_code = cls._generate_pivot_order_blocks_code(order_blocks, colors, chart_data)
-            
-            # 合并所有附加系列代码
-            additional_series = ema_series_code + volume_profile_code + pivot_ob_code
+            # 不再自动绘制指标，所有指标通过指标池控制
+            # 用户可以在指标池中选择启用/禁用指标
+            additional_series = ""
             
             # 生成增强的图例代码（已隐藏）
             additional_scripts = cls._generate_enhanced_legend_code()
+            
+            # 转换order_blocks格式为指标池需要的格式
+            pivot_order_blocks_for_pool = []
+            for block in order_blocks:
+                pivot_order_blocks_for_pool.append({
+                    'type': 'resistance' if block['type'] == 'high' else 'support',
+                    'price_high': block['high'],
+                    'price_low': block['low'],
+                    'start_time': block['start_time'],
+                    'end_time': block['end_time'],
+                    'strength': 0.8  # 默认强度
+                })
+            
+            # 生成指标池配置和逻辑
+            indicator_pool_scripts = cls._generate_indicator_pool_scripts(
+                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, volume_profile, pivot_order_blocks_for_pool
+            )
+            additional_scripts += indicator_pool_scripts
             
             return cls._generate_base_html_template(
                 stock=stock,

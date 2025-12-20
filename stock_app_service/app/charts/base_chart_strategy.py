@@ -6,8 +6,9 @@ from typing import Dict, Any
 import json
 import pandas as pd
 from app.core.logging import logger
+from app.charts.indicator_pool_mixin import IndicatorPoolMixin
 
-class BaseChartStrategy(ABC):
+class BaseChartStrategy(ABC, IndicatorPoolMixin):
     """
     图表策略抽象基类
     
@@ -333,13 +334,42 @@ class BaseChartStrategy(ABC):
                     top: 10px;
                     left: 50%;
                     transform: translateX(-50%);
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    z-index: 100;
+                }}
+                
+                .stock-name {{
                     font-size: 16px;
                     font-weight: bold;
                     color: {colors['text']};
-                    z-index: 100;
                     background-color: {colors['tooltipBg']};
-                    padding: 5px 10px;
-                    border-radius: 4px;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+                }}
+                
+                .analysis-btn {{
+                    background: rgba(0, 0, 0, 0.7);
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                    white-space: nowrap;
+                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+                }}
+                
+                .analysis-btn:hover {{
+                    background: rgba(0, 0, 0, 0.8);
+                    transform: translateY(-1px);
+                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
                 }}
                 .strategy-info {{
                     position: absolute;
@@ -371,24 +401,312 @@ class BaseChartStrategy(ABC):
                         display: none;
                     }}
                 }}
+                
+                /* 指标池样式 */
+                
+                .side-panel {{
+                    position: fixed;
+                    top: 0;
+                    right: -360px;
+                    width: 340px;
+                    height: 100vh;
+                    background: {colors['background']};
+                    box-shadow: -3px 0 20px rgba(0, 0, 0, 0.15);
+                    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    z-index: 999;
+                    display: flex;
+                    flex-direction: column;
+                    border-left: 1px solid {colors['border']};
+                }}
+                
+                .side-panel.open {{
+                    right: 0;
+                }}
+                
+                .panel-overlay {{
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 998;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: opacity 0.3s ease, visibility 0.3s ease;
+                }}
+                
+                .panel-overlay.show {{
+                    opacity: 1;
+                    visibility: visible;
+                }}
+                
+                .panel-header {{
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 16px;
+                    border-bottom: 1px solid {colors['border']};
+                    background: rgba(0, 0, 0, 0.02);
+                }}
+                
+                .panel-header h3 {{
+                    margin: 0;
+                    font-size: 17px;
+                    font-weight: 600;
+                    color: {colors['text']};
+                    letter-spacing: -0.3px;
+                }}
+                
+                .close-btn {{
+                    background: none;
+                    border: none;
+                    font-size: 28px;
+                    cursor: pointer;
+                    opacity: 0.4;
+                    transition: opacity 0.2s;
+                    color: {colors['text']};
+                    padding: 0;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    line-height: 1;
+                }}
+                
+                .close-btn:hover {{
+                    opacity: 0.8;
+                }}
+                
+                .panel-body {{
+                    flex: 1;
+                    overflow-y: auto;
+                }}
+                
+                .quick-actions {{
+                    display: flex;
+                    gap: 8px;
+                    padding: 12px 16px;
+                    border-bottom: 1px solid {colors['border']};
+                    background: rgba(0, 0, 0, 0.02);
+                }}
+                
+                .quick-actions button {{
+                    flex: 1;
+                    padding: 7px 12px;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    color: {colors['text']};
+                    white-space: nowrap;
+                    font-weight: 500;
+                }}
+                
+                .quick-actions button:hover {{
+                    background: #f8f8f8;
+                    border-color: #999;
+                }}
+                
+                .indicator-category {{
+                    padding: 0;
+                    border-bottom: 1px solid {colors['border']};
+                }}
+                
+                .category-header {{
+                    padding: 12px 16px 8px;
+                    font-weight: 600;
+                    font-size: 11px;
+                    color: #999;
+                    text-transform: uppercase;
+                    letter-spacing: 0.8px;
+                    background: rgba(0, 0, 0, 0.02);
+                }}
+                
+                .indicator-list {{
+                    display: flex;
+                    flex-direction: column;
+                    padding: 0 16px;
+                }}
+                
+                .indicator-item {{
+                    padding: 0;
+                    background: transparent;
+                    border-radius: 0;
+                    transition: all 0.15s;
+                    border-bottom: 1px solid {colors['border']};
+                }}
+                
+                .indicator-item:last-child {{
+                    border-bottom: none;
+                }}
+                
+                .indicator-checkbox {{
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px 0;
+                    cursor: pointer;
+                    position: relative;
+                    user-select: none;
+                }}
+                
+                .indicator-checkbox input {{
+                    position: absolute;
+                    opacity: 0;
+                    cursor: pointer;
+                }}
+                
+                .checkmark {{
+                    position: relative;
+                    height: 20px;
+                    width: 20px;
+                    border: 2px solid #ddd;
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                    flex-shrink: 0;
+                }}
+                
+                .indicator-checkbox:hover .checkmark {{
+                    border-color: #999;
+                }}
+                
+                .indicator-checkbox input:checked ~ .checkmark {{
+                    background-color: #007AFF;
+                    border-color: #007AFF;
+                }}
+                
+                .checkmark:after {{
+                    content: "";
+                    position: absolute;
+                    display: none;
+                    left: 6px;
+                    top: 2px;
+                    width: 5px;
+                    height: 10px;
+                    border: solid white;
+                    border-width: 0 2px 2px 0;
+                    transform: rotate(45deg);
+                }}
+                
+                .indicator-checkbox input:checked ~ .checkmark:after {{
+                    display: block;
+                }}
+                
+                .indicator-name {{
+                    flex: 1;
+                    font-weight: 400;
+                    font-size: 15px;
+                    color: {colors['text']};
+                    line-height: 1.4;
+                }}
+                
+                .color-badges {{
+                    display: flex;
+                    gap: 5px;
+                    align-items: center;
+                    margin-left: auto;
+                }}
+                
+                .color-dot {{
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    border: 1.5px solid white;
+                    box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1);
+                    flex-shrink: 0;
+                }}
+                
+                .panel-footer {{
+                    padding: 12px 16px;
+                    text-align: center;
+                    opacity: 0.4;
+                    font-size: 10px;
+                    border-top: 1px solid {colors['border']};
+                    color: {colors['text']};
+                }}
+                
+                .panel-body::-webkit-scrollbar {{
+                    width: 4px;
+                }}
+                
+                .panel-body::-webkit-scrollbar-track {{
+                    background: {colors['background']};
+                }}
+                
+                .panel-body::-webkit-scrollbar-thumb {{
+                    background: {colors['border']};
+                    border-radius: 2px;
+                }}
+                
+                @media (max-width: 768px) {{
+                    .side-panel {{
+                        width: 100%;
+                        right: -100%;
+                    }}
+                    
+                    .panel-header h3 {{
+                        font-size: 16px;
+                    }}
+                    
+                    .indicator-checkbox {{
+                        padding: 14px 0;
+                    }}
+                    
+                    .indicator-name {{
+                        font-size: 16px;
+                    }}
+                    
+                    .quick-actions button {{
+                        font-size: 13px;
+                        padding: 8px 12px;
+                    }}
+                    
+                    .stock-name {{
+                        font-size: 15px;
+                        padding: 5px 10px;
+                    }}
+                    
+                    .analysis-btn {{
+                        padding: 5px 10px;
+                        font-size: 12px;
+                    }}
+                    
+                    .chart-title {{
+                        gap: 10px;
+                    }}
+                }}
             </style>
         </head>
         <body>
-            <div class="chart-title">{stock['name']}({stock['code']})
-                <div style="text-align: center; font-size: 12px; margin-left: 10px; opacity: 0.8;">
-                    {strategy_name}
-                </div>
+            <div class="chart-title">
+                <span class="stock-name">{stock['name']}({stock['code']})</span>
+                <button class="analysis-btn" onclick="toggleIndicatorPanel()">分析工具</button>
             </div>
             <div class="strategy-info">
                 {strategy_name} - {strategy_desc}
             </div>
             <div id="chart-container"></div>
             
+            <!-- 遮罩层 -->
+            <div id="panel-overlay" class="panel-overlay" onclick="toggleIndicatorPanel()"></div>
+            
+            <!-- 分析工具侧边面板 -->
+            <div id="indicator-panel" class="side-panel">
+                {cls._generate_indicator_panel_html()}
+            </div>
+            
             <script>
                 // 图表数据
                 const chartData = {json.dumps(chart_data)};
                 const markers = {json.dumps(markers)};
                 const volumeData = {json.dumps(volume_data)};
+                
+                // 保存到全局变量供指标池使用
+                window.candleData = chartData;
                 
                 // 响应式调整图表大小
                 function resizeChart() {{
