@@ -94,6 +94,11 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                 check_momentum=True
             )
             
+            # 计算镜像K线
+            from app.indicators.tradingview.mirror_candle import calculate_mirror_candle
+            mirror_data = calculate_mirror_candle(df)
+            logger.info(f"镜像K线数据计算完成: {len(mirror_data) if mirror_data else 0} 根")
+            
             # 不再自动绘制指标，所有指标通过指标池控制
             # 用户可以在指标池中选择启用/禁用指标
             additional_series = ""
@@ -103,7 +108,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             
             # 生成指标池配置和逻辑
             indicator_pool_scripts = cls._generate_indicator_pool_scripts(
-                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, volume_profile, pivot_order_blocks_for_pool, divergence_data
+                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, volume_profile, pivot_order_blocks_for_pool, divergence_data, mirror_data
             )
             additional_scripts += indicator_pool_scripts
             

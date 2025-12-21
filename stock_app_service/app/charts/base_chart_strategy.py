@@ -324,10 +324,42 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     background-color: {colors['background']};
                     color: {colors['text']};
                 }}
-                #chart-container {{
+                #charts-wrapper {{
                     position: absolute;
                     width: 100%;
                     height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                }}
+                
+                /* 默认状态：主图占满 */
+                #chart-container {{
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    flex-shrink: 0;
+                }}
+                
+                /* 默认状态：副图隐藏 */
+                #subchart-container {{
+                    position: relative;
+                    width: 100%;
+                    height: 0;
+                    flex-shrink: 0;
+                    overflow: hidden;
+                    border-top: 1px solid {colors['border']};
+                }}
+                
+                /* 有副图时：副图占满100%，主图隐藏 */
+                #charts-wrapper.has-subchart #chart-container {{
+                    height: 0;
+                    overflow: hidden;
+                }}
+                
+                #charts-wrapper.has-subchart #subchart-container {{
+                    height: 100%;
+                    flex: none;
+                    overflow: visible;
                 }}
                 .chart-title {{
                     position: absolute;
@@ -753,7 +785,10 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
             <div class="strategy-info">
                 {strategy_name} - {strategy_desc}
             </div>
-            <div id="chart-container"></div>
+            <div id="charts-wrapper">
+                <div id="chart-container" class="main-chart"></div>
+                <div id="subchart-container" class="sub-chart"></div>
+            </div>
             
             <!-- 遮罩层 -->
             <div id="panel-overlay" class="panel-overlay" onclick="toggleIndicatorPanel()"></div>
@@ -775,11 +810,26 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                 // 响应式调整图表大小
                 function resizeChart() {{
                     if (chart) {{
-                        chart.resize(
-                            chartContainer.clientWidth,
-                            chartContainer.clientHeight
-                        );
-                        chart.timeScale().fitContent();
+                        const mainContainer = document.getElementById('chart-container');
+                        if (mainContainer) {{
+                            chart.resize(
+                                mainContainer.clientWidth,
+                                mainContainer.clientHeight
+                            );
+                            chart.timeScale().fitContent();
+                        }}
+                    }}
+                    
+                    // 如果副图存在，同步调整
+                    if (typeof mirrorSubchart !== 'undefined' && mirrorSubchart) {{
+                        const subContainer = document.getElementById('subchart-container');
+                        if (subContainer && subContainer.style.display !== 'none') {{
+                            mirrorSubchart.resize(
+                                subContainer.clientWidth,
+                                subContainer.clientHeight
+                            );
+                            mirrorSubchart.timeScale().fitContent();
+                        }}
                     }}
                 }}
                 

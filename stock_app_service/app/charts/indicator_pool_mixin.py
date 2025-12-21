@@ -4,6 +4,7 @@
 """
 import json
 from typing import Any
+from app.core.logging import logger
 
 
 class IndicatorPoolMixin:
@@ -12,11 +13,11 @@ class IndicatorPoolMixin:
     @classmethod
     def _generate_indicator_pool_scripts(cls, ema6_data, ema12_data, ema18_data, 
                                         ema144_data, ema169_data, volume_profile_data, 
-                                        pivot_order_blocks_data=None, divergence_data=None) -> str:
+                                        pivot_order_blocks_data=None, divergence_data=None, mirror_data=None) -> str:
         """生成指标池完整的JavaScript代码（包括配置和逻辑）"""
         indicator_config = cls._generate_indicator_config_js(
             ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, 
-            volume_profile_data, pivot_order_blocks_data, divergence_data
+            volume_profile_data, pivot_order_blocks_data, divergence_data, mirror_data
         )
         indicator_logic = cls._generate_indicator_pool_logic_js()
         return f"\n{indicator_config}\n{indicator_logic}\n"
@@ -24,7 +25,7 @@ class IndicatorPoolMixin:
     @classmethod
     def _generate_indicator_config_js(cls, ema6_data, ema12_data, ema18_data, 
                                       ema144_data, ema169_data, volume_profile_data, 
-                                      pivot_order_blocks_data=None, divergence_data=None) -> str:
+                                      pivot_order_blocks_data=None, divergence_data=None, mirror_data=None) -> str:
         """生成指标配置JavaScript"""
         from app.indicators.indicator_registry import IndicatorRegistry
         
@@ -40,7 +41,8 @@ class IndicatorPoolMixin:
             'ema169': ema169_data,
             'volume_profile_pivot': volume_profile_data,
             'pivot_order_blocks': pivot_order_blocks_data if pivot_order_blocks_data is not None else [],
-            'divergence_detector': divergence_data if divergence_data is not None else []
+            'divergence_detector': divergence_data if divergence_data is not None else [],
+            'mirror_candle': mirror_data if mirror_data is not None else []
         }
         
         for ind_id, ind_def in all_indicators.items():
@@ -48,12 +50,17 @@ class IndicatorPoolMixin:
             
             # 为特殊指标添加渲染函数代码
             render_function = None
-            if ind_id == 'pivot_order_blocks' and data:
-                render_function = 'renderPivotOrderBlocks'
-            elif ind_id == 'volume_profile_pivot' and data:
-                render_function = 'renderVolumeProfilePivot'
-            elif ind_id == 'divergence_detector' and data:
-                render_function = 'renderDivergence'
+            if ind_id == 'pivot_order_blocks':
+                render_function = 'renderPivotOrderBlocks' if data else None
+            elif ind_id == 'volume_profile_pivot':
+                render_function = 'renderVolumeProfilePivot' if data else None
+            elif ind_id == 'divergence_detector':
+                render_function = 'renderDivergence' if data else None
+            elif ind_id == 'mirror_candle':
+                # 镜像翻转应该始终有渲染函数，即使数据为空也要设置
+                render_function = 'renderMirrorSubchart'
+                if not data or len(data) == 0:
+                    logger.warning(f"镜像翻转数据为空！ind_id={ind_id}, data={data}")
             
             config[ind_id] = {
                 'name': str(ind_def.name),
@@ -462,6 +469,112 @@ class IndicatorPoolMixin:
             return seriesList;
         }
         
+        // 全局副图变量
+        let mirrorSubchart = null;
+        let mirrorCandleSeries = null;
+        
+        // 镜像副图渲染函数
+        function renderMirrorSubchart(mirrorData) {
+            console.log('🎯 [镜像副图] 开始渲染，数据长度:', mirrorData ? mirrorData.length : 0);
+            
+            if (!mirrorData || !Array.isArray(mirrorData) || mirrorData.length === 0) {
+                console.warn('⚠️ [镜像副图] 无数据');
+                return [];
+            }
+            
+            const subchartContainer = document.getElementById('subchart-container');
+            const chartsWrapper = document.getElementById('charts-wrapper');
+            
+            if (!subchartContainer || !chartsWrapper) {
+                console.error('❌ [镜像副图] 容器元素不存在');
+                return [];
+            }
+            
+            // 显示副图
+            chartsWrapper.classList.add('has-subchart');
+            
+            // 获取主图配置以保持一致
+            const mainChartOptions = {
+                width: subchartContainer.clientWidth,
+                height: subchartContainer.clientHeight,
+                layout: chart.options().layout,
+                grid: chart.options().grid,
+                crosshair: chart.options().crosshair,
+                timeScale: chart.options().timeScale,
+                watermark: {
+                    visible: true,
+                    text: '镜像翻转',
+                    fontSize: 14,
+                    color: 'rgba(128, 128, 128, 0.15)',
+                    horzAlign: 'right',
+                    vertAlign: 'bottom'
+                },
+                autoSize: false
+            };
+            
+            // 创建副图
+            const { createChart } = LightweightCharts;
+            mirrorSubchart = createChart(subchartContainer, mainChartOptions);
+            
+            // 添加镜像K线系列（继承主图配色）
+            const mainCandleOptions = window.candleSeries.options();
+            mirrorCandleSeries = mirrorSubchart.addCandlestickSeries({
+                upColor: mainCandleOptions.upColor,
+                downColor: mainCandleOptions.downColor,
+                borderUpColor: mainCandleOptions.borderUpColor,
+                borderDownColor: mainCandleOptions.borderDownColor,
+                wickUpColor: mainCandleOptions.wickUpColor,
+                wickDownColor: mainCandleOptions.wickDownColor
+            });
+            
+            mirrorCandleSeries.setData(mirrorData);
+            
+            // 时间轴同步
+            syncTimeScales(chart, mirrorSubchart);
+            
+            // 初始化视图
+            mirrorSubchart.timeScale().fitContent();
+            
+            console.log('✅ [镜像副图] 创建完成');
+            return [mirrorSubchart];
+        }
+        
+        // 时间轴同步函数
+        function syncTimeScales(mainChart, subChart) {
+            console.log('🔗 [同步] 建立时间轴同步');
+            
+            // 防止循环触发
+            let isSyncing = false;
+            
+            // 主图滚动/缩放 -> 副图同步
+            mainChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+                if (isSyncing || !range) return;
+                isSyncing = true;
+                try {
+                    subChart.timeScale().setVisibleLogicalRange(range);
+                } catch (e) {
+                    console.warn('同步主图到副图失败:', e);
+                } finally {
+                    setTimeout(() => { isSyncing = false; }, 0);
+                }
+            });
+            
+            // 副图滚动/缩放 -> 主图同步
+            subChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+                if (isSyncing || !range) return;
+                isSyncing = true;
+                try {
+                    mainChart.timeScale().setVisibleLogicalRange(range);
+                } catch (e) {
+                    console.warn('同步副图到主图失败:', e);
+                } finally {
+                    setTimeout(() => { isSyncing = false; }, 0);
+                }
+            });
+            
+            console.log('✅ [同步] 时间轴同步已建立');
+        }
+        
         // 指标系列管理
         const indicatorSeries = new Map();
         let userPreferences = {};
@@ -548,6 +661,15 @@ class IndicatorPoolMixin:
                     indicatorSeries.set(id, elements);
                     console.log('✅ [启用指标] 背离检测渲染完成');
                 }
+            } else if (config.renderType === 'subchart' && config.renderFunction) {
+                // subchart类型指标需要自定义渲染
+                console.log('渲染副图指标:', config.name);
+                if (config.renderFunction === 'renderMirrorSubchart') {
+                    console.log('🎯 [启用指标] 镜像翻转 - 数据:', config.data ? config.data.length : 0, '根K线');
+                    const elements = renderMirrorSubchart(config.data);
+                    indicatorSeries.set(id, elements);
+                    console.log('✅ [启用指标] 镜像翻转渲染完成');
+                }
             } else if (config.renderType === 'overlay') {
                 // overlay类型指标没有渲染函数，仅标记为已启用
                 console.log('⚠️ 覆盖层指标无渲染函数:', config.name);
@@ -618,6 +740,27 @@ class IndicatorPoolMixin:
                 
                 indicatorSeries.delete(id);
                 console.log('✅ 覆盖层指标已移除:', config.name);
+            } else if (config.renderType === 'subchart') {
+                // subchart类型指标需要移除副图
+                console.log('移除副图指标:', config.name);
+                if (mirrorSubchart) {
+                    try {
+                        mirrorSubchart.remove();
+                        mirrorSubchart = null;
+                        mirrorCandleSeries = null;
+                        
+                        // 隐藏副图容器
+                        const chartsWrapper = document.getElementById('charts-wrapper');
+                        if (chartsWrapper) {
+                            chartsWrapper.classList.remove('has-subchart');
+                        }
+                        
+                        console.log('✅ 副图已移除:', config.name);
+                    } catch (e) {
+                        console.error('❌ 移除副图失败:', e);
+                    }
+                }
+                indicatorSeries.delete(id);
             } else {
                 const series = indicatorSeries.get(id);
                 if (series) {
@@ -736,7 +879,8 @@ class IndicatorPoolMixin:
             'vegas_tunnel',          # Vegas隧道
             'volume_profile_pivot',  # Volume Profile
             'pivot_order_blocks',    # Pivot Order Blocks
-            'divergence_detector'    # 背离检测
+            'divergence_detector',   # 背离检测
+            'mirror_candle'          # 镜像翻转
         ]
         
         # 按分类分组（只包含可见指标）
@@ -794,6 +938,15 @@ class IndicatorPoolMixin:
             html += '<div class="category-header">振荡分析</div>'
             html += '<div class="indicator-list">'
             for ind in by_category['oscillator']:
+                html += cls._generate_indicator_item_html(ind)
+            html += '</div></div>'
+        
+        # 副图
+        if 'subchart' in by_category:
+            html += '<div class="indicator-category">'
+            html += '<div class="category-header">逆向分析</div>'
+            html += '<div class="indicator-list">'
+            for ind in by_category['subchart']:
                 html += cls._generate_indicator_item_html(ind)
             html += '</div></div>'
         

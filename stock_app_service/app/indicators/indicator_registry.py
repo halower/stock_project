@@ -75,6 +75,7 @@ class IndicatorRegistry:
 from app.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
 from app.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
 from app.indicators.tradingview.divergence_detector import calculate_divergence_detector
+from app.indicators.tradingview.mirror_candle import calculate_mirror_candle
 
 # Volume Profile Pivot Anchored（TradingView移植 - 完整版）
 IndicatorRegistry.register(IndicatorDefinition(
@@ -204,6 +205,18 @@ IndicatorRegistry.register(IndicatorDefinition(
                     'check_macd': True, 'check_rsi': True, 'check_stoch': True, 
                     'check_cci': True, 'check_momentum': True},
     render_type='overlay',
+    enabled_by_default=False
+))
+
+# Mirror Candle（TradingView移植 - K线镜像翻转）
+IndicatorRegistry.register(IndicatorDefinition(
+    id='mirror_candle',
+    name='对手盘视角',
+    category='subchart',
+    description='',
+    calculate_func=calculate_mirror_candle,
+    default_params={},
+    render_type='subchart',
     enabled_by_default=False
 ))
 
