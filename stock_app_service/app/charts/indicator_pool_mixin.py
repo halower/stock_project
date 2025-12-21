@@ -473,13 +473,73 @@ class IndicatorPoolMixin:
         let mirrorSubchart = null;
         let mirrorCandleSeries = null;
         
-        // 镜像副图渲染函数
-        function renderMirrorSubchart(mirrorData) {
-            console.log('🎯 [镜像副图] 开始渲染，数据长度:', mirrorData ? mirrorData.length : 0);
-            
-            if (!mirrorData || !Array.isArray(mirrorData) || mirrorData.length === 0) {
-                console.warn('⚠️ [镜像副图] 无数据');
+        // 前端镜像K线计算函数（JavaScript版本）
+        function calculateMirrorData(sourceData) {
+            if (!sourceData || sourceData.length === 0) {
                 return [];
+            }
+            
+            const mirrorData = [];
+            let invertedPrice = sourceData[0].close;
+            
+            for (let i = 0; i < sourceData.length; i++) {
+                const curr = sourceData[i];
+                
+                if (i === 0) {
+                    // 第一根K线保持原样
+                    mirrorData.push({
+                        time: curr.time,
+                        open: invertedPrice,
+                        high: curr.high,
+                        low: curr.low,
+                        close: invertedPrice
+                    });
+                } else {
+                    const prev = sourceData[i - 1];
+                    
+                    // 计算涨跌幅
+                    const pctChange = (curr.close - prev.close) / prev.close;
+                    
+                    // 翻转后的收盘价
+                    invertedPrice = invertedPrice * (1 - pctChange);
+                    
+                    // 计算开盘、高、低的百分比变化
+                    const openPct = (curr.open - prev.close) / prev.close;
+                    const highPct = (curr.high - prev.close) / prev.close;
+                    const lowPct = (curr.low - prev.close) / prev.close;
+                    
+                    // 计算镜像OHLC（高低互换）
+                    const prevInvertedPrice = mirrorData[i - 1].close;
+                    const invertedOpen = prevInvertedPrice * (1 - openPct);
+                    const invertedHigh = prevInvertedPrice * (1 - lowPct);  // 高低互换
+                    const invertedLow = prevInvertedPrice * (1 - highPct);   // 高低互换
+                    
+                    mirrorData.push({
+                        time: curr.time,
+                        open: Math.round(invertedOpen * 100) / 100,
+                        high: Math.round(invertedHigh * 100) / 100,
+                        low: Math.round(invertedLow * 100) / 100,
+                        close: Math.round(invertedPrice * 100) / 100
+                    });
+                }
+            }
+            
+            return mirrorData;
+        }
+        
+        // 镜像副图渲染函数（支持懒加载）
+        function renderMirrorSubchart(mirrorData) {
+            console.log('🎯 [镜像副图] 开始渲染');
+            
+            // 如果数据为空，从主图数据动态计算镜像数据
+            if (!mirrorData || !Array.isArray(mirrorData) || mirrorData.length === 0) {
+                console.log('⚙️ [镜像副图] 数据为空，开始动态计算...');
+                mirrorData = calculateMirrorData(chartData);
+                if (!mirrorData || mirrorData.length === 0) {
+                    console.error('❌ [镜像副图] 动态计算失败');
+                    return [];
+                }
+                console.log('✅ [镜像副图] 动态计算完成:', mirrorData.length, '根K线');
             }
             
             const subchartContainer = document.getElementById('subchart-container');
@@ -621,6 +681,34 @@ class IndicatorPoolMixin:
                 panel.classList.add('open');
                 overlay.classList.add('show');
             }
+        }
+        
+        // 快捷切换镜像视角（点击股票名称）
+        function toggleMirrorView() {
+            const mirrorId = 'mirror_candle';
+            const checkbox = document.querySelector('[data-id="' + mirrorId + '"] input[type="checkbox"]');
+            const stockName = document.getElementById('stockName');
+            
+            if (!checkbox) {
+                console.warn('镜像翻转开关未找到');
+                return;
+            }
+            
+            // 切换状态
+            const newState = !checkbox.checked;
+            checkbox.checked = newState;
+            
+            // 更新股票名称样式
+            if (newState) {
+                stockName.classList.add('mirror-active');
+                console.log('🔄 切换到镜像视角');
+            } else {
+                stockName.classList.remove('mirror-active');
+                console.log('📊 切换到正常视角');
+            }
+            
+            // 触发指标切换
+            toggleIndicator(mirrorId, newState);
         }
         
         // 开启指标

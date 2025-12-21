@@ -386,6 +386,21 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     font-size: 16px;
                     font-weight: bold;
                     color: {colors['text']};
+                    cursor: pointer;
+                    user-select: none;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                }}
+                
+                .stock-name:hover {{
+                    background: rgba(100, 149, 237, 0.1);
+                    color: #6495ED;
+                }}
+                
+                .stock-name.mirror-active {{
+                    background: rgba(100, 149, 237, 0.2);
+                    color: #6495ED;
                 }}
                 
                 .strategy-tag {{
@@ -777,7 +792,7 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
         <body>
             <div class="chart-title">
                 <div class="title-left">
-                    <span class="stock-name">{stock['name']}({stock['code']})</span>
+                    <span class="stock-name" onclick="toggleMirrorView()" id="stockName" title="点击切换镜像视角">{stock['name']}({stock['code']})</span>
                     <span class="strategy-tag">{strategy_name}</span>
                 </div>
                 <button class="analysis-btn" onclick="toggleIndicatorPanel()">分析工具</button>

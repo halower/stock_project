@@ -94,10 +94,9 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                 check_momentum=True
             )
             
-            # 计算镜像K线
-            from app.indicators.tradingview.mirror_candle import calculate_mirror_candle
-            mirror_data = calculate_mirror_candle(df)
-            logger.info(f"镜像K线数据计算完成: {len(mirror_data) if mirror_data else 0} 根")
+            # 镜像K线改为懒加载，不预先计算（提升加载速度）
+            # 数据将在前端首次启用时动态计算
+            mirror_data = None
             
             # 不再自动绘制指标，所有指标通过指标池控制
             # 用户可以在指标池中选择启用/禁用指标
