@@ -129,7 +129,7 @@ templates = Jinja2Templates(directory="templates")
 from app.api import (
     system, public, news_analysis, stocks_redis, strategy, 
     signal_management, task_management,
-    stock_data_management, stock_ai_analysis, chart, market_types,
+    stock_data_management, stock_ai_analysis, chart, chart_data, market_types,
     realtime_config, data_validation, websocket, index_analysis,
     limit_board
 )
@@ -145,6 +145,7 @@ app.include_router(task_management.router)
 app.include_router(stock_data_management.router)
 app.include_router(stock_ai_analysis.router)
 app.include_router(chart.router)
+app.include_router(chart_data.router)  # 新的数据API（推荐）
 app.include_router(market_types.router)
 app.include_router(realtime_config.router, prefix="/api", tags=["实时行情配置"])
 app.include_router(data_validation.router, tags=["数据验证"])

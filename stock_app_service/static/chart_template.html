@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>股票图表加载中...</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #131722;
+            color: #d1d4dc;
+            overflow: hidden;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #131722;
+            z-index: 9999;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #2962ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #loading-text {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #787b86;
+        }
+        
+        #error {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid #ff5252;
+            border-radius: 8px;
+            padding: 20px 30px;
+            color: #ff5252;
+            max-width: 80%;
+            text-align: center;
+        }
+        
+        #chart-container {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #chart {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .chart-header {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #d1d4dc;
+        }
+        
+        .analysis-btn {
+            padding: 6px 16px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(10px);
+            border: none;
+            border-radius: 20px;
+            color: #d1d4dc;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .analysis-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        /* 指标面板样式（复用之前的CSS） */
+        .side-panel {
+            position: fixed;
+            right: -320px;
+            top: 0;
+            width: 320px;
+            height: 100vh;
+            background: rgba(19, 23, 34, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .side-panel.active {
+            right: 0;
+        }
+        
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #787b86;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .indicator-category {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .category-header {
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #787b86;
+            font-weight: 500;
+        }
+        
+        .indicator-item {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .indicator-info {
+            flex: 1;
+        }
+        
+        .indicator-name {
+            font-size: 14px;
+            color: #d1d4dc;
+        }
+        
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        @media (max-width: 768px) and (orientation: portrait) {
+            .side-panel {
+                width: 280px;
+                right: -280px;
+            }
+            
+            .chart-title {
+                font-size: 16px;
+            }
+            
+            .analysis-btn {
+                padding: 5px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载动画 -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">正在加载图表数据...</div>
+    </div>
+    
+    <!-- 错误提示 -->
+    <div id="error"></div>
+    
+    <!-- 图表容器 -->
+    <div id="chart-container">
+        <div class="chart-header">
+            <div class="chart-title" id="chart-title">加载中...</div>
+            <button class="analysis-btn" onclick="toggleIndicatorPanel()">分析工具</button>
+        </div>
+        <div id="chart"></div>
+    </div>
+    
+    <!-- 指标面板 -->
+    <div class="side-panel" id="indicatorPanel">
+        <div class="panel-header">
+            <div class="panel-title">分析工具</div>
+            <button class="close-btn" onclick="toggleIndicatorPanel()">&times;</button>
+        </div>
+        <div id="indicator-list">
+            <!-- 动态生成指标列表 -->
+        </div>
+    </div>
+    
+    <script>
+        // 从URL参数获取配置
+        const urlParams = new URLSearchParams(window.location.search);
+        const stockCode = urlParams.get('stock') || '000001';
+        const strategy = urlParams.get('strategy') || 'volume_wave';
+        const theme = urlParams.get('theme') || 'dark';
+        
+        // 全局变量
+        let chart = null;
+        let candleSeries = null;
+        let chartData = null;
+        
+        // 显示错误
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').textContent = message;
+        }
+        
+        // 加载图表数据
+        async function loadChartData() {
+            try {
+                // 从localStorage获取token
+                const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+                if (!token) {
+                    showError('未登录，请先登录');
+                    return;
+                }
+                
+                // 调用数据API
+                const response = await fetch(
+                    `/api/stocks/${stockCode}/chart-data?strategy=${strategy}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '数据加载失败');
+                }
+                
+                chartData = await response.json();
+                
+                // 更新标题
+                document.title = `${chartData.stock.name}(${chartData.stock.code}) - ${strategy === 'volume_wave' ? '动量守恒' : '动量守恒增强版'}`;
+                document.getElementById('chart-title').textContent = 
+                    `${chartData.stock.name}(${chartData.stock.code})`;
+                
+                // 显示缓存状态
+                if (chartData.cached) {
+                    console.log('✅ 使用缓存数据');
+                } else {
+                    console.log('🔄 使用最新计算数据');
+                }
+                
+                // 渲染图表
+                renderChart();
+                
+                // 隐藏加载动画，显示图表
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('chart-container').style.display = 'block';
+                
+            } catch (error) {
+                console.error('加载图表数据失败:', error);
+                showError(error.message || '数据加载失败，请稍后重试');
+            }
+        }
+        
+        // 渲染图表
+        function renderChart() {
+            const chartContainer = document.getElementById('chart');
+            
+            // 创建图表
+            chart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: chartContainer.clientHeight,
+                layout: {
+                    background: { color: theme === 'dark' ? '#131722' : '#ffffff' },
+                    textColor: theme === 'dark' ? '#d1d4dc' : '#191919',
+                },
+                grid: {
+                    vertLines: { color: theme === 'dark' ? 'rgba(42, 46, 57, 0.5)' : 'rgba(197, 203, 206, 0.5)' },
+                    horzLines: { color: theme === 'dark' ? 'rgba(42, 46, 57, 0.5)' : 'rgba(197, 203, 206, 0.5)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: theme === 'dark' ? 'rgba(197, 203, 206, 0.4)' : 'rgba(197, 203, 206, 0.8)',
+                },
+                timeScale: {
+                    borderColor: theme === 'dark' ? 'rgba(197, 203, 206, 0.4)' : 'rgba(197, 203, 206, 0.8)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+            
+            // 添加K线系列
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#f44336',
+                downColor: '#4caf50',
+                borderUpColor: '#f44336',
+                borderDownColor: '#4caf50',
+                wickUpColor: '#f44336',
+                wickDownColor: '#4caf50',
+            });
+            
+            // 设置K线数据
+            const klineData = chartData.kline_data.map(item => ({
+                time: item.date.split(' ')[0],  // 只取日期部分
+                open: parseFloat(item.open),
+                high: parseFloat(item.high),
+                low: parseFloat(item.low),
+                close: parseFloat(item.close),
+            }));
+            
+            candleSeries.setData(klineData);
+            
+            // 添加买卖信号标记
+            if (chartData.signals && chartData.signals.length > 0) {
+                const markers = chartData.signals.map(signal => ({
+                    time: signal.date.split(' ')[0],
+                    position: signal.type === 'buy' ? 'belowBar' : 'aboveBar',
+                    color: signal.type === 'buy' ? '#f44336' : '#4caf50',
+                    shape: signal.type === 'buy' ? 'arrowUp' : 'arrowDown',
+                    text: signal.type === 'buy' ? '买' : '卖',
+                }));
+                
+                candleSeries.setMarkers(markers);
+                console.log(`✅ 显示 ${markers.length} 个买卖信号`);
+            }
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                chart.applyOptions({
+                    width: chartContainer.clientWidth,
+                    height: chartContainer.clientHeight,
+                });
+            });
+            
+            // TODO: 添加指标面板功能（EMA、Volume Profile等）
+            console.log('📊 图表渲染完成');
+        }
+        
+        // 切换指标面板
+        function toggleIndicatorPanel() {
+            const panel = document.getElementById('indicatorPanel');
+            panel.classList.toggle('active');
+        }
+        
+        // 点击面板外部关闭
+        document.addEventListener('click', function(event) {
+            const panel = document.getElementById('indicatorPanel');
+            const btn = document.querySelector('.analysis-btn');
+            
+            if (panel.classList.contains('active') && 
+                !panel.contains(event.target) && 
+                !btn.contains(event.target)) {
+                panel.classList.remove('active');
+            }
+        });
+        
+        // 页面加载时执行
+        window.addEventListener('load', loadChartData);
+    </script>
+</body>
+</html>
+

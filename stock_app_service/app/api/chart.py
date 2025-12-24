@@ -23,14 +23,25 @@ router = APIRouter(tags=["股票图表"])
 # 确保图表目录存在
 os.makedirs(CHART_DIR, exist_ok=True)
 
-@router.get("/api/stocks/{stock_code}/chart", summary="生成股票K线图表", dependencies=[Depends(verify_token)])
+@router.get("/api/stocks/{stock_code}/chart", summary="生成股票K线图表（已废弃）", dependencies=[Depends(verify_token)], deprecated=True)
 async def generate_stock_chart(
     stock_code: str,
     strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 volume_wave_enhanced(动量守恒增强版)"),
     theme: str = Query("dark", description="图表主题: light(亮色) 或 dark(暗色)")
 ) -> Dict[str, Any]:
     """
-    生成指定股票的K线图表
+    生成指定股票的K线图表（已废弃，请使用新接口）
+    
+    ⚠️ 警告：此接口已废弃，将在未来版本移除
+    
+    问题：
+    - 每次请求生成新HTML文件，1000人访问可能产生数百万文件
+    - 磁盘I/O瓶颈，文件系统性能下降
+    - 不适合实时数据场景
+    
+    推荐使用：
+    - 数据API: GET /api/stocks/{stock_code}/chart-data
+    - 通用模板: /static/chart_template.html?stock={code}&strategy={strategy}
     
     Args:
         stock_code: 股票代码
@@ -40,6 +51,7 @@ async def generate_stock_chart(
     Returns:
         图表URL和其他信息
     """
+    logger.warning(f"⚠️ 使用已废弃接口: /api/stocks/{stock_code}/chart，建议迁移到新架构")
     # 检查策略类型
     if strategy not in ["volume_wave", "volume_wave_enhanced"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略类型: {strategy}")
