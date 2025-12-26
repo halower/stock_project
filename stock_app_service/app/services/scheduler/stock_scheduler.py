@@ -100,7 +100,7 @@ class StartupTasks:
         Args:
             init_mode: 初始化模式
                 - skip: 跳过初始化
-                - full_init: 全量初始化
+                - init: 全量初始化
             calculate_signals: 是否计算信号
         """
         logger.info(f"========== 开始执行启动任务 ==========")
@@ -114,8 +114,8 @@ class StartupTasks:
             await StartupTasks.task_get_valid_stock_codes()
             
             # 2. 根据初始化模式执行相应操作
-            if init_mode == "full_init":
-                await StartupTasks.task_full_init()
+            if init_mode == "init":
+                await StartupTasks.task_init()
             elif init_mode == "skip":
                 logger.info("跳过数据初始化")
             else:
@@ -172,7 +172,7 @@ class StartupTasks:
             raise
     
     @staticmethod
-    async def task_full_init():
+    async def task_init():
         """任务：全量初始化"""
         logger.info(">>> 执行任务: 全量初始化所有股票数据")
         start_time = datetime.now()
@@ -196,7 +196,7 @@ class StartupTasks:
             )
             
             add_job_log(
-                'full_init',
+                'init',
                 'success',
                 f"全量初始化完成，成功={result['success_count']}, 失败={result['failed_count']}",
                 **result
@@ -204,7 +204,7 @@ class StartupTasks:
             
         except Exception as e:
             logger.error(f">>> 任务失败: 全量初始化失败: {e}")
-            add_job_log('full_init', 'error', f'全量初始化失败: {str(e)}')
+            add_job_log('init', 'error', f'全量初始化失败: {str(e)}')
             raise
     
     @staticmethod
@@ -565,7 +565,7 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
     Args:
         init_mode: 初始化模式
             - skip: 跳过初始化
-            - full_init: 全量初始化
+            - init: 全量初始化
         calculate_signals: 是否在启动时计算信号
     """
     global scheduler
@@ -596,16 +596,20 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
     
     # 3. 添加运行时任务
     
-    # 实时数据更新：每分钟执行一次（可通过环境变量REALTIME_UPDATE_INTERVAL配置）
-    realtime_interval = settings.REALTIME_UPDATE_INTERVAL
-    scheduler.add_job(
-        func=RuntimeTasks.job_realtime_update,
-        trigger=IntervalTrigger(minutes=realtime_interval),
-        id='realtime_update',
-        name='实时数据更新',
-        replace_existing=True
-    )
-    logger.info(f"实时数据更新任务已添加，间隔: {realtime_interval}分钟")
+    # 实时数据更新：根据配置决定是否启用（可通过环境变量ENABLE_REALTIME_UPDATE控制）
+    if settings.ENABLE_REALTIME_UPDATE:
+        realtime_interval_seconds = settings.REALTIME_UPDATE_INTERVAL
+        realtime_interval_minutes = realtime_interval_seconds / 60
+        scheduler.add_job(
+            func=RuntimeTasks.job_realtime_update,
+            trigger=IntervalTrigger(seconds=realtime_interval_seconds),
+            id='realtime_update',
+            name='实时数据更新',
+            replace_existing=True
+        )
+        logger.info(f"✅ 实时数据更新任务已启用，间隔: {realtime_interval_seconds}秒")
+    else:
+        logger.info(f"⚠️  实时数据更新任务已禁用（ENABLE_REALTIME_UPDATE=false）")
     
     # 信号计算：固定时间点触发（保持原有逻辑）
     # 9:30, 9:50, 10:10, 10:30, 10:50, 11:10, 11:30

@@ -83,7 +83,8 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "1000"))
 
 # 实时行情配置（仅Tushare）
-REALTIME_UPDATE_INTERVAL = float(os.getenv("REALTIME_UPDATE_INTERVAL", "1"))  # 实时更新周期，单位：分钟，默认1分钟，支持小数如0.5表示30秒
+ENABLE_REALTIME_UPDATE = os.getenv("ENABLE_REALTIME_UPDATE", "true").lower() in ("true", "1", "yes")  # 是否开启实时K线数据更新，默认开启
+REALTIME_UPDATE_INTERVAL = int(os.getenv("REALTIME_UPDATE_INTERVAL", "60"))  # 实时更新周期，单位：秒，默认60秒
 
 
 class Settings(BaseModel):
@@ -117,7 +118,8 @@ class Settings(BaseModel):
     DEFAULT_AI_MODEL: str = DEFAULT_AI_MODEL
     
     # 实时行情配置（仅Tushare）
-    REALTIME_UPDATE_INTERVAL: float = REALTIME_UPDATE_INTERVAL
+    ENABLE_REALTIME_UPDATE: bool = ENABLE_REALTIME_UPDATE
+    REALTIME_UPDATE_INTERVAL: int = REALTIME_UPDATE_INTERVAL
     
     class Config:
         case_sensitive = True

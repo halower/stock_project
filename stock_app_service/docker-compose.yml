@@ -19,7 +19,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONPYCACHEPREFIX=/dev/null
       # 股票调度器启动配置（新版本）
-      # SCHEDULER_INIT_MODE: skip（跳过初始化，快速启动）或 full_init（全量初始化）
+      # SCHEDULER_INIT_MODE: skip（跳过初始化，快速启动）或 init（全量初始化）
       # SCHEDULER_CALCULATE_SIGNALS: true（启动时计算信号）或 false（不计算）
       - SCHEDULER_INIT_MODE=skip
       - SCHEDULER_CALCULATE_SIGNALS=false
@@ -31,7 +31,8 @@ services:
       - AI_STOCK_ANALYSIS_MAX_TOKENS=4000  # 股票AI分析（默认4000，低于4096限制）
       - AI_NEWS_ANALYSIS_MAX_TOKENS=4000   # 新闻分析（默认3000，新闻分析通常内容较少）
       # 实时数据更新配置（仅Tushare）
-      - REALTIME_UPDATE_INTERVAL=1         # 实时更新周期（分钟），默认1分钟
+      - ENABLE_REALTIME_UPDATE=true        # 是否启用实时K线数据更新，默认true（放弃付费接口时设为false）
+      - REALTIME_UPDATE_INTERVAL=60        # 实时更新周期（秒），默认60秒
     volumes:
       - .:/app
     ports:
