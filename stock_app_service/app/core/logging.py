@@ -3,7 +3,7 @@
 
 import logging
 import os
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler
 from typing import Optional
 from datetime import datetime
 
@@ -46,11 +46,12 @@ def setup_logging(level: Optional[int] = None) -> logging.Logger:
     console_handler.setFormatter(formatter)
     console_handler.setLevel(level)
     
-    # 2. 文件输出 - 按大小轮转（主日志）
-    file_handler = RotatingFileHandler(
+    # 2. 文件输出 - 按天轮转（主日志）
+    file_handler = TimedRotatingFileHandler(
         filename=os.path.join(log_dir, 'app.log'),
-        maxBytes=50 * 1024 * 1024,  # 50MB
-        backupCount=5,  # 保留5个备份文件
+        when='midnight',
+        interval=1,
+        backupCount=1,  # 保留1天
         encoding='utf-8'
     )
     file_handler.setFormatter(formatter)
@@ -61,18 +62,18 @@ def setup_logging(level: Optional[int] = None) -> logging.Logger:
         filename=os.path.join(log_dir, 'error.log'),
         when='midnight',
         interval=1,
-        backupCount=30,  # 保留30天
+        backupCount=1,  # 保留1天
         encoding='utf-8'
     )
     error_handler.setFormatter(formatter)
     error_handler.setLevel(logging.ERROR)
     
-    # 4. 系统维护日志 - 按周轮转
+    # 4. 系统维护日志 - 按天轮转
     system_handler = TimedRotatingFileHandler(
         filename=os.path.join(log_dir, 'system.log'),
-        when='W0',  # 每周一轮转
+        when='midnight',
         interval=1,
-        backupCount=12,  # 保留12周
+        backupCount=1,  # 保留1天
         encoding='utf-8'
     )
     system_handler.setFormatter(formatter)
@@ -87,8 +88,8 @@ def setup_logging(level: Optional[int] = None) -> logging.Logger:
     # 记录日志系统启动信息（只记录一次）
     logger.info("日志系统启动 - 自动轮转和清理已启用")
     logger.info(f"📁 日志目录: {os.path.abspath(log_dir)}")
-    logger.info("轮转策略: 主日志50MB轮转，错误日志按天轮转，系统日志按周轮转")
-    logger.info("清理策略: 主日志保留5份，错误日志保留30天，系统日志保留12周")
+    logger.info("轮转策略: 所有日志按天轮转（每日午夜）")
+    logger.info("清理策略: 所有日志保留1天")
     
     return logger
 
@@ -116,8 +117,8 @@ def cleanup_old_log_files():
         import glob
         from datetime import datetime, timedelta
         
-        # 清理30天前的日志文件
-        cutoff_date = datetime.now() - timedelta(days=30)
+        # 清理1天前的日志文件
+        cutoff_date = datetime.now() - timedelta(days=1)
         
         # 获取所有日志文件
         log_files = glob.glob(os.path.join(log_dir, "*.log*"))

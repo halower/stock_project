@@ -4,9 +4,11 @@
 import pandas as pd
 from typing import List, Dict, Any, Tuple
 
-from app.indicators.volume_wave_strategy import VolumeWaveStrategy
+from app.trading.strategies.volume_wave_strategy import VolumeWaveStrategy
+from app.trading.strategies.base_strategy import register_strategy
 from app.core.logging import logger
 
+@register_strategy
 class VolumeWaveEnhancedStrategy(VolumeWaveStrategy):
     """
     量价进阶策略

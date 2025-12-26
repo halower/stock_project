@@ -11,7 +11,7 @@ import pandas as pd
 from app.core.redis_client import get_redis_client
 from app.core.logging import logger
 from app.services.stock.stock_data_manager import StockDataManager
-from app import indicators
+from app.trading.strategies import get_all_strategies, apply_strategy
 
 
 class SignalManager:
@@ -32,7 +32,7 @@ class SignalManager:
         
         self.buy_signals_key = "buy_signals"
         # 获取可用策略
-        self.strategies = indicators.get_all_strategies()
+        self.strategies = get_all_strategies()
     
     async def initialize(self):
         """初始化SignalManager"""
@@ -251,10 +251,10 @@ class SignalManager:
             if not strategy_class:
                 # 根据策略代码获取策略类
                 if strategy == 'volume_wave':
-                    from app.indicators.volume_wave_strategy import VolumeWaveStrategy
+                    from app.strategies.volume_wave_strategy import VolumeWaveStrategy
                     strategy_class = VolumeWaveStrategy
                 elif strategy == 'volume_wave_enhanced':
-                    from app.indicators.volume_wave_enhanced_strategy import VolumeWaveEnhancedStrategy
+                    from app.strategies.volume_wave_enhanced_strategy import VolumeWaveEnhancedStrategy
                     strategy_class = VolumeWaveEnhancedStrategy
                 else:
                     logger.warning(f"未知策略: {strategy}")
@@ -432,7 +432,7 @@ class SignalManager:
             logger.debug(f"    {ts_code} 数据验证通过，K线数量: {len(df)}")
             
             # 应用策略
-            processed_df, signals = indicators.apply_strategy(strategy_code, df)
+            processed_df, signals = apply_strategy(strategy_code, df)
             
             logger.debug(f"    {ts_code} 策略 {strategy_code} 返回 {len(signals)} 个信号")
                                             
@@ -884,7 +884,7 @@ class SignalManager:
     async def get_available_strategies(self) -> List[Dict[str, str]]:
         """获取可用策略列表"""
         try:
-            strategies_info = indicators.get_all_strategies()
+            strategies_info = get_all_strategies()
             return [
                 {
                     "code": code,

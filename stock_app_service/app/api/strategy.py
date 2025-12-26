@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from typing import List
 from pydantic import BaseModel
 
-from app.indicators import get_all_strategies
+from app.trading.strategies import get_all_strategies
 from app.api.dependencies import verify_token
 
 # 定义响应模型

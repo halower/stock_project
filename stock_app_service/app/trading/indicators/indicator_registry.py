@@ -21,6 +21,73 @@ class IndicatorDefinition:
     enabled_by_default: bool = False # 是否默认启用
     is_composite: bool = False       # 是否复合指标（如Vegas隧道）
     sub_indicators: List[str] = field(default_factory=list) # 子指标ID列表（复合指标用）
+    render_config: Optional[Dict[str, Any]] = None  # 渲染配置（自描述渲染）
+
+
+def register_indicator(
+    id: str,
+    name: str,
+    category: str,
+    render_type: str = 'line',
+    description: str = '',
+    default_params: Optional[Dict[str, Any]] = None,
+    color: Optional[str] = None,
+    enabled_by_default: bool = False,
+    is_composite: bool = False,
+    sub_indicators: Optional[List[str]] = None,
+    render_config: Optional[Dict[str, Any]] = None
+):
+    """
+    装饰器：自动注册指标计算函数
+    
+    使用示例：
+        @register_indicator(
+            id="my_indicator",
+            name="我的指标",
+            category="trend",
+            render_type="line",
+            color="#FF6B6B"
+        )
+        def calculate_my_indicator(df, period=20):
+            return df['close'].rolling(period).mean()
+    
+    Args:
+        id: 指标唯一标识
+        name: 显示名称
+        category: 分类 (trend/volume/support_resistance/oscillator/subchart)
+        render_type: 渲染类型 (line/overlay/histogram/box/subchart)
+        description: 描述
+        default_params: 默认参数字典
+        color: 默认颜色
+        enabled_by_default: 是否默认启用
+        is_composite: 是否复合指标
+        sub_indicators: 子指标ID列表
+        render_config: 渲染配置（自描述渲染，包含series定义、渲染逻辑等）
+        
+    Returns:
+        装饰后的函数（不修改原函数）
+    """
+    def decorator(func: Callable):
+        indicator_def = IndicatorDefinition(
+            id=id,
+            name=name,
+            category=category,
+            description=description,
+            calculate_func=func,
+            default_params=default_params or {},
+            render_type=render_type,
+            color=color,
+            enabled_by_default=enabled_by_default,
+            is_composite=is_composite,
+            sub_indicators=sub_indicators or [],
+            render_config=render_config
+        )
+        # 直接注册到IndicatorRegistry
+        IndicatorRegistry._indicators[id] = indicator_def
+        logger.info(f"✅ 装饰器自动注册指标: {name} ({id})")
+        return func
+    
+    return decorator
 
 
 class IndicatorRegistry:
@@ -72,10 +139,10 @@ class IndicatorRegistry:
 # 注册内置指标
 # ============================================================================
 
-from app.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
-from app.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
-from app.indicators.tradingview.divergence_detector import calculate_divergence_detector
-from app.indicators.tradingview.mirror_candle import calculate_mirror_candle
+from app.trading.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
+from app.trading.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
+from app.trading.indicators.tradingview.divergence_detector import calculate_divergence_detector
+from app.trading.indicators.tradingview.mirror_candle import calculate_mirror_candle
 
 # Volume Profile Pivot Anchored（TradingView移植 - 完整版）
 IndicatorRegistry.register(IndicatorDefinition(

@@ -27,7 +27,7 @@ class IndicatorPoolMixin:
                                       ema144_data, ema169_data, volume_profile_data, 
                                       pivot_order_blocks_data=None, divergence_data=None, mirror_data=None) -> str:
         """生成指标配置JavaScript"""
-        from app.indicators.indicator_registry import IndicatorRegistry
+        from app.trading.indicators.indicator_registry import IndicatorRegistry
         
         all_indicators = IndicatorRegistry.get_all()
         config = {}
@@ -918,7 +918,7 @@ class IndicatorPoolMixin:
     @classmethod
     def _generate_indicator_panel_html(cls) -> str:
         """生成指标池面板HTML"""
-        from app.indicators.indicator_registry import IndicatorRegistry
+        from app.trading.indicators.indicator_registry import IndicatorRegistry
         
         all_indicators = IndicatorRegistry.get_all()
         
@@ -1006,7 +1006,7 @@ class IndicatorPoolMixin:
         # 处理复合指标的颜色显示
         color_badges_html = ''
         if indicator.is_composite and indicator.sub_indicators:
-            from app.indicators.indicator_registry import IndicatorRegistry
+            from app.trading.indicators.indicator_registry import IndicatorRegistry
             color_badges_html = '<div class="color-badges">'
             for sub_id in indicator.sub_indicators:
                 sub_ind = IndicatorRegistry.get(sub_id)

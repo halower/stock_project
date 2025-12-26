@@ -15,8 +15,8 @@ from app.core.sync_redis_client import get_sync_redis_client  # 新增：同步R
 from app.api.dependencies import verify_token
 from app.core.config import CHART_DIR
 from app.core.logging import logger
-from app import indicators
-from app.charts import generate_chart_html
+from app.trading.strategies import apply_strategy
+from app.trading.renderers import generate_chart_html
 
 router = APIRouter(tags=["股票图表"])
 
@@ -249,7 +249,7 @@ async def generate_stock_chart(
         
         # 应用策略
         try:
-            processed_df, signals = indicators.apply_strategy(strategy, df)
+            processed_df, signals = apply_strategy(strategy, df)
             logger.info(f"策略应用成功 {stock_code}: 生成 {len(signals)} 个信号")
         except Exception as e:
             logger.error(f"策略应用失败 {stock_code}: {str(e)}")
@@ -262,17 +262,17 @@ async def generate_stock_chart(
                 
                 # 计算EMA12（如果不存在）
                 if 'ema12' not in processed_df.columns:
-                    from app.indicators.volume_wave_strategy import VolumeWaveStrategy
+                    from app.strategies.volume_wave_strategy import VolumeWaveStrategy
                     processed_df['ema12'] = pd.Series(VolumeWaveStrategy.calculate_ema(close_values, 12))
                 
                 # 计算EMA144（Vegas隧道下轨）
                 if 'ema144' not in processed_df.columns:
-                    from app.indicators.volume_wave_strategy import VolumeWaveStrategy
+                    from app.strategies.volume_wave_strategy import VolumeWaveStrategy
                     processed_df['ema144'] = pd.Series(VolumeWaveStrategy.calculate_ema(close_values, 144))
                 
                 # 计算EMA169（Vegas隧道上轨）
                 if 'ema169' not in processed_df.columns:
-                    from app.indicators.volume_wave_strategy import VolumeWaveStrategy
+                    from app.strategies.volume_wave_strategy import VolumeWaveStrategy
                     processed_df['ema169'] = pd.Series(VolumeWaveStrategy.calculate_ema(close_values, 169))
                 
                 logger.info(f"已为图表添加Vegas隧道指标（EMA12, EMA144, EMA169）")

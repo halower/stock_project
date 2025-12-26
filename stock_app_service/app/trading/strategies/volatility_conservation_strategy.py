@@ -8,9 +8,10 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Any
 from app.core.logging import logger
-from app.indicators.base_strategy import BaseStrategy
+from app.trading.strategies.base_strategy import BaseStrategy, register_strategy
 
 
+@register_strategy
 class VolatilityConservationStrategy(BaseStrategy):
     """
     趋势追踪策略（UT Bot Alerts 移植版）

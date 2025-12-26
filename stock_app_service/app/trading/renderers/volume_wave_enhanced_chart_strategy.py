@@ -5,7 +5,7 @@ import json
 from typing import Dict, Any, List, Tuple, Optional
 import pandas as pd
 import numpy as np
-from app.charts.volume_wave_chart_strategy import VolumeWaveChartStrategy
+from app.trading.renderers.volume_wave_chart_strategy import VolumeWaveChartStrategy
 from app.core.logging import logger
 
 class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
@@ -384,7 +384,7 @@ class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
             ema169_data = cls._prepare_ema_data(df, 'ema169')
             
             # 计算 Volume Profile Pivot Anchored（新版）
-            from app.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
+            from app.trading.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
             volume_profile = calculate_volume_profile_pivot_anchored(
                 df, 
                 pivot_length=20, 
@@ -397,7 +397,7 @@ class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
             order_blocks = cls._calculate_pivot_order_blocks(df)
             
             # 计算背离检测
-            from app.indicators.tradingview.divergence_detector import calculate_divergence_detector
+            from app.trading.indicators.tradingview.divergence_detector import calculate_divergence_detector
             divergence_data = calculate_divergence_detector(
                 df,
                 pivot_period=5,

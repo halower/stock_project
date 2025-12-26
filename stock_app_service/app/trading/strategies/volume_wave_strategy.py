@@ -5,9 +5,10 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Any, Tuple
 
-from app.indicators.base_strategy import BaseStrategy
+from app.trading.strategies.base_strategy import BaseStrategy, register_strategy
 from app.core.logging import logger
 
+@register_strategy
 class VolumeWaveStrategy(BaseStrategy):
     """
     量价突破策略

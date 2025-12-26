@@ -6,7 +6,7 @@ from typing import Dict, Any
 import json
 import pandas as pd
 from app.core.logging import logger
-from app.charts.indicator_pool_mixin import IndicatorPoolMixin
+from app.trading.renderers.indicator_pool_mixin import IndicatorPoolMixin
 
 class BaseChartStrategy(ABC, IndicatorPoolMixin):
     """

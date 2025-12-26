@@ -5,7 +5,7 @@ import pandas as pd
 import json
 from typing import Dict, Any
 
-from app.charts.base_chart_strategy import BaseChartStrategy
+from app.trading.renderers.base_chart_strategy import BaseChartStrategy
 from app.core.logging import logger
 
 class VolumeWaveChartStrategy(BaseChartStrategy):
@@ -51,7 +51,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             ema169_data = cls._prepare_ema_data(df, 'ema169')
             
             # 计算 Volume Profile Pivot Anchored（新版）
-            from app.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
+            from app.trading.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
             volume_profile = calculate_volume_profile_pivot_anchored(
                 df, 
                 pivot_length=20, 
@@ -61,7 +61,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             )
             
             # 计算 Pivot Order Blocks
-            from app.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
+            from app.trading.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
             pivot_order_blocks = calculate_pivot_order_blocks(
                 df, left=15, right=8, box_count=2, percentage_change=6.0, box_extend_to_end=True
             )
@@ -81,7 +81,7 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                 })
             
             # 计算背离检测
-            from app.indicators.tradingview.divergence_detector import calculate_divergence_detector
+            from app.trading.indicators.tradingview.divergence_detector import calculate_divergence_detector
             divergence_data = calculate_divergence_detector(
                 df,
                 pivot_period=5,

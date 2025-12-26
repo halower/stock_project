@@ -14,9 +14,10 @@ from app.core.config import CHART_DIR, CHART_MAX_FILES
 from app.models.stock import StockHistory
 from app.services.stock.stock_crud import get_stock_history, get_stock_by_code
 # 使用策略工厂接口替代直接引入具体策略类
-from app.indicators import apply_strategy, get_strategy_by_code, VolumeWaveStrategy
+from app.trading.strategies import apply_strategy, get_strategy_by_code
+from app.trading.strategies.volume_wave_strategy import VolumeWaveStrategy
 # 引入新的图表策略模块
-from app.charts import generate_chart_html, get_chart_strategy_by_code
+from app.trading.renderers import generate_chart_html, get_chart_strategy_by_code
 
 # 确保图表目录存在
 os.makedirs(CHART_DIR, exist_ok=True)

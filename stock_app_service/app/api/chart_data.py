@@ -11,7 +11,7 @@ import hashlib
 from app.core.sync_redis_client import get_sync_redis_client
 from app.api.dependencies import verify_token
 from app.core.logging import logger
-from app import indicators
+from app.trading.strategies import apply_strategy
 
 router = APIRouter(tags=["图表数据"])
 
@@ -167,13 +167,13 @@ async def get_chart_data(
         
         # 6. 应用策略（耗时操作）
         logger.info(f"🔄 计算指标: {stock_code} ({strategy})")
-        processed_df, signals = indicators.apply_strategy(strategy, df)
+        processed_df, signals = apply_strategy(strategy, df)
         
         # 7. 为volume_wave策略添加额外指标
         if strategy == 'volume_wave':
             try:
                 close_values = processed_df['close'].to_numpy()
-                from app.indicators.volume_wave_strategy import VolumeWaveStrategy
+                from app.strategies.volume_wave_strategy import VolumeWaveStrategy
                 
                 if 'ema12' not in processed_df.columns:
                     processed_df['ema12'] = pd.Series(VolumeWaveStrategy.calculate_ema(close_values, 12))

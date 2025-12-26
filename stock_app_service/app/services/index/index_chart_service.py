@@ -11,8 +11,8 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 from app.core.logging import logger
 from app.core.config import CHART_DIR
-from app.charts import generate_chart_html
-from app import indicators
+from app.trading.renderers import generate_chart_html
+from app.trading.strategies import apply_strategy
 from app.services.index.index_service import index_service
 from app.services.index.index_analysis_engine import analysis_engine
 
@@ -160,7 +160,7 @@ class IndexChartService:
             
             # 3. 应用动量守恒增强版策略
             try:
-                processed_df, signals = indicators.apply_strategy('volume_wave_enhanced', df)
+                processed_df, signals = apply_strategy('volume_wave_enhanced', df)
                 logger.info(f"策略应用成功: 生成 {len(signals)} 个信号")
             except Exception as e:
                 logger.error(f"策略应用失败: {e}")
