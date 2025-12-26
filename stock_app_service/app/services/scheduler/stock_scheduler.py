@@ -717,7 +717,10 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
     scheduler.start()
     logger.info("========== 股票调度器启动完成 ==========")
     logger.info("定时任务:")
-    logger.info(f"  - 实时数据更新: 每{realtime_interval}分钟（交易时间）")
+    if settings.ENABLE_REALTIME_UPDATE:
+        logger.info(f"  - 实时数据更新: 每{settings.REALTIME_UPDATE_INTERVAL}秒（交易时间）")
+    else:
+        logger.info("  - 实时数据更新: 已禁用")
     logger.info("  - 策略信号计算: 固定时间点（9:30/9:50/10:10/10:30/10:50/11:10/11:30/13:00/13:20/13:40/14:00/14:20/14:40/15:00/15:20，独立任务）")
     logger.info("  - WebSocket价格推送: 每5秒（仅交易时间）")
     logger.info("  - 新闻爬取: 每2小时")
