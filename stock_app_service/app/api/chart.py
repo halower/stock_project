@@ -53,7 +53,7 @@ async def generate_stock_chart(
     """
     logger.warning(f"⚠️ 使用已废弃接口: /api/stocks/{stock_code}/chart，建议迁移到新架构")
     # 检查策略类型
-    if strategy not in ["volume_wave", "volume_wave_enhanced"]:
+    if strategy not in ["volume_wave", "volume_wave_enhanced", "volatility_conservation"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略类型: {strategy}")
     
     # 检查主题类型
@@ -340,7 +340,7 @@ async def view_stock_chart(
     from fastapi.responses import RedirectResponse
     
     # 检查策略类型
-    if strategy not in ["volume_wave", "volume_wave_enhanced"]:
+    if strategy not in ["volume_wave", "volume_wave_enhanced", "volatility_conservation"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略类型: {strategy}")
     
     # 检查主题类型

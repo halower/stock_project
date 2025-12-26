@@ -6,11 +6,13 @@ from typing import Dict, Type, Optional, List, Any
 from app.charts.base_chart_strategy import BaseChartStrategy
 from app.charts.volume_wave_chart_strategy import VolumeWaveChartStrategy
 from app.charts.volume_wave_enhanced_chart_strategy import VolumeWaveEnhancedChartStrategy
+from app.charts.volatility_conservation_chart_strategy import VolatilityConservationChartStrategy
 
 # 注册所有可用的图表策略
 REGISTERED_CHART_STRATEGIES: Dict[str, Type[BaseChartStrategy]] = {
     VolumeWaveChartStrategy.STRATEGY_CODE: VolumeWaveChartStrategy,
-    VolumeWaveEnhancedChartStrategy.STRATEGY_CODE: VolumeWaveEnhancedChartStrategy
+    VolumeWaveEnhancedChartStrategy.STRATEGY_CODE: VolumeWaveEnhancedChartStrategy,
+    'volatility_conservation': VolatilityConservationChartStrategy
 }
 
 def get_chart_strategy_by_code(strategy_code: str) -> Optional[Type[BaseChartStrategy]]:

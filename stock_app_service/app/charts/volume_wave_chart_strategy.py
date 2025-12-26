@@ -9,11 +9,11 @@ from app.charts.base_chart_strategy import BaseChartStrategy
 from app.core.logging import logger
 
 class VolumeWaveChartStrategy(BaseChartStrategy):
-    """动量守恒图表策略"""
+    """量价突破图表策略"""
     
     # 策略元数据
     STRATEGY_CODE = "volume_wave"
-    STRATEGY_NAME = "动量守恒"
+    STRATEGY_NAME = "量价突破"
     STRATEGY_DESCRIPTION = ""  # 隐藏策略描述
     
     @classmethod

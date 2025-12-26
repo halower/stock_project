@@ -9,12 +9,42 @@ from app.indicators.base_strategy import BaseStrategy
 from app.core.logging import logger
 
 class VolumeWaveStrategy(BaseStrategy):
-    """神明御用波动交易策略v2指标"""
+    """
+    量价突破策略
+    
+    【核心逻辑 - 内部文档】
+    基于双线交叉系统的量价结合突破策略：
+    
+    技术指标：
+    1. Angel线（天使线）：
+       - 计算方法：EMA(close, 2) - 快速响应价格变化
+       - 作用：捕捉短期价格动量
+    
+    2. Devil线（恶魔线）：
+       - 计算方法：EMA(xsl(close, 21) * 20 + close, 42)
+       - xsl = 线性回归斜率（Linear Regression Slope）
+       - 作用：识别中期趋势方向
+    
+    信号生成：
+    - 买入信号：Angel上穿Devil（金叉）
+    - 卖出信号：Angel下穿Devil（死叉）
+    
+    技术特点：
+    - 快慢线结合：短期动量 + 中期趋势
+    - 线性回归：过滤市场噪音
+    - 纯价格驱动：不依赖成交量过滤
+    
+    参数配置：
+    - angel_period: 2（快线周期）
+    - devil_period: 42（慢线周期）
+    - xsl_length: 21（线性回归周期）
+    - xsl_multiplier: 20（斜率放大系数）
+    """
     
     # 策略元数据
     STRATEGY_CODE = "volume_wave"
-    STRATEGY_NAME = "动量守恒"
-    STRATEGY_DESCRIPTION = "基于动量守恒的短线交易策略，通过检测特定波动模式产生买卖信号"
+    STRATEGY_NAME = "量价突破"
+    STRATEGY_DESCRIPTION = ""  # 不向用户展示策略描述
     
     # 策略参数
     DEFAULT_PARAMS = {

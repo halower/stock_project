@@ -946,7 +946,7 @@ class IndicatorPoolMixin:
         setTimeout(function() {
             if (window.candleSeries && window.initialMarkers !== undefined) {
                 console.log('✅ [初始化] candleSeries 和 initialMarkers 已就绪');
-                initIndicatorPool();
+        initIndicatorPool();
             } else {
                 console.warn('⚠️ [初始化] 等待 candleSeries 就绪...');
                 setTimeout(initIndicatorPool, 500);

@@ -1,31 +1,42 @@
-//@version=5
-indicator("K线镜像翻转", overlay=false)
+//@version=4
+study(title="UT Bot Alerts", overlay = true)
 
-// 使用第一根K线的收盘价作为起点
-var float startPrice = close
-var float invertedPrice = startPrice
+// Inputs
+a = input(1,     title = "Key Vaule. 'This changes the sensitivity'")
+c = input(10,    title = "ATR Period")
+h = input(false, title = "Signals from Heikin Ashi Candles")
 
-// 计算当前K线相对于前一根的涨跌幅
-pctChange = (close - close[1]) / close[1]
+xATR  = atr(c)
+nLoss = a * xATR
 
-// 翻转后的价格变化：涨跌幅取反
-if bar_index > 0
-    invertedPrice := invertedPrice * (1 - pctChange)
+src = h ? security(heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = false) : close
 
-// 计算翻转后的OHLC
-// 每根K线内部的涨跌也要反转
-openPct = (open - close[1]) / close[1]
-highPct = (high - close[1]) / close[1]
-lowPct = (low - close[1]) / close[1]
+xATRTrailingStop = 0.0
+xATRTrailingStop := iff(src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), src - nLoss),
+   iff(src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), src + nLoss), 
+   iff(src > nz(xATRTrailingStop[1], 0), src - nLoss, src + nLoss)))
+ 
+pos = 0   
+pos :=	iff(src[1] < nz(xATRTrailingStop[1], 0) and src > nz(xATRTrailingStop[1], 0), 1,
+   iff(src[1] > nz(xATRTrailingStop[1], 0) and src < nz(xATRTrailingStop[1], 0), -1, nz(pos[1], 0))) 
+   
+xcolor = pos == -1 ? color.red: pos == 1 ? color.green : color.blue 
 
-invertedOpen = bar_index > 0 ? invertedPrice[1] * (1 - openPct) : startPrice
-invertedHigh = bar_index > 0 ? invertedPrice[1] * (1 - lowPct) : high  // 高低互换
-invertedLow = bar_index > 0 ? invertedPrice[1] * (1 - highPct) : low   // 高低互换
-invertedClose = invertedPrice
+ema   = ema(src,1)
+above = crossover(ema, xATRTrailingStop)
+below = crossover(xATRTrailingStop, ema)
 
-// 绘制翻转后的K线（始终显示）
-isInvertedUp = invertedClose > invertedOpen
-plotcandle(invertedOpen, invertedHigh, invertedLow, invertedClose, title="翻转K线", 
-           color=isInvertedUp ? color.red : color.green, 
-           wickcolor=isInvertedUp ? color.red : color.green, 
-           bordercolor=isInvertedUp ? color.red : color.green)
+buy  = src > xATRTrailingStop and above 
+sell = src < xATRTrailingStop and below
+
+barbuy  = src > xATRTrailingStop 
+barsell = src < xATRTrailingStop 
+
+plotshape(buy,  title = "Buy",  text = 'Buy',  style = shape.labelup,   location = location.belowbar, color= color.green, textcolor = color.white, transp = 0, size = size.tiny)
+plotshape(sell, title = "Sell", text = 'Sell', style = shape.labeldown, location = location.abovebar, color= color.red,   textcolor = color.white, transp = 0, size = size.tiny)
+
+barcolor(barbuy  ? color.green : na)
+barcolor(barsell ? color.red   : na)
+
+alertcondition(buy,  "UT Long",  "UT Long")
+alertcondition(sell, "UT Short", "UT Short")

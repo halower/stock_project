@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""动量守恒增强版策略 - 在原动量守恒策略基础上增加EMA18过滤"""
+"""量价进阶策略 - 在量价突破策略基础上增加趋势过滤"""
 
 import pandas as pd
 from typing import List, Dict, Any, Tuple
@@ -8,12 +8,42 @@ from app.indicators.volume_wave_strategy import VolumeWaveStrategy
 from app.core.logging import logger
 
 class VolumeWaveEnhancedStrategy(VolumeWaveStrategy):
-    """动量守恒增强版策略 - 买入信号需要价格大于EMA18"""
+    """
+    量价进阶策略
+    
+    【核心逻辑 - 内部文档】
+    在量价突破策略基础上增加趋势过滤机制：
+    
+    继承父类：VolumeWaveStrategy
+    - 保留所有Angel/Devil双线交叉逻辑
+    - 保留所有技术指标计算
+    
+    增强过滤：
+    1. 买入信号增强：
+       - 原始条件：Angel上穿Devil
+       - 新增条件：价格 > EMA18（中期趋势确认）
+       - 逻辑：只在上升趋势中买入，避免逆势操作
+    
+    2. 卖出信号增强：
+       - 原始条件：Angel下穿Devil
+       - 新增条件：必须有持仓记录
+       - 逻辑：实现完整的买卖闭环，避免空头信号
+    
+    技术优势：
+    - 降低假突破：EMA18过滤震荡市
+    - 提高胜率：只在趋势确认后入场
+    - 风险控制：持仓管理，避免过度交易
+    
+    适用场景：
+    - 趋势明确的市场
+    - 降低交易频率，提升质量
+    - 适合稳健型投资者
+    """
     
     # 策略元数据
     STRATEGY_CODE = "volume_wave_enhanced"
-    STRATEGY_NAME = "动量守恒增强版"
-    STRATEGY_DESCRIPTION = "基于动量守恒策略，买入信号需要额外满足价格大于EMA18的条件"
+    STRATEGY_NAME = "量价进阶"
+    STRATEGY_DESCRIPTION = ""  # 不向用户展示策略描述
     
     @classmethod
     def apply_strategy(cls, df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, List[Dict]]:

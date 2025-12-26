@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""动量守恒增强版图表策略实现"""
+"""量价进阶图表策略实现"""
 
 import json
 from typing import Dict, Any, List, Tuple, Optional
@@ -9,11 +9,11 @@ from app.charts.volume_wave_chart_strategy import VolumeWaveChartStrategy
 from app.core.logging import logger
 
 class VolumeWaveEnhancedChartStrategy(VolumeWaveChartStrategy):
-    """动量守恒增强版图表策略 - 继承自动量守恒，隐藏策略描述，增加Pivot Order Block"""
+    """量价进阶图表策略 - 继承自量价突破，隐藏策略描述，增加Pivot Order Block"""
     
     # 策略元数据
     STRATEGY_CODE = "volume_wave_enhanced"
-    STRATEGY_NAME = "动量守恒增强版"
+    STRATEGY_NAME = "量价进阶"
     STRATEGY_DESCRIPTION = ""  # 空字符串，隐藏策略描述
     
     # Pivot Order Block 配置

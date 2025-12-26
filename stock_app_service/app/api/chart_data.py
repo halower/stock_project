@@ -70,7 +70,7 @@ async def get_chart_data(
             "generated_time": "2025-12-24T10:30:00"
         }
     """
-    if strategy not in ["volume_wave", "volume_wave_enhanced"]:
+    if strategy not in ["volume_wave", "volume_wave_enhanced", "volatility_conservation"]:
         raise HTTPException(status_code=400, detail=f"不支持的策略: {strategy}")
     
     try:
