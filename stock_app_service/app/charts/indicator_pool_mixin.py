@@ -877,48 +877,9 @@ class IndicatorPoolMixin:
             }
         }
         
-        // 快速操作
-        function enableAllIndicators() {
-            Object.keys(INDICATOR_POOL).forEach(id => {
-                enableIndicator(id, false);
-                const checkbox = document.querySelector('[data-id="' + id + '"] input[type="checkbox"]');
-                if (checkbox) checkbox.checked = true;
-            });
-            saveUserPreferences();
-            updateIndicatorCount();
-        }
-        
-        function disableAllIndicators() {
-            Object.keys(INDICATOR_POOL).forEach(id => {
-                disableIndicator(id, false);
-                const checkbox = document.querySelector('[data-id="' + id + '"] input[type="checkbox"]');
-                if (checkbox) checkbox.checked = false;
-            });
-            saveUserPreferences();
-            updateIndicatorCount();
-        }
-        
-        function resetToDefault() {
-            Object.keys(INDICATOR_POOL).forEach(id => {
-                const config = INDICATOR_POOL[id];
-                const enabled = config.enabled;
-                
-                if (enabled) {
-                    enableIndicator(id, false);
-                } else {
-                    disableIndicator(id, false);
-                }
-                
-                const checkbox = document.querySelector('[data-id="' + id + '"] input[type="checkbox"]');
-                if (checkbox) checkbox.checked = enabled;
-            });
-            saveUserPreferences();
-            updateIndicatorCount();
-        }
-        
-        // 更新指标计数（不再显示，保留函数避免报错）
+        // 指标计数功能（保留函数以保持兼容性）
         function updateIndicatorCount() {
-            // 数量统计已隐藏
+            // 已弃用，不再显示数量统计
         }
         
         // 保存/加载用户偏好
@@ -986,11 +947,6 @@ class IndicatorPoolMixin:
             <button class="close-btn" onclick="toggleIndicatorPanel()">×</button>
         </div>
         <div class="panel-body">
-            <div class="quick-actions">
-                <button onclick="enableAllIndicators()">全部开启</button>
-                <button onclick="disableAllIndicators()">全部关闭</button>
-                <button onclick="resetToDefault()">恢复默认</button>
-            </div>
         """
         
         # 趋势分析

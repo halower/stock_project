@@ -584,33 +584,6 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     overflow-y: auto;
                 }}
                 
-                .quick-actions {{
-                    display: flex;
-                    gap: 8px;
-                    padding: 12px 16px;
-                    border-bottom: 1px solid {colors['border']};
-                    background: rgba(0, 0, 0, 0.02);
-                }}
-                
-                .quick-actions button {{
-                    flex: 1;
-                    padding: 7px 12px;
-                    background: white;
-                    border: 1px solid #ddd;
-                    border-radius: 8px;
-                    font-size: 12px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    color: {colors['text']};
-                    white-space: nowrap;
-                    font-weight: 500;
-                }}
-                
-                .quick-actions button:hover {{
-                    background: #f8f8f8;
-                    border-color: #999;
-                }}
-                
                 .indicator-category {{
                     padding: 0;
                     border-bottom: 1px solid {colors['border']};
@@ -780,11 +753,6 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     
                     .indicator-name {{
                         font-size: 16px;
-                    }}
-                    
-                    .quick-actions button {{
-                        font-size: 13px;
-                        padding: 8px 12px;
                     }}
                 }}
             </style>
