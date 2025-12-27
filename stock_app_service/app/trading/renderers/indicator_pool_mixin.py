@@ -1487,6 +1487,25 @@ class IndicatorPoolMixin:
                 'Double Top': params.double_pattern_color || '#607D8B',
                 'Double Bottom': params.double_pattern_color || '#607D8B'
             };
+            
+            // 形态名称中文映射 🇨🇳
+            const patternNamesCN = {
+                'Gartley': '加特利',
+                'Bat': '蝙蝠',
+                'Butterfly': '蝴蝶',
+                'Crab': '螃蟹',
+                'Deep Crab': '深螃蟹',
+                'Shark': '鲨鱼',
+                'Cypher': '密码',
+                '3 Drives': '三驱动',
+                '5-0': '五零',
+                'ABCD': 'ABCD',
+                'AB=CD': 'AB=CD',
+                'ABCD Ext': 'ABCD扩展',
+                'Double Top': '双顶',
+                'Double Bottom': '双底'
+            };
+            
             const showZigZag = params.show_zigzag !== false;
             const showLabels = params.show_labels !== false;
             const showPointLabels = params.show_point_labels !== false;
@@ -1521,7 +1540,12 @@ class IndicatorPoolMixin:
                     const color = patternColors[patternType] || '#2196F3';  // 默认蓝色
                     const points = pattern.points;
                     
-                    console.log(`   🎨 渲染形态: ${pattern.type}, 颜色: ${color}`);
+                    // 转换形态名称为中文用于日志
+                    const patternNamesCNForLog = pattern.type.split(' / ').map(name => 
+                        patternNamesCN[name.trim()] || name.trim()
+                    ).join(' / ');
+                    
+                    console.log(`   🎨 渲染形态: ${patternNamesCNForLog} (${pattern.type}), 颜色: ${color}`);
                     
                     // 绘制主要结构线条（X-A-B-C-D）
                     const mainLines = [
@@ -1600,12 +1624,17 @@ class IndicatorPoolMixin:
                             
                             // 添加D点的形态标签（总是显示，如果启用了标签）
                             if (showLabels) {
+                                // 转换形态名称为中文（支持组合形态）
+                                const patternNames = pattern.type.split(' / ').map(name => 
+                                    patternNamesCN[name.trim()] || name.trim()
+                                ).join(' / ');
+                                
                                 harmonicMarkers.push({
                                     time: points.d.time,
                                     position: points.d.type === 'high' ? 'aboveBar' : 'belowBar',
                                     color: color,  // 使用形态对应的颜色
                                     shape: points.d.type === 'high' ? 'arrowDown' : 'arrowUp',
-                                    text: pattern.type,
+                                    text: patternNames,  // 使用中文名称
                                     size: 1.2
                                 });
                             }
@@ -1613,7 +1642,7 @@ class IndicatorPoolMixin:
                             if (harmonicMarkers.length > 0) {
                                 window.candleSeries.setMarkers([...existingMarkers, ...harmonicMarkers]);
                                 const labelInfo = showPointLabels ? '(含XABCD点)' : '(仅形态名)';
-                                console.log(`   - 已添加形态标签: ${pattern.type} ${labelInfo}`);
+                                console.log(`   - 已添加形态标签: ${patternNames} ${labelInfo}`);
                             }
                         } catch (e) {
                             console.warn('   - 添加形态标签失败:', e);
