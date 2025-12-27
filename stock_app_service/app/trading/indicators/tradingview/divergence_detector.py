@@ -9,8 +9,21 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Any, Tuple
 from app.core.logging import logger
+from app.trading.indicators.indicator_registry import register_indicator
 
 
+@register_indicator(
+    id='divergence_detector',
+    name='背离检测',
+    category='oscillator',
+    description='',
+    render_type='overlay',
+    enabled_by_default=False,
+    default_params={'pivot_period': 5, 'max_pivot_points': 10, 'max_bars': 100, 
+                    'check_macd': True, 'check_rsi': True, 'check_stoch': True, 
+                    'check_cci': True, 'check_momentum': True},
+    render_config={'render_function': 'renderDivergence'}
+)
 def calculate_divergence_detector(
     df: pd.DataFrame,
     pivot_period: int = 5,

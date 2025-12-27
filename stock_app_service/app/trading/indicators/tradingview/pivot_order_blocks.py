@@ -9,8 +9,19 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Tuple
 from app.core.logging import logger
+from app.trading.indicators.indicator_registry import register_indicator
 
 
+@register_indicator(
+    id='pivot_order_blocks',
+    name='支撑和阻力区域',
+    category='support_resistance',
+    description='',
+    render_type='overlay',
+    enabled_by_default=False,
+    default_params={'left': 15, 'right': 8, 'box_count': 2, 'percentage_change': 6.0, 'box_extend_to_end': True},
+    render_config={'render_function': 'renderPivotOrderBlocks'}
+)
 def calculate_pivot_order_blocks(
     df: pd.DataFrame,
     left: int = 15,

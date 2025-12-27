@@ -14,8 +14,19 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 from app.core.logging import logger
+from app.trading.indicators.indicator_registry import register_indicator
 
 
+@register_indicator(
+    id='volume_profile_pivot',
+    name='成交量分布',
+    category='volume',
+    description='',
+    render_type='overlay',
+    enabled_by_default=False,
+    default_params={'pivot_length': 20, 'profile_levels': 25, 'value_area_percent': 68.0, 'profile_width': 0.30},
+    render_config={'render_function': 'renderVolumeProfilePivot'}
+)
 def calculate_volume_profile_pivot_anchored(
     df: pd.DataFrame,
     pivot_length: int = 20,

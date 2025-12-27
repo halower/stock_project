@@ -201,7 +201,7 @@ class IndicatorAutoRenderer:
         return result
     
     @classmethod
-    def generate_indicator_pool_config(cls, df: pd.DataFrame) -> Dict[str, Any]:
+    def generate_indicator_pool_config(cls, df: pd.DataFrame, lazy_load: bool = True) -> Dict[str, Any]:
         """
         生成指标池配置（INDICATOR_POOL）
         
@@ -209,6 +209,7 @@ class IndicatorAutoRenderer:
         
         Args:
             df: 股票数据DataFrame
+            lazy_load: 是否懒加载（默认True）。True时只计算默认启用的指标，其他指标前端按需计算
             
         Returns:
             指标池配置字典
@@ -218,8 +219,65 @@ class IndicatorAutoRenderer:
         # 获取所有指标
         all_indicators = IndicatorRegistry.get_all()
         
-        # 计算所有指标数据
-        indicator_data = cls.calculate_all_indicators(df)
+        # 懒加载模式：智能计算策略
+        # - 轻量级指标（EMA等）：总是计算（很快，~10ms）
+        # - 重量级指标（背离、成交量分布等）：按需计算（慢，~1-2秒）
+        if lazy_load:
+            logger.debug(f"⚡ 懒加载模式：轻量级指标预计算，重量级指标按需加载")
+            indicator_data = {}
+            
+            # 定义重量级指标（耗时 > 100ms）
+            heavy_indicators = {
+                'divergence_detector',      # 背离检测（~500ms）
+                'volume_profile_pivot',     # 成交量分布（~300ms）
+                'pivot_order_blocks',       # 支撑阻力（~200ms）
+                'mirror_candle'             # 镜像K线（~100ms）
+            }
+            
+            # 第一步：收集需要计算的指标ID
+            indicators_to_calculate = set()
+            
+            for indicator_id, indicator_def in all_indicators.items():
+                # 1. 默认启用的指标
+                if indicator_def.enabled_by_default:
+                    indicators_to_calculate.add(indicator_id)
+                    
+                    # 如果是复合指标，添加其子指标
+                    if indicator_def.is_composite and indicator_def.sub_indicators:
+                        for sub_id in indicator_def.sub_indicators:
+                            indicators_to_calculate.add(sub_id)
+                
+                # 2. 轻量级指标（非重量级的都预先计算）
+                elif indicator_id not in heavy_indicators:
+                    indicators_to_calculate.add(indicator_id)
+            
+            logger.debug(f"预计算指标: {indicators_to_calculate}")
+            logger.debug(f"延迟计算指标（重量级）: {heavy_indicators & set(all_indicators.keys())}")
+            
+            # 第二步：只计算需要的指标
+            for indicator_id, indicator_def in all_indicators.items():
+                # 跳过复合指标（它们不需要计算函数）
+                if indicator_def.is_composite:
+                    indicator_data[indicator_id] = None
+                    continue
+                
+                # 判断是否需要计算
+                if indicator_id in indicators_to_calculate:
+                    try:
+                        data = IndicatorRegistry.calculate(indicator_id, df)
+                        indicator_data[indicator_id] = data
+                        logger.debug(f"✓ 计算指标: {indicator_def.name} ({indicator_id})")
+                    except Exception as e:
+                        logger.warning(f"计算指标失败 {indicator_def.name}: {e}")
+                        indicator_data[indicator_id] = None
+                else:
+                    # 重量级指标不计算数据（前端按需请求）
+                    indicator_data[indicator_id] = None
+                    logger.debug(f"⊙ 延迟加载: {indicator_def.name} ({indicator_id})")
+        else:
+            # 完整模式：计算所有指标数据
+            logger.debug(f"🔄 完整模式：计算所有指标")
+            indicator_data = cls.calculate_all_indicators(df)
         
         # 构建指标池配置
         for indicator_id, indicator_def in all_indicators.items():

@@ -8,8 +8,19 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict
 from app.core.logging import logger
+from app.trading.indicators.indicator_registry import register_indicator
 
 
+@register_indicator(
+    id='mirror_candle',
+    name='对手盘视角',
+    category='subchart',
+    description='',
+    render_type='subchart',
+    enabled_by_default=False,
+    default_params={},
+    render_config={'render_function': 'renderMirrorSubchart'}
+)
 def calculate_mirror_candle(df: pd.DataFrame) -> List[Dict]:
     """
     计算K线镜像翻转数据

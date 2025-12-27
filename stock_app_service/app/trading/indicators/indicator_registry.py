@@ -136,26 +136,59 @@ class IndicatorRegistry:
 
 
 # ============================================================================
-# 注册内置指标
+# 指标自动发现机制 - 扫描 tradingview 目录，自动注册所有带装饰器的指标
 # ============================================================================
 
-from app.trading.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
-from app.trading.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
-from app.trading.indicators.tradingview.divergence_detector import calculate_divergence_detector
-from app.trading.indicators.tradingview.mirror_candle import calculate_mirror_candle
+def _auto_discover_indicators():
+    """
+    自动发现并导入所有指标模块
+    
+    扫描 app/trading/indicators/tradingview/ 目录下的所有 .py 文件，
+    自动导入它们，从而触发 @register_indicator 装饰器的自动注册。
+    
+    性能：仅在应用启动时执行一次，不影响运行时性能。
+    """
+    import os
+    import importlib
+    from pathlib import Path
+    
+    # 获取 tradingview 目录路径
+    indicators_dir = Path(__file__).parent / 'tradingview'
+    
+    if not indicators_dir.exists():
+        logger.warning(f"指标目录不存在: {indicators_dir}")
+        return
+    
+    # 扫描所有 .py 文件（排除 __init__.py 和私有文件）
+    indicator_files = [
+        f.stem for f in indicators_dir.glob('*.py')
+        if f.is_file() and not f.name.startswith('_')
+    ]
+    
+    logger.info(f"开始自动扫描指标目录: {indicators_dir}")
+    logger.debug(f"发现 {len(indicator_files)} 个指标模块: {indicator_files}")
+    
+    # 动态导入所有指标模块（导入时会自动触发装饰器注册）
+    imported_count = 0
+    for module_name in indicator_files:
+        try:
+            module_path = f'app.trading.indicators.tradingview.{module_name}'
+            importlib.import_module(module_path)
+            imported_count += 1
+            logger.debug(f"✓ 已导入指标模块: {module_name}")
+        except Exception as e:
+            logger.warning(f"导入指标模块失败 {module_name}: {e}")
+    
+    logger.info(f"✅ 自动发现完成: 成功导入 {imported_count}/{len(indicator_files)} 个指标模块")
 
-# Volume Profile Pivot Anchored（TradingView移植 - 完整版）
-IndicatorRegistry.register(IndicatorDefinition(
-    id='volume_profile_pivot',
-    name='成交量分布',
-    category='volume',
-    description='',
-    calculate_func=calculate_volume_profile_pivot_anchored,
-    default_params={'pivot_length': 20, 'profile_levels': 25, 'value_area_percent': 68.0, 'profile_width': 0.30},
-    render_type='overlay',
-    enabled_by_default=False,
-    render_config={'render_function': 'renderVolumeProfilePivot'}
-))
+
+# 执行自动发现（仅在模块首次导入时执行一次）
+_auto_discover_indicators()
+
+# ============================================================================
+# 手动注册的基础指标（EMA系列和复合指标）
+# 注：EMA使用lambda定义，无法使用装饰器，需手动注册
+# ============================================================================
 
 # EMA6
 IndicatorRegistry.register(IndicatorDefinition(
@@ -248,47 +281,6 @@ IndicatorRegistry.register(IndicatorDefinition(
     enabled_by_default=False,
     is_composite=True,
     sub_indicators=['ema12', 'ema144', 'ema169']
-))
-
-# Pivot Order Blocks（TradingView移植）
-IndicatorRegistry.register(IndicatorDefinition(
-    id='pivot_order_blocks',
-    name='支撑和阻力区域',
-    category='support_resistance',
-    description='',
-    calculate_func=calculate_pivot_order_blocks,
-    default_params={'left': 15, 'right': 8, 'box_count': 2, 'percentage_change': 6.0, 'box_extend_to_end': True},
-    render_type='overlay',
-    enabled_by_default=False,
-    render_config={'render_function': 'renderPivotOrderBlocks'}
-))
-
-# Divergence Detector（TradingView移植 - 多指标背离检测）
-IndicatorRegistry.register(IndicatorDefinition(
-    id='divergence_detector',
-    name='背离检测',
-    category='oscillator',
-    description='',
-    calculate_func=calculate_divergence_detector,
-    default_params={'pivot_period': 5, 'max_pivot_points': 10, 'max_bars': 100, 
-                    'check_macd': True, 'check_rsi': True, 'check_stoch': True, 
-                    'check_cci': True, 'check_momentum': True},
-    render_type='overlay',
-    enabled_by_default=False,
-    render_config={'render_function': 'renderDivergence'}
-))
-
-# Mirror Candle（TradingView移植 - K线镜像翻转）
-IndicatorRegistry.register(IndicatorDefinition(
-    id='mirror_candle',
-    name='对手盘视角',
-    category='subchart',
-    description='',
-    calculate_func=calculate_mirror_candle,
-    default_params={},
-    render_type='subchart',
-    enabled_by_default=False,
-    render_config={'render_function': 'renderMirrorSubchart'}
 ))
 
 logger.info(f"指标注册表初始化完成，共注册 {len(IndicatorRegistry.get_all())} 个指标")

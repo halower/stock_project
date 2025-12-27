@@ -12,7 +12,7 @@ class IndicatorPoolMixin:
     """指标池混入类，提供指标池相关的HTML和JavaScript生成方法"""
     
     @classmethod
-    def _generate_indicator_pool_scripts_auto(cls, df: pd.DataFrame) -> str:
+    def _generate_indicator_pool_scripts_auto(cls, df: pd.DataFrame, lazy_load: bool = False) -> str:
         """
         使用自动渲染器生成指标池JavaScript代码（新方法）
         
@@ -20,6 +20,7 @@ class IndicatorPoolMixin:
         
         Args:
             df: 股票数据DataFrame
+            lazy_load: 是否懒加载（默认False，全部计算以确保前端可用）
             
         Returns:
             完整的JavaScript代码（配置 + 逻辑）
@@ -28,7 +29,8 @@ class IndicatorPoolMixin:
         
         try:
             # 使用自动渲染器生成指标池配置
-            indicator_pool = IndicatorAutoRenderer.generate_indicator_pool_config(df)
+            # 默认 lazy_load=False 确保所有指标前端都能渲染
+            indicator_pool = IndicatorAutoRenderer.generate_indicator_pool_config(df, lazy_load=lazy_load)
             
             # 生成配置JavaScript
             indicator_config_js = f"const INDICATOR_POOL = {json.dumps(indicator_pool, ensure_ascii=False)};"
