@@ -1377,7 +1377,7 @@ class IndicatorPoolMixin:
                             position: isHigh ? 'aboveBar' : 'belowBar',
                             color: color,
                             shape: isHigh ? 'arrowDown' : 'arrowUp',
-                            text: pivot.label,
+                            text: pivot.label,  // 使用原始英文标签（HH/HL/LH/LL）
                             size: 1
                         });
                     }
@@ -1533,6 +1533,8 @@ class IndicatorPoolMixin:
             }
             
             // 2. 渲染谐波形态
+            const allHarmonicMarkers = [];  // 收集所有形态的标签
+            
             if (hpData.patterns && hpData.patterns.length > 0) {
                 hpData.patterns.forEach(pattern => {
                     // 根据形态类型选择颜色（支持组合形态，如"Gartley / Bat"）
@@ -1595,62 +1597,65 @@ class IndicatorPoolMixin:
                         seriesList.push(auxLine);
                     });
                     
-                    // 添加XABCD点标签和形态标签
-                    if (window.candleSeries) {
-                        try {
-                            const existingMarkers = window.initialMarkers || [];
-                            const harmonicMarkers = [];
-                            
-                            // 添加X、A、B、C点标签（如果启用）
-                            if (showPointLabels) {
-                                const pointLabels = [
-                                    { point: points.x, label: 'X' },
-                                    { point: points.a, label: 'A' },
-                                    { point: points.b, label: 'B' },
-                                    { point: points.c, label: 'C' }
-                                ];
-                                
-                                pointLabels.forEach(({ point, label }) => {
-                                    harmonicMarkers.push({
-                                        time: point.time,
-                                        position: point.type === 'high' ? 'aboveBar' : 'belowBar',
-                                        color: color.replace(/[\\d\\.]+\\)$/, '0.6)'),
-                                        shape: 'circle',
-                                        text: label,
-                                        size: 0.7
-                                    });
-                                });
-                            }
-                            
-                            // 添加D点的形态标签（总是显示，如果启用了标签）
-                            if (showLabels) {
-                                // 转换形态名称为中文（支持组合形态）
-                                const patternNames = pattern.type.split(' / ').map(name => 
-                                    patternNamesCN[name.trim()] || name.trim()
-                                ).join(' / ');
-                                
-                                harmonicMarkers.push({
-                                    time: points.d.time,
-                                    position: points.d.type === 'high' ? 'aboveBar' : 'belowBar',
-                                    color: color,  // 使用形态对应的颜色
-                                    shape: points.d.type === 'high' ? 'arrowDown' : 'arrowUp',
-                                    text: patternNames,  // 使用中文名称
-                                    size: 1.2
-                                });
-                            }
-                            
-                            if (harmonicMarkers.length > 0) {
-                                window.candleSeries.setMarkers([...existingMarkers, ...harmonicMarkers]);
-                                const labelInfo = showPointLabels ? '(含XABCD点)' : '(仅形态名)';
-                                console.log(`   - 已添加形态标签: ${patternNames} ${labelInfo}`);
-                            }
-                        } catch (e) {
-                            console.warn('   - 添加形态标签失败:', e);
-                        }
+                    // 收集当前形态的标签
+                    // 添加X、A、B、C点标签（如果启用）
+                    if (showPointLabels) {
+                        const pointLabels = [
+                            { point: points.x, label: 'X' },
+                            { point: points.a, label: 'A' },
+                            { point: points.b, label: 'B' },
+                            { point: points.c, label: 'C' }
+                        ];
+                        
+                        pointLabels.forEach(({ point, label }) => {
+                            allHarmonicMarkers.push({
+                                time: point.time,
+                                position: point.type === 'high' ? 'aboveBar' : 'belowBar',
+                                color: color.replace(/[\\d\\.]+\\)$/, '0.6)'),
+                                shape: 'circle',
+                                text: label,
+                                size: 0.7
+                            });
+                        });
+                    }
+                    
+                    // 添加D点的形态标签（总是显示，如果启用了标签）
+                    if (showLabels) {
+                        // 转换形态名称为中文（支持组合形态）
+                        const patternNames = pattern.type.split(' / ').map(name => 
+                            patternNamesCN[name.trim()] || name.trim()
+                        ).join(' / ');
+                        
+                        allHarmonicMarkers.push({
+                            time: points.d.time,
+                            position: points.d.type === 'high' ? 'aboveBar' : 'belowBar',
+                            color: color,  // 使用形态对应的颜色
+                            shape: 'circle',  // 使用圆形，避免和买卖信号的箭头混淆
+                            text: patternNames,  // 使用中文名称
+                            size: 1.5  // 稍微大一点，更明显
+                        });
+                        
+                        console.log(`   - 形态标签: ${patternNames}`);
                     }
                 });
                 
                 console.log(`   - 识别到 ${hpData.patterns.length} 个谐波形态`);
+                
+                // 统一应用所有形态的标签（避免覆盖）
+                if (allHarmonicMarkers.length > 0 && window.candleSeries) {
+                    try {
+                        const existingMarkers = window.initialMarkers || [];
+                        window.candleSeries.setMarkers([...existingMarkers, ...allHarmonicMarkers]);
+                        
+                        // 保存谐波标签，以便关闭时清理
+                        if (!window.harmonicMarkers) window.harmonicMarkers = [];
+                        window.harmonicMarkers = allHarmonicMarkers;
+                        
+                        console.log(`   - 已统一添加 ${allHarmonicMarkers.length} 个标签`);
+                    } catch (e) {
+                        console.warn('   - 添加形态标签失败:', e);
+                    }
+                }
             }
             
             console.log(`✅ [谐波形态识别] 渲染完成: ${seriesList.length} 个图形元素`);
@@ -2049,51 +2054,94 @@ class IndicatorPoolMixin:
                     });
                 }
                 
-                // 如果是背离检测，只清除背离标签（保留买卖标签）
+                // 如果是背离检测，只清除背离标签（保留其他指标标签和买卖标签）
                 if (id === 'divergence_detector' && window.candleSeries) {
                     try {
-                        // 恢复初始买卖标记
+                        // 收集需要保留的标签（买卖信号 + 其他指标标签）
                         const buySellMarkers = window.initialMarkers || [];
-                        window.candleSeries.setMarkers(buySellMarkers);
-                        console.log('✅ [禁用指标] 背离检测 - 恢复买卖信号', buySellMarkers.length, '个');
+                        const zzMarkers = window.zzMarkers || [];
+                        const harmonicMarkers = window.harmonicMarkers || [];
+                        const smcMarkersArray = window.smcMarkers ? 
+                            [...(window.smcMarkers.structure || []), 
+                             ...(window.smcMarkers.internal || []), 
+                             ...(window.smcMarkers.equal || [])] : [];
+                        
+                        // 重新设置标签（买卖信号 + 其他指标标签，排除背离标签）
+                        const allMarkers = [...buySellMarkers, ...zzMarkers, ...harmonicMarkers, ...smcMarkersArray];
+                        window.candleSeries.setMarkers(allMarkers);
+                        console.log('✅ [禁用指标] 背离检测 - 已清除背离标签，保留其他标签', allMarkers.length, '个');
                     } catch (e) {
-                        console.error('❌ [禁用指标] 清除markers失败:', e);
+                        console.error('❌ [禁用指标] 清除背离标签失败:', e);
                     }
                 }
                 
-                // 如果是聪明钱概念，清除SMC标签（保留买卖标签）
+                // 如果是聪明钱概念，清除SMC标签（保留其他指标标签和买卖标签）
                 if (id === 'smart_money_concepts' && window.candleSeries) {
                     try {
-                        // 清除SMC标签数据
-                        if (window.smcMarkers) {
-                            window.smcMarkers = {
-                                structure: [],
-                                internal: [],
-                                equal: []
-                            };
-                        }
-                        // 恢复初始买卖标记（策略的买卖点）
+                        // 收集需要保留的标签（买卖信号 + 其他指标标签）
                         const buySellMarkers = window.initialMarkers || [];
-                        window.candleSeries.setMarkers(buySellMarkers);
-                        console.log('✅ [禁用指标] 聪明钱概念 - 已清除SMC标签，恢复买卖信号', buySellMarkers.length, '个');
+                        const zzMarkers = window.zzMarkers || [];
+                        const harmonicMarkers = window.harmonicMarkers || [];
+                        
+                        // 清除SMC标签数据
+                        window.smcMarkers = {
+                            structure: [],
+                            internal: [],
+                            equal: []
+                        };
+                        
+                        // 重新设置标签（买卖信号 + 其他指标标签，排除SMC标签）
+                        const allMarkers = [...buySellMarkers, ...zzMarkers, ...harmonicMarkers];
+                        window.candleSeries.setMarkers(allMarkers);
+                        console.log('✅ [禁用指标] 聪明钱概念 - 已清除SMC标签，保留其他标签', allMarkers.length, '个');
                     } catch (e) {
                         console.error('❌ [禁用指标] 清除SMC标签失败:', e);
                     }
                 }
                 
-                // 如果是ZigZag++，清除ZZ标签（保留买卖标签）
+                // 如果是ZigZag++，清除ZZ标签（保留其他指标标签和买卖标签）
                 if (id === 'zigzag' && window.candleSeries) {
                     try {
-                        // 清除ZigZag标签数据
-                        if (window.zzMarkers) {
-                            window.zzMarkers = [];
-                        }
-                        // 恢复初始买卖标记（策略的买卖点）
+                        // 收集需要保留的标签（买卖信号 + 其他指标标签）
                         const buySellMarkers = window.initialMarkers || [];
-                        window.candleSeries.setMarkers(buySellMarkers);
-                        console.log('✅ [禁用指标] ZigZag++ - 已清除ZZ标签，恢复买卖信号', buySellMarkers.length, '个');
+                        const harmonicMarkers = window.harmonicMarkers || [];
+                        const smcMarkersArray = window.smcMarkers ? 
+                            [...(window.smcMarkers.structure || []), 
+                             ...(window.smcMarkers.internal || []), 
+                             ...(window.smcMarkers.equal || [])] : [];
+                        
+                        // 清除ZigZag标签数据
+                        window.zzMarkers = [];
+                        
+                        // 重新设置标签（买卖信号 + 其他指标标签，排除ZZ标签）
+                        const allMarkers = [...buySellMarkers, ...harmonicMarkers, ...smcMarkersArray];
+                        window.candleSeries.setMarkers(allMarkers);
+                        console.log('✅ [禁用指标] ZigZag++ - 已清除ZZ标签，保留其他标签', allMarkers.length, '个');
                     } catch (e) {
                         console.error('❌ [禁用指标] 清除ZZ标签失败:', e);
+                    }
+                }
+                
+                // 如果是谐波形态识别，清除谐波标签（保留其他指标标签和买卖标签）
+                if (id === 'harmonic_patterns' && window.candleSeries) {
+                    try {
+                        // 收集需要保留的标签（买卖信号 + 其他指标标签）
+                        const buySellMarkers = window.initialMarkers || [];
+                        const zzMarkers = window.zzMarkers || [];
+                        const smcMarkersArray = window.smcMarkers ? 
+                            [...(window.smcMarkers.structure || []), 
+                             ...(window.smcMarkers.internal || []), 
+                             ...(window.smcMarkers.equal || [])] : [];
+                        
+                        // 清除谐波形态标签数据
+                        window.harmonicMarkers = [];
+                        
+                        // 重新设置标签（买卖信号 + 其他指标标签，排除谐波标签）
+                        const allMarkers = [...buySellMarkers, ...zzMarkers, ...smcMarkersArray];
+                        window.candleSeries.setMarkers(allMarkers);
+                        console.log('✅ [禁用指标] 谐波形态识别 - 已清除谐波标签，保留其他标签', allMarkers.length, '个');
+                    } catch (e) {
+                        console.error('❌ [禁用指标] 清除谐波标签失败:', e);
                     }
                 }
                 
