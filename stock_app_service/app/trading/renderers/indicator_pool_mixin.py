@@ -691,11 +691,11 @@ class IndicatorPoolMixin:
             const seriesList = [];
             const endTime = chartData[chartData.length - 1].time;
             
-            // 颜色配置
-            const bullishColor = '#089981';  // 绿色
-            const bearishColor = '#F23645';  // 红色
-            const internalBullColor = '#089981';
-            const internalBearColor = '#F23645';
+            // 颜色配置（A股习惯：红涨绿跌）
+            const bullishColor = '#F23645';  // 红色（涨）
+            const bearishColor = '#089981';  // 绿色（跌）
+            const internalBullColor = '#F23645';
+            const internalBearColor = '#089981';
             
             // 1. 渲染摆动结构线（BOS/CHoCH）- 使用markers显示中文标签
             if (smcData.swingStructures && smcData.swingStructures.length > 0) {
@@ -844,8 +844,8 @@ class IndicatorPoolMixin:
                     console.log(`     ${idx+1}. top=${block.top}, bottom=${block.bottom}, height=${block.top - block.bottom}, bias=${block.bias}`);
                     
                     const borderColor = block.bias === 1 ? 
-                        'rgba(24, 72, 204, 0.8)' :  // 看涨：深蓝色
-                        'rgba(178, 40, 51, 0.8)';   // 看跌：深红色
+                        'rgba(242, 54, 69, 0.8)' :  // 看涨：红色（A股习惯）
+                        'rgba(8, 153, 129, 0.8)';   // 看跌：绿色（A股习惯）
                     
                     // 上边框（加粗）
                     const topLine = chart.addLineSeries({
@@ -875,8 +875,8 @@ class IndicatorPoolMixin:
                     
                     // 中间填充线
                     const fillColor = block.bias === 1 ? 
-                        'rgba(24, 72, 204, 0.2)' :
-                        'rgba(178, 40, 51, 0.2)';
+                        'rgba(242, 54, 69, 0.2)' :  // 看涨：红色
+                        'rgba(8, 153, 129, 0.2)';   // 看跌：绿色
                     const step = (block.top - block.bottom) / 10;
                     for (let i = 1; i < 10; i++) {
                         const price = block.bottom + step * i;
@@ -904,8 +904,8 @@ class IndicatorPoolMixin:
                     console.log(`     ${idx+1}. top=${block.top}, bottom=${block.bottom}, height=${block.top - block.bottom}, bias=${block.bias}`);
                     
                     const borderColor = block.bias === 1 ? 
-                        'rgba(49, 121, 245, 0.6)' :  // 看涨：亮蓝色
-                        'rgba(247, 124, 128, 0.6)';  // 看跌：亮红色
+                        'rgba(247, 124, 128, 0.6)' :  // 看涨：亮红色（A股习惯）
+                        'rgba(49, 121, 245, 0.6)';    // 看跌：亮绿蓝色（A股习惯）
                     
                     // 上边框
                     const topLine = chart.addLineSeries({
@@ -935,8 +935,8 @@ class IndicatorPoolMixin:
                     
                     // 中间填充线（多条半透明线模拟填充）
                     const fillColor = block.bias === 1 ? 
-                        'rgba(49, 121, 245, 0.15)' :
-                        'rgba(247, 124, 128, 0.15)';
+                        'rgba(247, 124, 128, 0.15)' :  // 看涨：亮红色
+                        'rgba(49, 121, 245, 0.15)';    // 看跌：亮绿蓝色
                     const step = (block.top - block.bottom) / 10;  // 画10条线填充
                     for (let i = 1; i < 10; i++) {
                         const price = block.bottom + step * i;
@@ -962,6 +962,7 @@ class IndicatorPoolMixin:
                 const eqhlMarkers = [];
                 
                 smcData.equalHighsLows.forEach((ehl, index) => {
+                    // EQH在高点（看跌阻力）用绿色，EQL在低点（看涨支撑）用红色
                     const color = ehl.type === 'high' ? bearishColor : bullishColor;
                     const label = ehl.type === 'high' ? 'EQH' : 'EQL';
                     
@@ -1027,11 +1028,11 @@ class IndicatorPoolMixin:
                 smcData.fairValueGaps.forEach((fvg, idx) => {
                     const isBullish = fvg.type === 'bullish';
                     const borderColor = isBullish ? 
-                        'rgba(0, 255, 104, 0.6)' :  // 看涨：绿色
-                        'rgba(255, 0, 8, 0.6)';     // 看跌：红色
+                        'rgba(255, 0, 8, 0.6)' :     // 看涨：红色（A股习惯）
+                        'rgba(0, 255, 104, 0.6)';    // 看跌：绿色（A股习惯）
                     const fillColor = isBullish ?
-                        'rgba(0, 255, 104, 0.1)' :
-                        'rgba(255, 0, 8, 0.1)';
+                        'rgba(255, 0, 8, 0.1)' :     // 看涨：红色
+                        'rgba(0, 255, 104, 0.1)';    // 看跌：绿色
                     
                     // 上边框
                     const topLine = chart.addLineSeries({

@@ -64,7 +64,7 @@ from app.trading.indicators.indicator_registry import register_indicator
         'style': 'Colored',              # 样式（Colored/Monochrome）
         'mode': 'Historical'             # 模式（Historical/Present）
     },
-    color='#2157f3',
+    color='#F23645',  # 默认红色（A股习惯：红涨）
     render_config={'render_function': 'renderSmartMoneyConcepts'}
 )
 def calculate_smart_money_concepts(df: pd.DataFrame, **params) -> List[Dict[str, Any]]:
