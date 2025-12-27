@@ -44,7 +44,7 @@ from app.trading.indicators.indicator_registry import register_indicator
 @register_indicator(
     id='harmonic_patterns',
     name='谐波形态识别',
-    category='trend',
+    category='pattern',
     description='自动识别13种经典谐波形态。基于ZigZag算法和斐波那契比率识别Gartley、Bat、Butterfly、Crab、Shark、Cypher等形态。提供XABCD点标注。前端实时计算。',
     render_type='overlay',
     enabled_by_default=False,

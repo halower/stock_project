@@ -493,17 +493,6 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                         flex-shrink: 0;
                     }}
                 }}
-                .strategy-info {{
-                    position: absolute;
-                    bottom: 10px;
-                    right: 10px;
-                    color: {colors['text']};
-                    z-index: 100;
-                    background-color: {colors['tooltipBg']};
-                    padding: 5px 10px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                }}
                 @media screen and (orientation: portrait) {{
                     body::after {{
                         position: fixed;
@@ -786,9 +775,6 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     <span class="strategy-tag">{strategy_name}</span>
                 </div>
                 <button class="analysis-btn" onclick="toggleIndicatorPanel()">分析工具</button>
-            </div>
-            <div class="strategy-info">
-                {strategy_name} - {strategy_desc}
             </div>
             <div id="charts-wrapper">
                 <div id="chart-container" class="main-chart"></div>

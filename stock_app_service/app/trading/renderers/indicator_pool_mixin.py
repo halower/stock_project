@@ -2203,6 +2203,15 @@ class IndicatorPoolMixin:
                 html += cls._generate_indicator_item_html(ind)
             html += '</div></div>'
         
+        # 形态识别
+        if 'pattern' in by_category:
+            html += '<div class="indicator-category">'
+            html += '<div class="category-header">形态识别</div>'
+            html += '<div class="indicator-list">'
+            for ind in by_category['pattern']:
+                html += cls._generate_indicator_item_html(ind)
+            html += '</div></div>'
+        
         # 成交量分析
         if 'volume' in by_category:
             html += '<div class="indicator-category">'
