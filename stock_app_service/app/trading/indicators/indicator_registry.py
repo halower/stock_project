@@ -153,7 +153,8 @@ IndicatorRegistry.register(IndicatorDefinition(
     calculate_func=calculate_volume_profile_pivot_anchored,
     default_params={'pivot_length': 20, 'profile_levels': 25, 'value_area_percent': 68.0, 'profile_width': 0.30},
     render_type='overlay',
-    enabled_by_default=False
+    enabled_by_default=False,
+    render_config={'render_function': 'renderVolumeProfilePivot'}
 ))
 
 # EMA6
@@ -258,7 +259,8 @@ IndicatorRegistry.register(IndicatorDefinition(
     calculate_func=calculate_pivot_order_blocks,
     default_params={'left': 15, 'right': 8, 'box_count': 2, 'percentage_change': 6.0, 'box_extend_to_end': True},
     render_type='overlay',
-    enabled_by_default=False
+    enabled_by_default=False,
+    render_config={'render_function': 'renderPivotOrderBlocks'}
 ))
 
 # Divergence Detector（TradingView移植 - 多指标背离检测）
@@ -272,7 +274,8 @@ IndicatorRegistry.register(IndicatorDefinition(
                     'check_macd': True, 'check_rsi': True, 'check_stoch': True, 
                     'check_cci': True, 'check_momentum': True},
     render_type='overlay',
-    enabled_by_default=False
+    enabled_by_default=False,
+    render_config={'render_function': 'renderDivergence'}
 ))
 
 # Mirror Candle（TradingView移植 - K线镜像翻转）
@@ -284,7 +287,8 @@ IndicatorRegistry.register(IndicatorDefinition(
     calculate_func=calculate_mirror_candle,
     default_params={},
     render_type='subchart',
-    enabled_by_default=False
+    enabled_by_default=False,
+    render_config={'render_function': 'renderMirrorSubchart'}
 ))
 
 logger.info(f"指标注册表初始化完成，共注册 {len(IndicatorRegistry.get_all())} 个指标")

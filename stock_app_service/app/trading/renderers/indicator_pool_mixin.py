@@ -3,12 +3,47 @@
 指标池混入类 - 为图表策略添加指标池功能
 """
 import json
-from typing import Any
+import pandas as pd
+from typing import Any, Optional
 from app.core.logging import logger
 
 
 class IndicatorPoolMixin:
     """指标池混入类，提供指标池相关的HTML和JavaScript生成方法"""
+    
+    @classmethod
+    def _generate_indicator_pool_scripts_auto(cls, df: pd.DataFrame) -> str:
+        """
+        使用自动渲染器生成指标池JavaScript代码（新方法）
+        
+        这个方法会自动计算所有已注册的指标并生成配置
+        
+        Args:
+            df: 股票数据DataFrame
+            
+        Returns:
+            完整的JavaScript代码（配置 + 逻辑）
+        """
+        from app.trading.renderers.indicator_auto_renderer import IndicatorAutoRenderer
+        
+        try:
+            # 使用自动渲染器生成指标池配置
+            indicator_pool = IndicatorAutoRenderer.generate_indicator_pool_config(df)
+            
+            # 生成配置JavaScript
+            indicator_config_js = f"const INDICATOR_POOL = {json.dumps(indicator_pool, ensure_ascii=False)};"
+            
+            # 获取渲染逻辑JavaScript（保持不变）
+            indicator_logic_js = cls._generate_indicator_pool_logic_js()
+            
+            logger.debug(f"✅ 自动渲染器生成指标池脚本，共 {len(indicator_pool)} 个指标")
+            
+            return f"\n{indicator_config_js}\n{indicator_logic_js}\n"
+            
+        except Exception as e:
+            logger.error(f"自动渲染器生成指标池脚本失败: {e}")
+            # 降级：返回空配置（保证不崩溃）
+            return "\nconst INDICATOR_POOL = {};\n"
     
     @classmethod
     def _generate_indicator_pool_scripts(cls, ema6_data, ema12_data, ema18_data, 
@@ -736,13 +771,23 @@ class IndicatorPoolMixin:
                 // overlay类型指标需要自定义渲染
                 console.log('渲染覆盖层指标:', config.name);
                 if (config.renderFunction === 'renderPivotOrderBlocks') {
-                    const elements = renderPivotOrderBlocks(config.data, chart);
-                    indicatorSeries.set(id, elements);
-                    console.log('✅ 覆盖层指标已渲染:', config.name);
+                    if (!config.data || config.data.length === 0) {
+                        console.warn('⚠️ 支撑和阻力区域：当前股票数据未生成订单块（可能走势较平缓，缺少明显的高低点转折）');
+                        indicatorSeries.set(id, []);
+                    } else {
+                        const elements = renderPivotOrderBlocks(config.data, chart);
+                        indicatorSeries.set(id, elements);
+                        console.log('✅ 覆盖层指标已渲染:', config.name, '- 生成', config.data.length, '个区域');
+                    }
                 } else if (config.renderFunction === 'renderVolumeProfilePivot') {
-                    const elements = renderVolumeProfilePivot(config.data, chart);
-                    indicatorSeries.set(id, elements);
-                    console.log('✅ 覆盖层指标已渲染:', config.name);
+                    if (!config.data || (config.data.profiles && config.data.profiles.length === 0)) {
+                        console.warn('⚠️ 成交量分布：数据不足，需要更多K线数据才能计算');
+                        indicatorSeries.set(id, []);
+                    } else {
+                        const elements = renderVolumeProfilePivot(config.data, chart);
+                        indicatorSeries.set(id, elements);
+                        console.log('✅ 覆盖层指标已渲染:', config.name);
+                    }
                 } else if (config.renderFunction === 'renderDivergence') {
                     console.log('🎯 [启用指标] 背离检测 - 数据:', config.data ? config.data.length : 0, '组');
                     const elements = renderDivergence(config.data, chart);

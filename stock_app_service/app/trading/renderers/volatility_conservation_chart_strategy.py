@@ -61,7 +61,10 @@ class VolatilityConservationChartStrategy(BaseChartStrategy):
             signals = stock_data.get('signals', [])
             theme = kwargs.get('theme', 'dark')  # 从kwargs获取theme参数
             
-            logger.info(f"生成波动守恒图表: {stock['name']}({stock['code']})")
+            # 安全地获取股票信息（兼容dict和StockInfo对象）
+            stock_name = cls._get_stock_attr(stock, 'name')
+            stock_code = cls._get_stock_attr(stock, 'code')
+            logger.info(f"生成波动守恒图表: {stock_name}({stock_code})")
             
             # 准备图表数据
             chart_data = cls._prepare_chart_data(df)
@@ -81,83 +84,15 @@ class VolatilityConservationChartStrategy(BaseChartStrategy):
                             'value': float(row['atr_trailing_stop'])
                         })
             
-            # 准备指标池数据（与其他策略保持一致）
-            ema6_data = cls._prepare_ema_data(df, 'ema6')
-            ema12_data = cls._prepare_ema_data(df, 'ema12')
-            ema18_data = cls._prepare_ema_data(df, 'ema18')
-            ema144_data = cls._prepare_ema_data(df, 'ema144')
-            ema169_data = cls._prepare_ema_data(df, 'ema169')
-            
-            # 计算 Volume Profile Pivot Anchored
-            from app.trading.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
-            volume_profile = calculate_volume_profile_pivot_anchored(
-                df, 
-                pivot_length=20, 
-                profile_levels=25, 
-                value_area_percent=68.0, 
-                profile_width=0.30
-            )
-            
-            # 计算 Pivot Order Blocks
-            from app.trading.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
-            pivot_order_blocks = calculate_pivot_order_blocks(
-                df, left=15, right=8, box_count=2, percentage_change=6.0, box_extend_to_end=True
-            )
-            if pivot_order_blocks is None:
-                pivot_order_blocks = []
-            
-            # 转换 Pivot Order Blocks 格式
-            pivot_order_blocks_for_pool = []
-            for block in pivot_order_blocks:
-                pivot_order_blocks_for_pool.append({
-                    'type': 'resistance' if block['type'] == 'resistance' else 'support',
-                    'price_high': block['price_high'],
-                    'price_low': block['price_low'],
-                    'start_time': cls._get_time_string(df, block['start_index']),
-                    'end_time': cls._get_time_string(df, block['end_index']),
-                    'strength': block.get('strength', 0.8)
-                })
-            
-            # 计算背离检测
-            from app.trading.indicators.tradingview.divergence_detector import calculate_divergence_detector
-            divergence_data = calculate_divergence_detector(
-                df,
-                pivot_period=5,
-                max_pivot_points=10,
-                max_bars=100,
-                check_macd=True,
-                check_rsi=True,
-                check_stoch=True,
-                check_cci=True,
-                check_momentum=True
-            )
-            
-            # 镜像K线懒加载
-            mirror_data = None
+            # 使用自动渲染器生成指标池脚本（新方法）🚀
+            # 自动计算所有已注册指标（EMA、Volume Profile、Pivot Order Blocks、Divergence、Mirror等）
+            # 一行代码替代原来的80行手动计算和导入！
+            indicator_pool_scripts = cls._generate_indicator_pool_scripts_auto(df)
             
             # ATR止损线已隐藏（用户要求不显示）
             # ATR止损线数据仍然计算并保存在DataFrame中（df['atr_trailing_stop']）
             # 但不在图表上绘制，保持界面简洁
             atr_line_script = ""
-            # if atr_stop_data:
-            #     import json
-            #     atr_line_script = f"""
-            #     // 添加ATR止损线
-            #     const atrStopSeries = chart.addLineSeries({{
-            #         color: '#ff9800',
-            #         lineWidth: 2,
-            #         title: '',
-            #         priceLineVisible: false,
-            #         lastValueVisible: false,
-            #     }});
-            #     atrStopSeries.setData({json.dumps(atr_stop_data)});
-            #     """
-            
-            # 生成指标池（传入所有指标数据）
-            indicator_pool_scripts = cls._generate_indicator_pool_scripts(
-                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, 
-                volume_profile, pivot_order_blocks_for_pool, divergence_data, mirror_data
-            )
             
             additional_scripts = indicator_pool_scripts  # 不再包含ATR止损线
             

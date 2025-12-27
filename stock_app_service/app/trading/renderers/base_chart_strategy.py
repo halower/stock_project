@@ -285,6 +285,23 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
         return volume_data
     
     @classmethod
+    def _get_stock_attr(cls, stock, attr: str) -> str:
+        """
+        安全地获取stock的属性，兼容字典和对象两种格式
+        
+        Args:
+            stock: 股票信息（可以是dict或StockInfo对象）
+            attr: 属性名（如'name'、'code'）
+            
+        Returns:
+            属性值
+        """
+        if isinstance(stock, dict):
+            return stock.get(attr, '')
+        else:
+            return getattr(stock, attr, '')
+    
+    @classmethod
     def _generate_base_html_template(cls, stock, strategy_name, strategy_desc, 
                                    chart_data, markers, volume_data, 
                                    additional_series="", additional_scripts="", colors=None) -> str:
@@ -308,13 +325,18 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
         # 如果没有传入colors，使用默认暗色主题
         if colors is None:
             colors = cls.get_theme_colors('dark')
+        
+        # 安全地获取股票信息（兼容dict和StockInfo对象）
+        stock_name = cls._get_stock_attr(stock, 'name')
+        stock_code = cls._get_stock_attr(stock, 'code')
+        
         return f"""
         <!DOCTYPE html>
         <html lang="zh-CN">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <title>{stock['name']}({stock['code']}) - 股票图表</title>
+            <title>{stock_name}({stock_code}) - 股票图表</title>
             <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
             <style>
                 body {{
@@ -760,7 +782,7 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
         <body>
             <div class="chart-title">
                 <div class="title-left">
-                    <span class="stock-name" onclick="toggleMirrorView()" id="stockName" title="点击切换镜像视角">{stock['name']}({stock['code']})</span>
+                    <span class="stock-name" onclick="toggleMirrorView()" id="stockName" title="点击切换镜像视角">{stock_name}({stock_code})</span>
                     <span class="strategy-tag">{strategy_name}</span>
                 </div>
                 <button class="analysis-btn" onclick="toggleIndicatorPanel()">分析工具</button>
@@ -867,7 +889,7 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     watermark: {{
                         color: '{colors['watermark']}',
                         visible: true,
-                        text: '{stock['name']}({stock['code']})',
+                        text: '{stock_name}({stock_code})',
                         fontSize: 24,
                         horzAlign: 'center',
                         vertAlign: 'center',

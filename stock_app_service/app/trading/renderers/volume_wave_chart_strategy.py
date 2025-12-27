@@ -43,60 +43,9 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             markers = cls._prepare_markers(df, signals, colors)  # 传递主题配色
             volume_data = cls._prepare_volume_data(chart_data)
             
-            # 准备EMA数据（包括Vegas隧道）
-            ema6_data = cls._prepare_ema_data(df, 'ema6')
-            ema12_data = cls._prepare_ema_data(df, 'ema12')
-            ema18_data = cls._prepare_ema_data(df, 'ema18')
-            ema144_data = cls._prepare_ema_data(df, 'ema144')
-            ema169_data = cls._prepare_ema_data(df, 'ema169')
-            
-            # 计算 Volume Profile Pivot Anchored（新版）
-            from app.trading.indicators.tradingview.volume_profile_pivot_anchored import calculate_volume_profile_pivot_anchored
-            volume_profile = calculate_volume_profile_pivot_anchored(
-                df, 
-                pivot_length=20, 
-                profile_levels=25, 
-                value_area_percent=68.0, 
-                profile_width=0.30
-            )
-            
-            # 计算 Pivot Order Blocks
-            from app.trading.indicators.tradingview.pivot_order_blocks import calculate_pivot_order_blocks
-            pivot_order_blocks = calculate_pivot_order_blocks(
-                df, left=15, right=8, box_count=2, percentage_change=6.0, box_extend_to_end=True
-            )
-            if pivot_order_blocks is None:
-                pivot_order_blocks = []
-            
-            # 转换 Pivot Order Blocks 格式
-            pivot_order_blocks_for_pool = []
-            for block in pivot_order_blocks:
-                pivot_order_blocks_for_pool.append({
-                    'type': 'resistance' if block['type'] == 'resistance' else 'support',
-                    'price_high': block['price_high'],
-                    'price_low': block['price_low'],
-                    'start_time': cls._get_time_string(df, block['start_index']),
-                    'end_time': cls._get_time_string(df, block['end_index']),
-                    'strength': block.get('strength', 0.8)
-                })
-            
-            # 计算背离检测
-            from app.trading.indicators.tradingview.divergence_detector import calculate_divergence_detector
-            divergence_data = calculate_divergence_detector(
-                df,
-                pivot_period=5,
-                max_pivot_points=10,
-                max_bars=100,
-                check_macd=True,
-                check_rsi=True,
-                check_stoch=True,
-                check_cci=True,
-                check_momentum=True
-            )
-            
-            # 镜像K线改为懒加载，不预先计算（提升加载速度）
-            # 数据将在前端首次启用时动态计算
-            mirror_data = None
+            # 使用自动渲染器生成指标池脚本（新方法）🚀
+            # 一行代码替代原来的65行手动计算和导入！
+            indicator_pool_scripts = cls._generate_indicator_pool_scripts_auto(df)
             
             # 不再自动绘制指标，所有指标通过指标池控制
             # 用户可以在指标池中选择启用/禁用指标
@@ -104,11 +53,6 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             
             # 生成增强的图例代码（已隐藏）
             additional_scripts = cls._generate_enhanced_legend_code()
-            
-            # 生成指标池配置和逻辑
-            indicator_pool_scripts = cls._generate_indicator_pool_scripts(
-                ema6_data, ema12_data, ema18_data, ema144_data, ema169_data, volume_profile, pivot_order_blocks_for_pool, divergence_data, mirror_data
-            )
             additional_scripts += indicator_pool_scripts
             
             return cls._generate_base_html_template(
