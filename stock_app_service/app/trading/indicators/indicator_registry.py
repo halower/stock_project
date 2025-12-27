@@ -270,17 +270,18 @@ IndicatorRegistry.register(IndicatorDefinition(
 ))
 
 # Vegas隧道（复合指标）
+# Vegas隧道由EMA12（信号线）、EMA144（下轨）、EMA169（上轨）组成
 IndicatorRegistry.register(IndicatorDefinition(
     id='vegas_tunnel',
     name='Vegas隧道',
     category='trend',
-    description='',
+    description='Vegas隧道交易系统：EMA12信号线 + EMA144/EMA169隧道',
     calculate_func=lambda df: None,  # 复合指标不需要计算函数
     default_params={},
     render_type='line',
     enabled_by_default=False,
     is_composite=True,
-    sub_indicators=['ema12', 'ema144', 'ema169']
+    sub_indicators=['ema12', 'ema144', 'ema169']  # 完整的Vegas隧道系统
 ))
 
 logger.info(f"指标注册表初始化完成，共注册 {len(IndicatorRegistry.get_all())} 个指标")

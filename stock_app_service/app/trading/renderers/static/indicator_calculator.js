@@ -16,29 +16,22 @@
 
 /**
  * 计算EMA（指数移动平均）
+ * 与Pandas ewm(span=period, adjust=False)行为完全一致
+ * 
  * @param {Array<number>} data - 价格数据
  * @param {number} period - 周期
  * @returns {Array<number>} EMA值数组
  */
 function calculateEMA(data, period) {
     const result = new Array(data.length);
-    const multiplier = 2 / (period + 1);
+    const alpha = 2 / (period + 1);
     
-    // 第一个值使用SMA
-    let sum = 0;
-    for (let i = 0; i < period; i++) {
-        sum += data[i];
-    }
-    result[period - 1] = sum / period;
+    // ✅ 修复：从第一个值开始计算（与Pandas ewm一致）
+    result[0] = data[0];
     
-    // 后续值使用EMA公式
-    for (let i = period; i < data.length; i++) {
-        result[i] = (data[i] - result[i - 1]) * multiplier + result[i - 1];
-    }
-    
-    // 前面的值设为NaN
-    for (let i = 0; i < period - 1; i++) {
-        result[i] = NaN;
+    // ✅ 使用标准EMA公式：EMA[i] = alpha * data[i] + (1 - alpha) * EMA[i-1]
+    for (let i = 1; i < data.length; i++) {
+        result[i] = alpha * data[i] + (1 - alpha) * result[i - 1];
     }
     
     return result;
