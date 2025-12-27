@@ -10,9 +10,10 @@
 from app.trading.indicators.tradingview import (
     divergence_detector,
     mirror_candle,
-    support_resistance_channels,  # 支撑阻力通道（新）
+    support_resistance_channels,  # 支撑阻力通道
     volume_profile_pivot_anchored,
     smart_money_concepts,  # 聪明钱概念
+    zigzag,  # ZigZag++（新）
 )
 
 # 指标相关内容会从indicator_registry导出

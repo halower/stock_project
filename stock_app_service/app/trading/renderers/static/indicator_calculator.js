@@ -2155,3 +2155,178 @@ function calculateSupportResistanceChannels(candleData, params = {}) {
     };
 }
 
+/**
+ * ZigZag++ - 之字形指标计算
+ * 基于MT4 ZigZag算法，识别价格转折点和市场结构
+ */
+function calculateZigZag(candleData, params = {}) {
+    console.log('📊 [ZigZag++] 开始计算');
+    
+    const {
+        depth = 12,
+        deviation = 5,
+        backstep = 2,
+        repaint = true
+    } = params;
+    
+    const n = candleData.length;
+    if (n < depth * 2) {
+        console.warn('❌ K线数量不足，需要至少', depth * 2, '根');
+        return { pivots: [], lines: [], direction: 0 };
+    }
+    
+    // MT4 ZigZag算法实现
+    const pivots = [];  // 转折点 { type: 'high'|'low', price: number, barIndex: number, time: number, label: string }
+    
+    // 1. 寻找初始高低点
+    let extremeType = null;  // 'high' or 'low'
+    let extremePrice = 0;
+    let extremeIndex = 0;
+    
+    // 扫描前depth根K线找到初始极值
+    for (let i = 0; i < Math.min(depth, n); i++) {
+        if (extremeType === null || candleData[i].high > extremePrice) {
+            extremeType = 'high';
+            extremePrice = candleData[i].high;
+            extremeIndex = i;
+        }
+        if (extremeType === null || candleData[i].low < extremePrice) {
+            extremeType = 'low';
+            extremePrice = candleData[i].low;
+            extremeIndex = i;
+        }
+    }
+    
+    // 记录当前极值点
+    let currentExtremeType = extremeType;
+    let currentExtremePrice = extremePrice;
+    let currentExtremeIndex = extremeIndex;
+    
+    // 2. 主循环：扫描K线寻找转折点
+    for (let i = depth; i < n; i++) {
+        const bar = candleData[i];
+        const deviationAmount = currentExtremePrice * deviation / 100;
+        
+        // 如果当前极值是高点，寻找低点
+        if (currentExtremeType === 'high') {
+            // 检查是否有更高的高点（更新当前高点）
+            if (bar.high > currentExtremePrice && i - currentExtremeIndex >= backstep) {
+                currentExtremePrice = bar.high;
+                currentExtremeIndex = i;
+            }
+            
+            // 检查是否出现足够低的低点（形成转折）
+            if (currentExtremePrice - bar.low >= deviationAmount && i - currentExtremeIndex >= backstep) {
+                // 确认高点
+                pivots.push({
+                    type: 'high',
+                    price: currentExtremePrice,
+                    barIndex: currentExtremeIndex,
+                    time: candleData[currentExtremeIndex].time
+                });
+                
+                // 切换到寻找高点模式
+                currentExtremeType = 'low';
+                currentExtremePrice = bar.low;
+                currentExtremeIndex = i;
+            }
+        }
+        // 如果当前极值是低点，寻找高点
+        else {
+            // 检查是否有更低的低点（更新当前低点）
+            if (bar.low < currentExtremePrice && i - currentExtremeIndex >= backstep) {
+                currentExtremePrice = bar.low;
+                currentExtremeIndex = i;
+            }
+            
+            // 检查是否出现足够高的高点（形成转折）
+            if (bar.high - currentExtremePrice >= deviationAmount && i - currentExtremeIndex >= backstep) {
+                // 确认低点
+                pivots.push({
+                    type: 'low',
+                    price: currentExtremePrice,
+                    barIndex: currentExtremeIndex,
+                    time: candleData[currentExtremeIndex].time
+                });
+                
+                // 切换到寻找低点模式
+                currentExtremeType = 'high';
+                currentExtremePrice = bar.high;
+                currentExtremeIndex = i;
+            }
+        }
+    }
+    
+    // 3. 如果启用repaint，添加当前未确认的极值点
+    if (repaint && pivots.length > 0) {
+        pivots.push({
+            type: currentExtremeType,
+            price: currentExtremePrice,
+            barIndex: currentExtremeIndex,
+            time: candleData[currentExtremeIndex].time,
+            unconfirmed: true  // 标记为未确认
+        });
+    }
+    
+    // 4. 计算市场结构标签（HH/HL/LH/LL）
+    if (pivots.length >= 2) {
+        let lastPrice = pivots[0].price;
+        
+        for (let i = 1; i < pivots.length; i++) {
+            const pivot = pivots[i];
+            
+            if (pivot.type === 'high') {
+                // 比较当前高点与上一个高点
+                if (pivot.price > lastPrice) {
+                    pivot.label = 'HH';  // Higher High
+                } else {
+                    pivot.label = 'LH';  // Lower High
+                }
+                // 更新lastPrice为上一个高点的价格
+                if (i >= 2 && pivots[i - 2].type === 'high') {
+                    lastPrice = pivots[i - 2].price;
+                } else {
+                    lastPrice = pivot.price;
+                }
+            } else {
+                // 比较当前低点与上一个低点
+                if (pivot.price < lastPrice) {
+                    pivot.label = 'LL';  // Lower Low
+                } else {
+                    pivot.label = 'HL';  // Higher Low
+                }
+                // 更新lastPrice为上一个低点的价格
+                if (i >= 2 && pivots[i - 2].type === 'low') {
+                    lastPrice = pivots[i - 2].price;
+                } else {
+                    lastPrice = pivot.price;
+                }
+            }
+        }
+    }
+    
+    // 5. 生成连接线数据
+    const lines = [];
+    for (let i = 0; i < pivots.length - 1; i++) {
+        lines.push({
+            from: pivots[i],
+            to: pivots[i + 1],
+            direction: pivots[i + 1].type === 'high' ? 1 : -1  // 1: 上涨, -1: 下跌
+        });
+    }
+    
+    const currentDirection = pivots.length > 0 ? (pivots[pivots.length - 1].type === 'high' ? -1 : 1) : 0;
+    
+    console.log('✅ [ZigZag++] 计算完成');
+    console.log(`   - 检测到转折点: ${pivots.length}`);
+    console.log(`   - 连接线段: ${lines.length}`);
+    console.log(`   - 当前方向: ${currentDirection > 0 ? '上涨' : currentDirection < 0 ? '下跌' : '未知'}`);
+    
+    return {
+        pivots: pivots,
+        lines: lines,
+        direction: currentDirection,
+        renderType: 'zigzag'
+    };
+}
+

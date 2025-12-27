@@ -83,8 +83,9 @@ class IndicatorPoolMixin:
             'mirror_candle',  # 镜像K线：前端计算
             'divergence_detector',  # 多指标背离：✅ 已实现JS版本，前端计算
             'volume_profile_pivot',  # 成交量分布：✅ 已实现JS版本，前端计算
-            'pivot_order_blocks',  # 支撑阻力：✅ 已实现JS版本，前端计算
+            'support_resistance_channels',  # 支撑阻力通道：前端计算
             'smart_money_concepts',  # 聪明钱概念：前端计算
+            'zigzag',  # ZigZag++：前端计算
         }
         
         # 🗑️ 重量级指标列表已废弃（所有指标都已前端化）
@@ -225,6 +226,8 @@ class IndicatorPoolMixin:
             render_function = None
             if ind_id == 'support_resistance_channels':
                 render_function = 'renderSupportResistanceChannels' if data else None
+            elif ind_id == 'zigzag':
+                render_function = 'renderZigZag' if data else None
             elif ind_id == 'volume_profile_pivot':
                 render_function = 'renderVolumeProfilePivot' if data else None
             elif ind_id == 'divergence_detector':
@@ -1299,6 +1302,148 @@ class IndicatorPoolMixin:
             return seriesList;
         }
         
+        // ZigZag++ 渲染函数
+        function renderZigZag(zzData, chart) {
+            console.log('📊 [ZigZag++] 开始渲染');
+            
+            // 检查是否需要前端计算
+            if (!zzData || !zzData.pivots || zzData.pivots.length === 0) {
+                console.log('⚙️ [ZigZag++] 数据为空，开始前端计算...');
+                const config = INDICATOR_POOL['zigzag'] || {};
+                const params = config.params || {};
+                zzData = calculateZigZag(chartData, params);
+                
+                if (!zzData || !zzData.pivots || zzData.pivots.length === 0) {
+                    console.error('❌ [ZigZag++] 计算失败或无转折点');
+                    return [];
+                }
+                console.log('✅ [ZigZag++] 前端计算完成');
+            }
+            
+            const seriesList = [];
+            const config = INDICATOR_POOL['zigzag'] || {};
+            const params = config.params || {};
+            
+            // 获取颜色配置（A股习惯：红涨绿跌）
+            const bullColor = params.bull_color || 'rgba(239, 83, 80, 0.9)';
+            const bearColor = params.bear_color || 'rgba(38, 166, 154, 0.9)';
+            const lineThickness = params.line_thickness || 2;
+            const showLabels = params.show_labels !== false;
+            const extendLine = params.extend_line || false;
+            const showBackground = params.show_background !== false;
+            
+            // 1. 渲染ZigZag线条
+            if (zzData.lines && zzData.lines.length > 0) {
+                zzData.lines.forEach((line, idx) => {
+                    const color = line.direction > 0 ? bullColor : bearColor;
+                    const isLastLine = idx === zzData.lines.length - 1;
+                    
+                    const lineSeries = chart.addLineSeries({
+                        color: color,
+                        lineWidth: lineThickness,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    
+                    // 如果是最后一条线且启用延伸，延伸到当前时间
+                    const endTime = (isLastLine && extendLine) ? 
+                        chartData[chartData.length - 1].time : line.to.time;
+                    
+                    lineSeries.setData([
+                        { time: line.from.time, value: line.from.price },
+                        { time: endTime, value: line.to.price }
+                    ]);
+                    
+                    seriesList.push(lineSeries);
+                });
+                
+                console.log(`   - 已绘制 ${zzData.lines.length} 条ZigZag线段`);
+            }
+            
+            // 2. 渲染标签（HH/HL/LH/LL）
+            if (showLabels && zzData.pivots && zzData.pivots.length > 0) {
+                const labelMarkers = [];
+                
+                zzData.pivots.forEach(pivot => {
+                    if (pivot.label) {
+                        const isHigh = pivot.type === 'high';
+                        const color = isHigh ? bearColor : bullColor;
+                        
+                        labelMarkers.push({
+                            time: pivot.time,
+                            position: isHigh ? 'aboveBar' : 'belowBar',
+                            color: color,
+                            shape: isHigh ? 'arrowDown' : 'arrowUp',
+                            text: pivot.label,
+                            size: 1
+                        });
+                    }
+                });
+                
+                if (window.candleSeries && labelMarkers.length > 0) {
+                    try {
+                        const existingMarkers = window.initialMarkers || [];
+                        const allMarkers = [...existingMarkers, ...labelMarkers];
+                        window.candleSeries.setMarkers(allMarkers);
+                        
+                        // 保存ZigZag标签，以便关闭时清理
+                        if (!window.zzMarkers) window.zzMarkers = [];
+                        window.zzMarkers = labelMarkers;
+                        
+                        console.log(`   - 已添加 ${labelMarkers.length} 个结构标签`);
+                    } catch (e) {
+                        console.error('   - 添加标签失败:', e);
+                    }
+                }
+            }
+            
+            // 3. 渲染背景颜色（显示当前趋势方向）
+            if (showBackground && zzData.direction !== 0) {
+                try {
+                    const bgTransparency = params.background_transparency || 85;
+                    const bgColor = zzData.direction > 0 ? 
+                        bullColor.replace(/[\\d\\.]+\\)$/, (bgTransparency / 100) + ')') :
+                        bearColor.replace(/[\\d\\.]+\\)$/, (bgTransparency / 100) + ')');
+                    
+                    // 使用Histogram series创建背景色
+                    const bgSeries = chart.addHistogramSeries({
+                        color: bgColor,
+                        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+                        priceScaleId: '',
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    
+                    // 找到最后一个转折点之后的所有K线
+                    if (zzData.pivots.length > 0) {
+                        const lastPivotIndex = zzData.pivots[zzData.pivots.length - 1].barIndex;
+                        const bgData = [];
+                        
+                        for (let i = lastPivotIndex; i < chartData.length; i++) {
+                            const bar = chartData[i];
+                            const height = (bar.high - bar.low) * 10;  // 放大高度使背景更明显
+                            bgData.push({
+                                time: bar.time,
+                                value: height,
+                                color: bgColor
+                            });
+                        }
+                        
+                        if (bgData.length > 0) {
+                            bgSeries.setData(bgData);
+                            seriesList.push(bgSeries);
+                            console.log('   - 已添加趋势背景色');
+                        }
+                    }
+                } catch (e) {
+                    console.warn('   - 背景色渲染失败:', e);
+                }
+            }
+            
+            console.log(`✅ [ZigZag++] 渲染完成: ${zzData.pivots.length} 个转折点, ${seriesList.length} 个图形元素`);
+            return seriesList;
+        }
+        
         // 全局副图变量
         let mirrorSubchart = null;
         let mirrorCandleSeries = null;
@@ -1615,6 +1760,11 @@ class IndicatorPoolMixin:
                     const elements = renderSupportResistanceChannels(config.data, chart);
                     indicatorSeries.set(id, elements);
                     console.log('✅ [启用指标] 支撑阻力通道渲染完成');
+                } else if (config.renderFunction === 'renderZigZag') {
+                    console.log('🎯 [启用指标] ZigZag++');
+                    const elements = renderZigZag(config.data, chart);
+                    indicatorSeries.set(id, elements);
+                    console.log('✅ [启用指标] ZigZag++渲染完成');
                 }
             } else if (config.renderType === 'subchart' && config.renderFunction) {
                 // subchart类型指标需要自定义渲染
@@ -1710,6 +1860,22 @@ class IndicatorPoolMixin:
                         console.log('✅ [禁用指标] 聪明钱概念 - 已清除SMC标签，恢复买卖信号', buySellMarkers.length, '个');
                     } catch (e) {
                         console.error('❌ [禁用指标] 清除SMC标签失败:', e);
+                    }
+                }
+                
+                // 如果是ZigZag++，清除ZZ标签（保留买卖标签）
+                if (id === 'zigzag' && window.candleSeries) {
+                    try {
+                        // 清除ZigZag标签数据
+                        if (window.zzMarkers) {
+                            window.zzMarkers = [];
+                        }
+                        // 恢复初始买卖标记（策略的买卖点）
+                        const buySellMarkers = window.initialMarkers || [];
+                        window.candleSeries.setMarkers(buySellMarkers);
+                        console.log('✅ [禁用指标] ZigZag++ - 已清除ZZ标签，恢复买卖信号', buySellMarkers.length, '个');
+                    } catch (e) {
+                        console.error('❌ [禁用指标] 清除ZZ标签失败:', e);
                     }
                 }
                 
@@ -1813,8 +1979,9 @@ class IndicatorPoolMixin:
         visible_indicators = [
             'ma_combo',                       # 移动均线组合
             'vegas_tunnel',                   # Vegas隧道
+            'zigzag',                         # ZigZag++（新）
             'volume_profile_pivot',           # Volume Profile
-            'support_resistance_channels',    # 支撑阻力通道（新）
+            'support_resistance_channels',    # 支撑阻力通道
             'divergence_detector',            # 背离检测
             'mirror_candle',                  # 镜像翻转
             'smart_money_concepts',           # 聪明钱概念

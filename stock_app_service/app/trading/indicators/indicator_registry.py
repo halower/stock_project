@@ -292,9 +292,10 @@ try:
     from app.trading.indicators.tradingview import (
         divergence_detector,
         mirror_candle,
-        support_resistance_channels,  # 支撑阻力通道（新）
+        support_resistance_channels,  # 支撑阻力通道
         volume_profile_pivot_anchored,
         smart_money_concepts,  # 聪明钱概念
+        zigzag,  # ZigZag++（新）
     )
     logger.info(f"TradingView指标模块加载完成，总指标数: {len(IndicatorRegistry.get_all())}")
 except ImportError as e:
