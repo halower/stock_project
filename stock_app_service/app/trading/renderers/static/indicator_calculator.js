@@ -544,9 +544,8 @@ const INDICATOR_CALCULATORS = {
     'mirror_candle': calculateMirrorCandle,
     'pivot_order_blocks': calculatePivotOrderBlocks,
     'volume_profile_pivot': calculateVolumeProfile,
-    
-    // 多指标背离检测（前端计算）
-    'divergence_detector': calculateDivergenceDetector
+    'divergence_detector': calculateDivergenceDetector,
+    'fvg_order_blocks': calculateFVGOrderBlocks  // 公平价值缺口订单块
 };
 
 /**
@@ -1271,7 +1270,649 @@ if (typeof window !== 'undefined') {
 // 导出（如果在Node.js环境）
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        calculateDivergenceDetector
+        calculateDivergenceDetector,
+        calculateFVGOrderBlocks
+    };
+}
+
+/**
+ * FVG Order Blocks - 公平价值缺口订单块
+ * 移植自 TradingView Pine Script by BigBeluga
+ * 
+ * 功能：
+ * - 检测价格缺口（Fair Value Gaps）
+ * - 创建订单块区域（Order Blocks）
+ * - 使用ATR动态调整区域大小
+ */
+
+/**
+ * 计算ATR (Average True Range)
+ */
+function calculateATR(candleData, period = 200) {
+    const atr = new Array(candleData.length).fill(0);
+    
+    // 计算True Range
+    const tr = new Array(candleData.length).fill(0);
+    tr[0] = candleData[0].high - candleData[0].low;
+    
+    for (let i = 1; i < candleData.length; i++) {
+        const high = candleData[i].high;
+        const low = candleData[i].low;
+        const prevClose = candleData[i - 1].close;
+        
+        tr[i] = Math.max(
+            high - low,
+            Math.abs(high - prevClose),
+            Math.abs(low - prevClose)
+        );
+    }
+    
+    // 计算ATR（使用RMA/Wilder's smoothing）
+    atr[period - 1] = tr.slice(0, period).reduce((a, b) => a + b) / period;
+    
+    for (let i = period; i < candleData.length; i++) {
+        atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period;
+    }
+    
+    return atr;
+}
+
+/**
+ * 计算FVG Order Blocks
+ * @param {Array} candleData - K线数据
+ * @param {object} params - 参数
+ * @returns {object} 订单块数据
+ */
+function calculateFVGOrderBlocks(candleData, params = {}) {
+    const {
+        lookback = 2000,
+        filter = 0.5,
+        box_amount = 6,
+        show_broken = false,
+        show_signal = false,
+        atr_period = 200
+    } = params;
+    
+    console.log('📊 [FVG Order Blocks] 开始计算，K线数量:', candleData.length);
+    
+    if (!candleData || candleData.length < 3) {
+        console.warn('⚠️ [FVG Order Blocks] 数据不足');
+        return { bullish: [], bearish: [], gaps: [] };
+    }
+    
+    // 计算ATR
+    const atr = calculateATR(candleData, atr_period);
+    
+    // 存储订单块
+    const bullishBlocks = [];
+    const bearishBlocks = [];
+    const gaps = [];  // 缺口标记
+    
+    // 用于计算最大缺口百分比（用于颜色渐变）
+    let maxBullGap = 0;
+    let maxBearGap = 0;
+    
+    // 从第2根K线开始检测（需要3根K线）
+    const startIdx = Math.max(2, candleData.length - lookback);
+    
+    for (let i = startIdx; i < candleData.length; i++) {
+        const current = candleData[i];
+        const prev1 = candleData[i - 1];
+        const prev2 = candleData[i - 2];
+        
+        // 检测看涨缺口（Bullish Gap）
+        // 条件：high[2] < low 且 high[2] < high[1] 且 low[2] < low
+        const isBullGap = prev2.high < current.low && 
+                         prev2.high < prev1.high && 
+                         prev2.low < current.low;
+        
+        if (isBullGap) {
+            // 计算缺口百分比
+            const gapPercent = ((current.low - prev2.high) / current.low) * 100;
+            
+            if (gapPercent > filter) {
+                maxBullGap = Math.max(maxBullGap, gapPercent);
+                
+                // 记录缺口（用于显示）
+                gaps.push({
+                    type: 'bullish',
+                    time: current.time,
+                    top: current.low,
+                    bottom: prev2.high,
+                    percent: gapPercent
+                });
+                
+                // 创建看涨订单块
+                // 区域：从prev2.high向下延伸ATR
+                const blockTop = prev2.high;
+                const blockBottom = prev2.high - atr[i];
+                
+                bullishBlocks.push({
+                    startTime: current.time,
+                    startIndex: i,
+                    top: blockTop,
+                    bottom: blockBottom,
+                    percent: gapPercent,
+                    broken: false,
+                    active: true
+                });
+            }
+        }
+        
+        // 检测看跌缺口（Bearish Gap）
+        // 条件：low[2] > high 且 low[2] > low[1] 且 high[2] > high
+        const isBearGap = prev2.low > current.high && 
+                         prev2.low > prev1.low && 
+                         prev2.high > current.high;
+        
+        if (isBearGap) {
+            // 计算缺口百分比
+            const gapPercent = ((prev2.low - current.high) / prev2.low) * 100;
+            
+            if (gapPercent > filter) {
+                maxBearGap = Math.max(maxBearGap, gapPercent);
+                
+                // 记录缺口
+                gaps.push({
+                    type: 'bearish',
+                    time: current.time,
+                    top: prev2.low,
+                    bottom: current.high,
+                    percent: gapPercent
+                });
+                
+                // 创建看跌订单块
+                // 区域：从prev2.low向上延伸ATR
+                const blockBottom = prev2.low;
+                const blockTop = prev2.low + atr[i];
+                
+                bearishBlocks.push({
+                    startTime: current.time,
+                    startIndex: i,
+                    top: blockTop,
+                    bottom: blockBottom,
+                    percent: gapPercent,
+                    broken: false,
+                    active: true
+                });
+            }
+        }
+    }
+    
+    // 检测订单块突破
+    for (let i = 0; i < candleData.length; i++) {
+        const candle = candleData[i];
+        
+        // 检查看涨订单块
+        for (const block of bullishBlocks) {
+            if (i <= block.startIndex) continue;
+            
+            // 价格跌破订单块底部 = 订单块失效
+            if (candle.high < block.bottom && !block.broken) {
+                block.broken = true;
+                block.brokenTime = candle.time;
+                block.brokenIndex = i;
+            }
+            
+            // 价格突破订单块顶部 = 触发信号
+            if (candle.low > block.top && !block.triggered) {
+                block.triggered = true;
+                block.signalTime = candle.time;
+                block.signalIndex = i;
+            }
+        }
+        
+        // 检查看跌订单块
+        for (const block of bearishBlocks) {
+            if (i <= block.startIndex) continue;
+            
+            // 价格突破订单块顶部 = 订单块失效
+            if (candle.low > block.top && !block.broken) {
+                block.broken = true;
+                block.brokenTime = candle.time;
+                block.brokenIndex = i;
+            }
+            
+            // 价格跌破订单块底部 = 触发信号
+            if (candle.high < block.bottom && !block.triggered) {
+                block.triggered = true;
+                block.signalTime = candle.time;
+                block.signalIndex = i;
+            }
+        }
+    }
+    
+    // 过滤：只保留最近的box_amount个订单块
+    const activeBullish = bullishBlocks
+        .filter(b => show_broken || !b.broken)
+        .slice(-box_amount);
+    
+    const activeBearish = bearishBlocks
+        .filter(b => show_broken || !b.broken)
+        .slice(-box_amount);
+    
+    console.log('✅ [FVG Order Blocks] 计算完成');
+    console.log(`   - 看涨订单块: ${activeBullish.length}`);
+    console.log(`   - 看跌订单块: ${activeBearish.length}`);
+    console.log(`   - 缺口标记: ${gaps.length}`);
+    
+    return {
+        bullish: activeBullish,
+        bearish: activeBearish,
+        gaps: gaps,
+        maxBullGap: maxBullGap,
+        maxBearGap: maxBearGap,
+        renderType: 'fvg_order_blocks'
+    };
+}
+
+// ============================================================================
+// Smart Money Concepts - 聪明钱概念
+// ============================================================================
+
+/**
+ * 计算Smart Money Concepts指标
+ * 
+ * 核心算法：
+ * 1. Leg检测：判断当前市场腿部（牛市腿/熊市腿）
+ * 2. Pivot识别：找到关键摆动高点和低点
+ * 3. Structure检测：识别BOS（结构突破）和CHoCH（趋势转变）
+ * 4. Order Blocks：记录结构突破时的关键价格区域
+ * 5. Equal Highs/Lows：识别价格多次触及的相同水平
+ * 
+ * @param {Array} candleData - K线数据
+ * @param {Object} params - 参数配置
+ * @returns {Object} 包含所有SMC元素的对象
+ */
+function calculateSmartMoneyConcepts(candleData, params) {
+    console.log('🧠 [Smart Money Concepts] 开始计算...');
+    
+    const {
+        swing_length = 50,
+        internal_length = 5,
+        show_internals = true,
+        show_structure = true,
+        show_swing_points = false,
+        show_internal_ob = true,
+        internal_ob_count = 5,
+        show_swing_ob = false,
+        swing_ob_count = 5,
+        ob_filter = 'Atr',
+        ob_mitigation = 'High/Low',
+        show_equal_hl = true,
+        equal_hl_length = 3,
+        equal_hl_threshold = 0.1,
+        style = 'Colored',
+        mode = 'Historical'
+    } = params;
+    
+    const n = candleData.length;
+    const minRequired = Math.max(swing_length + 10, internal_length + 10);
+    if (n < minRequired) {
+        console.warn(`⚠️ [SMC] 数据不足: 需要至少 ${minRequired} 根K线，当前只有 ${n} 根`);
+        return {
+            swingStructures: [],
+            internalStructures: [],
+            swingOrderBlocks: [],
+            internalOrderBlocks: [],
+            equalHighsLows: [],
+            swingPoints: [],
+            renderType: 'smart_money_concepts'
+        };
+    }
+    
+    console.log(`✅ [SMC] 数据量检查通过: ${n} 根K线 (最少需要 ${minRequired} 根)`);
+
+    
+    // 1. 计算ATR（用于订单块过滤和等高等低检测）
+    const atrPeriod = Math.min(200, Math.floor(n / 2));
+    const atr = calculateATR(candleData, atrPeriod);
+    console.log(`   - ATR周期: ${atrPeriod}`);
+    
+    // 2. 计算volatility measure（用于订单块过滤）
+    const volatilityMeasure = [];
+    let cumulativeTR = 0;
+    for (let i = 0; i < n; i++) {
+        const tr = i === 0 ? candleData[i].high - candleData[i].low :
+            Math.max(
+                candleData[i].high - candleData[i].low,
+                Math.abs(candleData[i].high - candleData[i - 1].close),
+                Math.abs(candleData[i].low - candleData[i - 1].close)
+            );
+        cumulativeTR += tr;
+        volatilityMeasure[i] = ob_filter === 'Atr' ? atr[i] : cumulativeTR / (i + 1);
+    }
+    
+    // 3. 解析高低点（过滤高波动K线）
+    const parsedHighs = [];
+    const parsedLows = [];
+    for (let i = 0; i < n; i++) {
+        const range = candleData[i].high - candleData[i].low;
+        const highVolatility = range >= 2 * volatilityMeasure[i];
+        parsedHighs[i] = highVolatility ? candleData[i].low : candleData[i].high;
+        parsedLows[i] = highVolatility ? candleData[i].high : candleData[i].low;
+    }
+    
+    // 4. 检测Leg（市场腿部）
+    function getLeg(index, size) {
+        if (index < size) return null;
+        
+        let maxHigh = -Infinity;
+        let minLow = Infinity;
+        
+        for (let j = index - size + 1; j <= index; j++) {
+            if (candleData[j].high > maxHigh) maxHigh = candleData[j].high;
+            if (candleData[j].low < minLow) minLow = candleData[j].low;
+        }
+        
+        const newLegHigh = candleData[index - size].high > maxHigh;
+        const newLegLow = candleData[index - size].low < minLow;
+        
+        if (newLegHigh) return 0; // BEARISH_LEG
+        if (newLegLow) return 1;  // BULLISH_LEG
+        return null;
+    }
+    
+    // 5. 查找摆动点（Swing Points）和结构（Structures）
+    const swingStructures = [];
+    const internalStructures = [];
+    const swingOrderBlocks = [];
+    const internalOrderBlocks = [];
+    const swingPoints = [];
+    const equalHighsLows = [];
+    
+    // 摆动Pivot追踪
+    let swingHigh = {level: null, lastLevel: null, crossed: false, barIndex: -1, time: null};
+    let swingLow = {level: null, lastLevel: null, crossed: false, barIndex: -1, time: null};
+    let swingTrend = 0; // 0=中性, 1=看涨, -1=看跌
+    
+    // 内部Pivot追踪
+    let internalHigh = {level: null, lastLevel: null, crossed: false, barIndex: -1, time: null};
+    let internalLow = {level: null, lastLevel: null, crossed: false, barIndex: -1, time: null};
+    let internalTrend = 0;
+    
+    // Equal HL追踪
+    let equalHigh = {level: null, barIndex: -1, time: null};
+    let equalLow = {level: null, barIndex: -1, time: null};
+    
+    // 遍历K线数据
+    let prevSwingLeg = null;
+    let prevInternalLeg = null;
+    
+    for (let i = Math.max(swing_length, internal_length); i < n; i++) {
+        const close = candleData[i].close;
+        const high = candleData[i].high;
+        const low = candleData[i].low;
+        const time = candleData[i].time;
+        
+        // ========== 摆动结构检测 ==========
+        if (show_structure) {
+            const swingLeg = getLeg(i, swing_length);
+            if (swingLeg !== null && swingLeg !== prevSwingLeg && prevSwingLeg !== null) {
+                // 发现新的Leg，记录Pivot
+                if (swingLeg === 1) {
+                    // 新的看涨Leg -> 前一个低点是Pivot Low
+                    const pivotIdx = i - swing_length;
+                    swingLow.lastLevel = swingLow.level;
+                    swingLow.level = candleData[pivotIdx].low;
+                    swingLow.crossed = false;
+                    swingLow.barIndex = pivotIdx;
+                    swingLow.time = candleData[pivotIdx].time;
+                    
+                    if (show_swing_points && swingLow.lastLevel !== null) {
+                        const label = swingLow.level < swingLow.lastLevel ? 'LL' : 'HL';
+                        swingPoints.push({
+                            time: swingLow.time,
+                            price: swingLow.level,
+                            label: label,
+                            type: 'low'
+                        });
+                    }
+                } else {
+                    // 新的看跌Leg -> 前一个高点是Pivot High
+                    const pivotIdx = i - swing_length;
+                    swingHigh.lastLevel = swingHigh.level;
+                    swingHigh.level = candleData[pivotIdx].high;
+                    swingHigh.crossed = false;
+                    swingHigh.barIndex = pivotIdx;
+                    swingHigh.time = candleData[pivotIdx].time;
+                    
+                    if (show_swing_points && swingHigh.lastLevel !== null) {
+                        const label = swingHigh.level > swingHigh.lastLevel ? 'HH' : 'LH';
+                        swingPoints.push({
+                            time: swingHigh.time,
+                            price: swingHigh.level,
+                            label: label,
+                            type: 'high'
+                        });
+                    }
+                }
+            }
+            prevSwingLeg = swingLeg;
+            
+            // 检测结构突破（Swing High）
+            if (swingHigh.level !== null && close > swingHigh.level && !swingHigh.crossed) {
+                const tag = swingTrend === -1 ? 'CHoCH' : 'BOS';
+                swingStructures.push({
+                    time: time,
+                    price: swingHigh.level,
+                    type: 'bullish',
+                    tag: tag,
+                    startTime: swingHigh.time,
+                    internal: false
+                });
+                swingHigh.crossed = true;
+                swingTrend = 1; // 看涨趋势
+                
+                // 创建订单块
+                if (show_swing_ob) {
+                    createOrderBlock(swingHigh, false, 1, candleData, parsedHighs, parsedLows, swingOrderBlocks);
+                }
+            }
+            
+            // 检测结构突破（Swing Low）
+            if (swingLow.level !== null && close < swingLow.level && !swingLow.crossed) {
+                const tag = swingTrend === 1 ? 'CHoCH' : 'BOS';
+                swingStructures.push({
+                    time: time,
+                    price: swingLow.level,
+                    type: 'bearish',
+                    tag: tag,
+                    startTime: swingLow.time,
+                    internal: false
+                });
+                swingLow.crossed = true;
+                swingTrend = -1; // 看跌趋势
+                
+                // 创建订单块
+                if (show_swing_ob) {
+                    createOrderBlock(swingLow, false, -1, candleData, parsedHighs, parsedLows, swingOrderBlocks);
+                }
+            }
+        }
+        
+        // ========== 内部结构检测 ==========
+        if (show_internals) {
+            const internalLeg = getLeg(i, internal_length);
+            if (internalLeg !== null && internalLeg !== prevInternalLeg && prevInternalLeg !== null) {
+                if (internalLeg === 1) {
+                    const pivotIdx = i - internal_length;
+                    internalLow.lastLevel = internalLow.level;
+                    internalLow.level = candleData[pivotIdx].low;
+                    internalLow.crossed = false;
+                    internalLow.barIndex = pivotIdx;
+                    internalLow.time = candleData[pivotIdx].time;
+                } else {
+                    const pivotIdx = i - internal_length;
+                    internalHigh.lastLevel = internalHigh.level;
+                    internalHigh.level = candleData[pivotIdx].high;
+                    internalHigh.crossed = false;
+                    internalHigh.barIndex = pivotIdx;
+                    internalHigh.time = candleData[pivotIdx].time;
+                }
+            }
+            prevInternalLeg = internalLeg;
+            
+            // 检测内部结构突破（不能与Swing结构重合）
+            if (internalHigh.level !== null && close > internalHigh.level && !internalHigh.crossed &&
+                internalHigh.level !== swingHigh.level) {
+                const tag = internalTrend === -1 ? 'CHoCH' : 'BOS';
+                internalStructures.push({
+                    time: time,
+                    price: internalHigh.level,
+                    type: 'bullish',
+                    tag: tag,
+                    startTime: internalHigh.time,
+                    internal: true
+                });
+                internalHigh.crossed = true;
+                internalTrend = 1;
+                
+                if (show_internal_ob) {
+                    createOrderBlock(internalHigh, true, 1, candleData, parsedHighs, parsedLows, internalOrderBlocks);
+                }
+            }
+            
+            if (internalLow.level !== null && close < internalLow.level && !internalLow.crossed &&
+                internalLow.level !== swingLow.level) {
+                const tag = internalTrend === 1 ? 'CHoCH' : 'BOS';
+                internalStructures.push({
+                    time: time,
+                    price: internalLow.level,
+                    type: 'bearish',
+                    tag: tag,
+                    startTime: internalLow.time,
+                    internal: true
+                });
+                internalLow.crossed = true;
+                internalTrend = -1;
+                
+                if (show_internal_ob) {
+                    createOrderBlock(internalLow, true, -1, candleData, parsedHighs, parsedLows, internalOrderBlocks);
+                }
+            }
+        }
+        
+        // ========== Equal Highs/Lows检测 ==========
+        if (show_equal_hl && i >= equal_hl_length) {
+            // 检测Equal High
+            if (swingHigh.level !== null && Math.abs(swingHigh.level - high) < equal_hl_threshold * atr[i]) {
+                if (equalHigh.level === null || Math.abs(equalHigh.level - swingHigh.level) > 0.0001) {
+                    equalHighsLows.push({
+                        type: 'high',
+                        price: swingHigh.level,
+                        startTime: swingHigh.time,
+                        endTime: time,
+                        startIndex: swingHigh.barIndex,
+                        endIndex: i
+                    });
+                    equalHigh.level = swingHigh.level;
+                    equalHigh.barIndex = i;
+                    equalHigh.time = time;
+                }
+            }
+            
+            // 检测Equal Low
+            if (swingLow.level !== null && Math.abs(swingLow.level - low) < equal_hl_threshold * atr[i]) {
+                if (equalLow.level === null || Math.abs(equalLow.level - swingLow.level) > 0.0001) {
+                    equalHighsLows.push({
+                        type: 'low',
+                        price: swingLow.level,
+                        startTime: swingLow.time,
+                        endTime: time,
+                        startIndex: swingLow.barIndex,
+                        endIndex: i
+                    });
+                    equalLow.level = swingLow.level;
+                    equalLow.barIndex = i;
+                    equalLow.time = time;
+                }
+            }
+        }
+    }
+    
+    // 6. 创建订单块的辅助函数
+    function createOrderBlock(pivot, isInternal, bias, candleData, parsedHighs, parsedLows, orderBlockArray) {
+        const startIdx = Math.max(0, pivot.barIndex);
+        const endIdx = Math.min(candleData.length - 1, pivot.barIndex + (isInternal ? internal_length : swing_length));
+        
+        let extremeIdx = startIdx;
+        if (bias === -1) {
+            // 看跌订单块：找到最高点
+            let maxHigh = parsedHighs[startIdx];
+            for (let j = startIdx; j <= endIdx; j++) {
+                if (parsedHighs[j] > maxHigh) {
+                    maxHigh = parsedHighs[j];
+                    extremeIdx = j;
+                }
+            }
+        } else {
+            // 看涨订单块：找到最低点
+            let minLow = parsedLows[startIdx];
+            for (let j = startIdx; j <= endIdx; j++) {
+                if (parsedLows[j] < minLow) {
+                    minLow = parsedLows[j];
+                    extremeIdx = j;
+                }
+            }
+        }
+        
+        orderBlockArray.push({
+            top: parsedHighs[extremeIdx],
+            bottom: parsedLows[extremeIdx],
+            time: candleData[extremeIdx].time,
+            bias: bias,
+            broken: false,
+            internal: isInternal
+        });
+    }
+    
+    // 7. 检查订单块是否被突破，并清理
+    const mitigationSource = ob_mitigation === 'Close' ? 'close' : null;
+    for (let i = 0; i < n; i++) {
+        const high = mitigationSource ? candleData[i][mitigationSource] : candleData[i].high;
+        const low = mitigationSource ? candleData[i][mitigationSource] : candleData[i].low;
+        
+        // 检查摆动订单块
+        for (let j = swingOrderBlocks.length - 1; j >= 0; j--) {
+            const block = swingOrderBlocks[j];
+            if (block.bias === -1 && high > block.top) {
+                block.broken = true;
+            } else if (block.bias === 1 && low < block.bottom) {
+                block.broken = true;
+            }
+        }
+        
+        // 检查内部订单块
+        for (let j = internalOrderBlocks.length - 1; j >= 0; j--) {
+            const block = internalOrderBlocks[j];
+            if (block.bias === -1 && high > block.top) {
+                block.broken = true;
+            } else if (block.bias === 1 && low < block.bottom) {
+                block.broken = true;
+            }
+        }
+    }
+    
+    // 8. 过滤并返回最终结果
+    const activeSwingOB = swingOrderBlocks.filter(b => !b.broken).slice(-swing_ob_count);
+    const activeInternalOB = internalOrderBlocks.filter(b => !b.broken).slice(-internal_ob_count);
+    
+    console.log('✅ [Smart Money Concepts] 计算完成');
+    console.log(`   - 摆动结构: ${swingStructures.length}`);
+    console.log(`   - 内部结构: ${internalStructures.length}`);
+    console.log(`   - 摆动订单块: ${activeSwingOB.length}`);
+    console.log(`   - 内部订单块: ${activeInternalOB.length}`);
+    console.log(`   - 等高等低: ${equalHighsLows.length}`);
+    
+    return {
+        swingStructures: mode === 'Present' ? swingStructures.slice(-1) : swingStructures,
+        internalStructures: mode === 'Present' ? internalStructures.slice(-1) : internalStructures,
+        swingOrderBlocks: activeSwingOB,
+        internalOrderBlocks: activeInternalOB,
+        equalHighsLows: equalHighsLows,
+        swingPoints: swingPoints,
+        renderType: 'smart_money_concepts'
     };
 }
 

@@ -84,6 +84,7 @@ class IndicatorPoolMixin:
             'divergence_detector',  # 多指标背离：✅ 已实现JS版本，前端计算
             'volume_profile_pivot',  # 成交量分布：✅ 已实现JS版本，前端计算
             'pivot_order_blocks',  # 支撑阻力：✅ 已实现JS版本，前端计算
+            'smart_money_concepts',  # 聪明钱概念：前端计算
         }
         
         # 🗑️ 重量级指标列表已废弃（所有指标都已前端化）
@@ -228,6 +229,8 @@ class IndicatorPoolMixin:
                 render_function = 'renderVolumeProfilePivot' if data else None
             elif ind_id == 'divergence_detector':
                 render_function = 'renderDivergence' if data else None
+            elif ind_id == 'smart_money_concepts':
+                render_function = 'renderSmartMoneyConcepts' if data else None
             elif ind_id == 'mirror_candle':
                 # 镜像翻转应该始终有渲染函数，即使数据为空也要设置
                 render_function = 'renderMirrorSubchart'
@@ -641,6 +644,404 @@ class IndicatorPoolMixin:
             return seriesList;
         }
         
+        // Smart Money Concepts渲染函数
+        function renderSmartMoneyConcepts(smcData, chart) {
+            console.log('🧠 [Smart Money Concepts] 开始渲染');
+            
+            // 检查是否需要前端计算
+            const needsCalculation = !smcData || 
+                (Array.isArray(smcData.swingStructures) && smcData.swingStructures.length === 0 &&
+                 Array.isArray(smcData.internalStructures) && smcData.internalStructures.length === 0 &&
+                 Array.isArray(smcData.swingOrderBlocks) && smcData.swingOrderBlocks.length === 0 &&
+                 Array.isArray(smcData.internalOrderBlocks) && smcData.internalOrderBlocks.length === 0);
+            
+            if (needsCalculation) {
+                console.log('⚙️ [SMC] 数据为空，开始前端计算...');
+                console.log(`   - K线数据: ${chartData ? chartData.length : 0} 根`);
+                
+                const config = INDICATOR_POOL['smart_money_concepts'] || {};
+                const params = config.params || {
+                    swing_length: 50,
+                    internal_length: 5,
+                    show_internals: true,
+                    show_structure: true,
+                    show_internal_ob: true,
+                    internal_ob_count: 5,
+                    show_swing_ob: false,
+                    swing_ob_count: 5
+                };
+                
+                console.log('   - 参数配置:', params);
+                
+                smcData = calculateSmartMoneyConcepts(chartData, params);
+                
+                if (!smcData) {
+                    console.error('❌ [SMC] 计算函数返回null');
+                    return [];
+                }
+                
+                console.log('✅ [SMC] 前端计算完成');
+                console.log(`   - 摆动结构: ${smcData.swingStructures?.length || 0}`);
+                console.log(`   - 内部结构: ${smcData.internalStructures?.length || 0}`);
+                console.log(`   - 摆动OB: ${smcData.swingOrderBlocks?.length || 0}`);
+                console.log(`   - 内部OB: ${smcData.internalOrderBlocks?.length || 0}`);
+                console.log(`   - 等高等低: ${smcData.equalHighsLows?.length || 0}`);
+            }
+            
+            const seriesList = [];
+            const endTime = chartData[chartData.length - 1].time;
+            
+            // 颜色配置
+            const bullishColor = '#089981';  // 绿色
+            const bearishColor = '#F23645';  // 红色
+            const internalBullColor = '#089981';
+            const internalBearColor = '#F23645';
+            
+            // 1. 渲染摆动结构线（BOS/CHoCH）- 使用markers显示中文标签
+            if (smcData.swingStructures && smcData.swingStructures.length > 0) {
+                const structureMarkers = [];
+                
+                smcData.swingStructures.forEach((structure, index) => {
+                    const color = structure.type === 'bullish' ? bullishColor : bearishColor;
+                    const lineStyle = 0; // 实线
+                    
+                    // 使用标准SMC术语
+                    const tag = structure.tag; // BOS 或 CHoCH
+                    
+                    // 创建结构线（加粗）
+                    const structureLine = chart.addLineSeries({
+                        color: color,
+                        lineWidth: 3,  // 加粗到3
+                        lineStyle: lineStyle,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    
+                    structureLine.setData([
+                        { time: structure.startTime, value: structure.price },
+                        { time: structure.time, value: structure.price }
+                    ]);
+                    
+                    // 在线上添加标签（使用PriceLine）
+                    try {
+                        structureLine.createPriceLine({
+                            price: structure.price,
+                            color: color,
+                            lineWidth: 0,
+                            lineStyle: 2,
+                            axisLabelVisible: true,
+                            title: tag
+                        });
+                    } catch (e) {
+                        console.warn('   - 无法在线上添加标签，使用备用方案');
+                        // 备用方案：添加到K线上
+                        structureMarkers.push({
+                            time: structure.time,
+                            position: structure.type === 'bullish' ? 'belowBar' : 'aboveBar',
+                            color: color,
+                            shape: structure.type === 'bullish' ? 'arrowUp' : 'arrowDown',
+                            text: tag,
+                            size: 1
+                        });
+                    }
+                    
+                    seriesList.push(structureLine);
+                });
+                
+                // 添加标签到主K线图上
+                if (typeof window.candleSeries !== 'undefined' && window.candleSeries && structureMarkers.length > 0) {
+                    try {
+                        // 保存摆动结构的markers到全局，供后续合并使用
+                        if (!window.smcMarkers) {
+                            window.smcMarkers = {
+                                structure: [],
+                                internal: [],
+                                equal: []
+                            };
+                        }
+                        window.smcMarkers.structure = structureMarkers;
+                        console.log(`   - 摆动结构: ${smcData.swingStructures.length} (收集了${structureMarkers.length}个标签)`);
+                    } catch (e) {
+                        console.error('   - 收集摆动结构标签失败:', e);
+                    }
+                } else {
+                    console.warn('   - window.candleSeries 不可用');
+                }
+            }
+            
+            // 2. 渲染内部结构线 - 使用markers显示中文标签
+            if (smcData.internalStructures && smcData.internalStructures.length > 0) {
+                const internalMarkers = [];
+                
+                smcData.internalStructures.forEach((structure, index) => {
+                    const color = structure.type === 'bullish' ? internalBullColor : internalBearColor;
+                    const lineStyle = 1; // 虚线
+                    
+                    // 内部结构也使用相同标签（不加前缀）
+                    const tag = structure.tag; // BOS 或 CHoCH
+                    
+                    // 创建结构线（虚线稍细）
+                    const structureLine = chart.addLineSeries({
+                        color: color,
+                        lineWidth: 2,  // 虚线用2
+                        lineStyle: lineStyle,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    
+                    structureLine.setData([
+                        { time: structure.startTime, value: structure.price },
+                        { time: structure.time, value: structure.price }
+                    ]);
+                    
+                    // 在线上添加标签
+                    try {
+                        structureLine.createPriceLine({
+                            price: structure.price,
+                            color: color,
+                            lineWidth: 0,
+                            lineStyle: 2,
+                            axisLabelVisible: true,
+                            title: tag
+                        });
+                    } catch (e) {
+                        console.warn('   - 无法在线上添加内部结构标签');
+                        internalMarkers.push({
+                            time: structure.time,
+                            position: structure.type === 'bullish' ? 'belowBar' : 'aboveBar',
+                            color: color,
+                            shape: 'circle',
+                            text: tag,
+                            size: 0.8
+                        });
+                    }
+                    
+                    seriesList.push(structureLine);
+                });
+                
+                // 收集内部结构标签
+                if (typeof window.candleSeries !== 'undefined' && window.candleSeries && internalMarkers.length > 0) {
+                    try {
+                        if (!window.smcMarkers) {
+                            window.smcMarkers = {
+                                structure: [],
+                                internal: [],
+                                equal: []
+                            };
+                        }
+                        window.smcMarkers.internal = internalMarkers;
+                        console.log(`   - 内部结构: ${smcData.internalStructures.length} (收集了${internalMarkers.length}个标签)`);
+                    } catch (e) {
+                        console.error('   - 收集内部结构标签失败:', e);
+                    }
+                }
+            }
+            
+            // 3. 渲染摆动订单块（矩形）
+            if (smcData.swingOrderBlocks && smcData.swingOrderBlocks.length > 0) {
+                smcData.swingOrderBlocks.forEach(block => {
+                    const fillColor = block.bias === 1 ? 
+                        'rgba(24, 72, 204, 0.3)' :  // 看涨：深蓝色半透明
+                        'rgba(178, 40, 51, 0.3)';   // 看跌：深红色半透明
+                    
+                    const fillSeries = chart.addHistogramSeries({
+                        color: fillColor,
+                        priceFormat: { type: 'price' },
+                        lastValueVisible: false,
+                        priceLineVisible: false,
+                        base: block.bottom
+                    });
+                    
+                    const fillData = [];
+                    const startIdx = chartData.findIndex(c => c.time >= block.time);
+                    if (startIdx >= 0) {
+                        for (let i = startIdx; i < chartData.length; i++) {
+                            fillData.push({
+                                time: chartData[i].time,
+                                value: block.top - block.bottom,
+                                color: fillColor
+                            });
+                        }
+                    }
+                    
+                    if (fillData.length > 0) {
+                        fillSeries.setData(fillData);
+                        seriesList.push(fillSeries);
+                    }
+                    
+                    // 边框线
+                    const borderColor = block.bias === 1 ? 
+                        'rgb(24, 72, 204)' : 'rgb(178, 40, 51)';
+                    
+                    const topLine = chart.addLineSeries({
+                        color: borderColor,
+                        lineWidth: 1,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    topLine.setData([
+                        { time: block.time, value: block.top },
+                        { time: endTime, value: block.top }
+                    ]);
+                    seriesList.push(topLine);
+                    
+                    const bottomLine = chart.addLineSeries({
+                        color: borderColor,
+                        lineWidth: 1,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    bottomLine.setData([
+                        { time: block.time, value: block.bottom },
+                        { time: endTime, value: block.bottom }
+                    ]);
+                    seriesList.push(bottomLine);
+                });
+                console.log(`   - 摆动订单块: ${smcData.swingOrderBlocks.length}`);
+            }
+            
+            // 4. 渲染内部订单块
+            if (smcData.internalOrderBlocks && smcData.internalOrderBlocks.length > 0) {
+                smcData.internalOrderBlocks.forEach(block => {
+                    const fillColor = block.bias === 1 ? 
+                        'rgba(49, 121, 245, 0.25)' :  // 看涨：亮蓝色
+                        'rgba(247, 124, 128, 0.25)';  // 看跌：亮红色
+                    
+                    const fillSeries = chart.addHistogramSeries({
+                        color: fillColor,
+                        priceFormat: { type: 'price' },
+                        lastValueVisible: false,
+                        priceLineVisible: false,
+                        base: block.bottom
+                    });
+                    
+                    const fillData = [];
+                    const startIdx = chartData.findIndex(c => c.time >= block.time);
+                    if (startIdx >= 0) {
+                        for (let i = startIdx; i < chartData.length; i++) {
+                            fillData.push({
+                                time: chartData[i].time,
+                                value: block.top - block.bottom,
+                                color: fillColor
+                            });
+                        }
+                    }
+                    
+                    if (fillData.length > 0) {
+                        fillSeries.setData(fillData);
+                        seriesList.push(fillSeries);
+                    }
+                });
+                console.log(`   - 内部订单块: ${smcData.internalOrderBlocks.length}`);
+            }
+            
+            // 5. 渲染等高等低线 - 使用markers显示中文标签
+            if (smcData.equalHighsLows && smcData.equalHighsLows.length > 0) {
+                const eqhlMarkers = [];
+                
+                smcData.equalHighsLows.forEach((ehl, index) => {
+                    const color = ehl.type === 'high' ? bearishColor : bullishColor;
+                    const label = ehl.type === 'high' ? 'EQH' : 'EQL';
+                    
+                    const line = chart.addLineSeries({
+                        color: color,
+                        lineWidth: 2,  // 加粗到2
+                        lineStyle: 2, // 点线
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    
+                    line.setData([
+                        { time: ehl.startTime, value: ehl.price },
+                        { time: ehl.endTime, value: ehl.price }
+                    ]);
+                    
+                    // 在线上添加标签
+                    try {
+                        line.createPriceLine({
+                            price: ehl.price,
+                            color: color,
+                            lineWidth: 0,
+                            lineStyle: 2,
+                            axisLabelVisible: true,
+                            title: label
+                        });
+                    } catch (e) {
+                        console.warn('   - 无法在线上添加等高等低标签');
+                        eqhlMarkers.push({
+                            time: ehl.endTime,
+                            position: ehl.type === 'high' ? 'aboveBar' : 'belowBar',
+                            color: color,
+                            shape: 'circle',
+                            text: label,
+                            size: 0.7
+                        });
+                    }
+                    
+                    seriesList.push(line);
+                });
+                
+                // 收集等高等低标签
+                if (typeof window.candleSeries !== 'undefined' && window.candleSeries && eqhlMarkers.length > 0) {
+                    try {
+                        if (!window.smcMarkers) {
+                            window.smcMarkers = {
+                                structure: [],
+                                internal: [],
+                                equal: []
+                            };
+                        }
+                        window.smcMarkers.equal = eqhlMarkers;
+                        console.log(`   - 等高等低: ${smcData.equalHighsLows.length} (收集了${eqhlMarkers.length}个标签)`);
+                    } catch (e) {
+                        console.error('   - 收集等高等低标签失败:', e);
+                    }
+                }
+            }
+            
+            // 6. 渲染摆动点标签（可选功能，默认不启用）
+            // 注意：摆动点标签会显示在K线上，可能与其他指标标签冲突
+            if (smcData.swingPoints && smcData.swingPoints.length > 0 && false) {
+                // 暂时禁用摆动点标签，避免图表过于拥挤
+                // 用户可以通过参数 show_swing_points 来启用
+                console.log(`   - 摆动点: ${smcData.swingPoints.length} (已禁用显示)`);
+            }
+            
+            // 7. 统一添加所有标签到K线图上（追加模式，不覆盖原有标签）
+            if (typeof window.candleSeries !== 'undefined' && window.candleSeries && window.smcMarkers) {
+                try {
+                    const smcMarkersArray = [
+                        ...(window.smcMarkers.structure || []),
+                        ...(window.smcMarkers.internal || []),
+                        ...(window.smcMarkers.equal || [])
+                    ];
+                    
+                    if (smcMarkersArray.length > 0) {
+                        // 获取现有的策略标签（买卖点）
+                        const existingMarkers = window.initialMarkers || [];
+                        
+                        // 合并：策略标签 + SMC标签
+                        const allMarkers = [...existingMarkers, ...smcMarkersArray];
+                        window.candleSeries.setMarkers(allMarkers);
+                        
+                        console.log(`✅ [SMC标签] 已添加 ${smcMarkersArray.length} 个SMC标签`);
+                        console.log(`   - 摆动结构: ${window.smcMarkers.structure?.length || 0}`);
+                        console.log(`   - 内部结构: ${window.smcMarkers.internal?.length || 0}`);
+                        console.log(`   - 等高等低: ${window.smcMarkers.equal?.length || 0}`);
+                        console.log(`   - 策略买卖点: ${existingMarkers.length}`);
+                        console.log(`   - 总计: ${allMarkers.length}`);
+                    }
+                } catch (e) {
+                    console.error('❌ [SMC标签] 添加标签失败:', e);
+                }
+            } else {
+                console.warn('⚠️ [SMC标签] window.candleSeries 或 window.smcMarkers 不可用');
+            }
+            
+            console.log(`✅ [Smart Money Concepts] 渲染完成: ${seriesList.length} 个线条元素`);
+            return seriesList;
+        }
+        
         // 全局副图变量
         let mirrorSubchart = null;
         let mirrorCandleSeries = null;
@@ -947,6 +1348,11 @@ class IndicatorPoolMixin:
                     const elements = renderDivergence(config.data, chart);
                     indicatorSeries.set(id, elements);
                     console.log('✅ [启用指标] 背离检测渲染完成');
+                } else if (config.renderFunction === 'renderSmartMoneyConcepts') {
+                    console.log('🎯 [启用指标] 聪明钱概念');
+                    const elements = renderSmartMoneyConcepts(config.data, chart);
+                    indicatorSeries.set(id, elements);
+                    console.log('✅ [启用指标] 聪明钱概念渲染完成');
                 }
             } else if (config.renderType === 'subchart' && config.renderFunction) {
                 // subchart类型指标需要自定义渲染
@@ -1022,6 +1428,26 @@ class IndicatorPoolMixin:
                         console.log('✅ [禁用指标] 背离检测 - 恢复买卖信号', buySellMarkers.length, '个');
                     } catch (e) {
                         console.error('❌ [禁用指标] 清除markers失败:', e);
+                    }
+                }
+                
+                // 如果是聪明钱概念，清除SMC标签（保留买卖标签）
+                if (id === 'smart_money_concepts' && window.candleSeries) {
+                    try {
+                        // 清除SMC标签数据
+                        if (window.smcMarkers) {
+                            window.smcMarkers = {
+                                structure: [],
+                                internal: [],
+                                equal: []
+                            };
+                        }
+                        // 恢复初始买卖标记（策略的买卖点）
+                        const buySellMarkers = window.initialMarkers || [];
+                        window.candleSeries.setMarkers(buySellMarkers);
+                        console.log('✅ [禁用指标] 聪明钱概念 - 已清除SMC标签，恢复买卖信号', buySellMarkers.length, '个');
+                    } catch (e) {
+                        console.error('❌ [禁用指标] 清除SMC标签失败:', e);
                     }
                 }
                 
@@ -1128,7 +1554,8 @@ class IndicatorPoolMixin:
             'volume_profile_pivot',  # Volume Profile
             'pivot_order_blocks',    # Pivot Order Blocks
             'divergence_detector',   # 背离检测
-            'mirror_candle'          # 镜像翻转
+            'mirror_candle',         # 镜像翻转
+            'smart_money_concepts',  # 聪明钱概念
         ]
         
         # 按分类分组（只包含可见指标）

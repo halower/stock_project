@@ -6,6 +6,15 @@
 策略相关内容请参考 app.trading.strategies 模块。
 """
 
+# 导入所有TradingView指标模块，以触发@register_indicator装饰器
+from app.trading.indicators.tradingview import (
+    divergence_detector,
+    mirror_candle,
+    pivot_order_blocks,
+    volume_profile_pivot_anchored,
+    smart_money_concepts,  # 聪明钱概念
+)
+
 # 指标相关内容会从indicator_registry导出
 # 此文件主要用于模块组织
 

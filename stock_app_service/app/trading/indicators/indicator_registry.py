@@ -284,5 +284,19 @@ IndicatorRegistry.register(IndicatorDefinition(
     sub_indicators=['ema12', 'ema144', 'ema169']  # 完整的Vegas隧道系统
 ))
 
-logger.info(f"指标注册表初始化完成，共注册 {len(IndicatorRegistry.get_all())} 个指标")
+logger.info(f"指标注册表初始化完成（基础指标），共注册 {len(IndicatorRegistry.get_all())} 个指标")
+
+# 导入所有TradingView指标模块，以触发@register_indicator装饰器的执行
+# 这些指标使用装饰器注册，必须被导入才能完成注册
+try:
+    from app.trading.indicators.tradingview import (
+        divergence_detector,
+        mirror_candle,
+        pivot_order_blocks,
+        volume_profile_pivot_anchored,
+        smart_money_concepts,  # 聪明钱概念
+    )
+    logger.info(f"TradingView指标模块加载完成，总指标数: {len(IndicatorRegistry.get_all())}")
+except ImportError as e:
+    logger.warning(f"TradingView指标模块导入失败: {e}")
 
