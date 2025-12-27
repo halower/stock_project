@@ -223,8 +223,8 @@ class IndicatorPoolMixin:
             
             # 为特殊指标添加渲染函数代码
             render_function = None
-            if ind_id == 'pivot_order_blocks':
-                render_function = 'renderPivotOrderBlocks' if data else None
+            if ind_id == 'support_resistance_channels':
+                render_function = 'renderSupportResistanceChannels' if data else None
             elif ind_id == 'volume_profile_pivot':
                 render_function = 'renderVolumeProfilePivot' if data else None
             elif ind_id == 'divergence_detector':
@@ -1150,6 +1150,155 @@ class IndicatorPoolMixin:
             return seriesList;
         }
         
+        // Support Resistance Channels 渲染函数
+        function renderSupportResistanceChannels(srData, chart) {
+            console.log('📊 [Support Resistance Channels] 开始渲染');
+            
+            // 检查是否需要前端计算
+            if (!srData || !srData.channels || srData.channels.length === 0) {
+                console.log('⚙️ [SR Channels] 数据为空，开始前端计算...');
+                const config = INDICATOR_POOL['support_resistance_channels'] || {};
+                const params = config.params || {};
+                srData = calculateSupportResistanceChannels(chartData, params);
+                
+                if (!srData || !srData.channels || srData.channels.length === 0) {
+                    console.error('❌ [SR Channels] 计算失败或无通道');
+                    return [];
+                }
+                console.log('✅ [SR Channels] 前端计算完成');
+            }
+            
+            const seriesList = [];
+            const currentBarTime = chartData[chartData.length - 1].time;
+            
+            // 获取颜色配置（优雅配色 - A股习惯）
+            const config = INDICATOR_POOL['support_resistance_channels'] || {};
+            const params = config.params || {};
+            const resistanceColor = params.resistance_color || 'rgba(38, 166, 154, 0.7)';   // 阻力：优雅青绿
+            const supportColor = params.support_color || 'rgba(239, 83, 80, 0.7)';          // 支撑：柔和红色
+            const inChannelColor = params.in_channel_color || 'rgba(158, 158, 158, 0.6)';   // 在通道内：中性灰
+            
+            // 渲染通道
+            srData.channels.forEach((channel, idx) => {
+                // 根据类型选择颜色
+                let color = inChannelColor;
+                if (channel.type === 'support') {
+                    color = supportColor;
+                } else if (channel.type === 'resistance') {
+                    color = resistanceColor;
+                }
+                
+                console.log(`   通道${idx + 1}: ${channel.type}, 强度=${channel.strength}, [${channel.low.toFixed(2)}, ${channel.high.toFixed(2)}]`);
+                
+                // 边框颜色（更明显）
+                const borderColor = color;
+                // 填充颜色（更柔和）
+                const fillColor = color.replace(/[\d\.]+\)$/, '0.12)');
+                
+                // 上边框
+                const topLine = chart.addLineSeries({
+                    color: borderColor,
+                    lineWidth: 1,
+                    lastValueVisible: false,
+                    priceLineVisible: false
+                });
+                
+                topLine.setData([
+                    { time: chartData[0].time, value: channel.high },
+                    { time: currentBarTime, value: channel.high }
+                ]);
+                seriesList.push(topLine);
+                
+                // 下边框
+                const bottomLine = chart.addLineSeries({
+                    color: borderColor,
+                    lineWidth: 1,
+                    lastValueVisible: false,
+                    priceLineVisible: false
+                });
+                
+                bottomLine.setData([
+                    { time: chartData[0].time, value: channel.low },
+                    { time: currentBarTime, value: channel.low }
+                ]);
+                seriesList.push(bottomLine);
+                
+                // 填充通道（用更密集但更透明的线，创造渐变效果）
+                const fillLines = 12;  // 增加填充线数量
+                const step = (channel.high - channel.low) / (fillLines + 1);
+                for (let i = 1; i <= fillLines; i++) {
+                    const price = channel.low + step * i;
+                    const fillLine = chart.addLineSeries({
+                        color: fillColor,
+                        lineWidth: 1,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    
+                    fillLine.setData([
+                        { time: chartData[0].time, value: price },
+                        { time: currentBarTime, value: price }
+                    ]);
+                    seriesList.push(fillLine);
+                }
+                
+                // 在价格轴上添加标签
+                const midPrice = (channel.high + channel.low) / 2;
+                const labelLine = chart.addLineSeries({
+                    color: 'rgba(0,0,0,0)',
+                    lineWidth: 0,
+                    lastValueVisible: false,
+                    priceLineVisible: false
+                });
+                
+                labelLine.setData([{ time: currentBarTime, value: midPrice }]);
+                
+                try {
+                    const label = channel.type === 'support' ? 'S' : channel.type === 'resistance' ? 'R' : '—';
+                    labelLine.createPriceLine({
+                        price: midPrice,
+                        color: color,
+                        lineWidth: 0,
+                        lineStyle: 2,
+                        axisLabelVisible: true,
+                        title: label
+                    });
+                } catch (e) {
+                    console.warn('   - 无法添加通道标签');
+                }
+                
+                seriesList.push(labelLine);
+            });
+            
+            // 渲染Pivot点（如果启用）
+            if (params.show_pivots && srData.pivots && srData.pivots.length > 0) {
+                const pivotMarkers = [];
+                srData.pivots.forEach(pivot => {
+                    pivotMarkers.push({
+                        time: pivot.time,
+                        position: pivot.type === 'high' ? 'aboveBar' : 'belowBar',
+                        color: pivot.type === 'high' ? resistanceColor : supportColor,
+                        shape: pivot.type === 'high' ? 'arrowDown' : 'arrowUp',
+                        text: pivot.type === 'high' ? 'H' : 'L',
+                        size: 0.5
+                    });
+                });
+                
+                if (window.candleSeries && pivotMarkers.length > 0) {
+                    try {
+                        const existingMarkers = window.initialMarkers || [];
+                        window.candleSeries.setMarkers([...existingMarkers, ...pivotMarkers]);
+                        console.log(`   - 已添加 ${pivotMarkers.length} 个Pivot点标记`);
+                    } catch (e) {
+                        console.error('   - 添加Pivot标记失败:', e);
+                    }
+                }
+            }
+            
+            console.log(`✅ [Support Resistance Channels] 渲染完成: ${srData.channels.length} 个通道, ${seriesList.length} 个图形元素`);
+            return seriesList;
+        }
+        
         // 全局副图变量
         let mirrorSubchart = null;
         let mirrorCandleSeries = null;
@@ -1461,6 +1610,11 @@ class IndicatorPoolMixin:
                     const elements = renderSmartMoneyConcepts(config.data, chart);
                     indicatorSeries.set(id, elements);
                     console.log('✅ [启用指标] 聪明钱概念渲染完成');
+                } else if (config.renderFunction === 'renderSupportResistanceChannels') {
+                    console.log('🎯 [启用指标] 支撑阻力通道');
+                    const elements = renderSupportResistanceChannels(config.data, chart);
+                    indicatorSeries.set(id, elements);
+                    console.log('✅ [启用指标] 支撑阻力通道渲染完成');
                 }
             } else if (config.renderType === 'subchart' && config.renderFunction) {
                 // subchart类型指标需要自定义渲染
@@ -1657,13 +1811,13 @@ class IndicatorPoolMixin:
         
         # 定义哪些指标应该显示给用户（隐藏内部使用的指标）
         visible_indicators = [
-            'ma_combo',              # 移动均线组合
-            'vegas_tunnel',          # Vegas隧道
-            'volume_profile_pivot',  # Volume Profile
-            'pivot_order_blocks',    # Pivot Order Blocks
-            'divergence_detector',   # 背离检测
-            'mirror_candle',         # 镜像翻转
-            'smart_money_concepts',  # 聪明钱概念
+            'ma_combo',                       # 移动均线组合
+            'vegas_tunnel',                   # Vegas隧道
+            'volume_profile_pivot',           # Volume Profile
+            'support_resistance_channels',    # 支撑阻力通道（新）
+            'divergence_detector',            # 背离检测
+            'mirror_candle',                  # 镜像翻转
+            'smart_money_concepts',           # 聪明钱概念
         ]
         
         # 按分类分组（只包含可见指标）

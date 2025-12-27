@@ -1967,3 +1967,191 @@ function calculateSmartMoneyConcepts(candleData, params) {
     };
 }
 
+/**
+ * Support Resistance Channels - 支撑阻力通道计算
+ * 基于Pivot点智能识别最强的支撑/阻力通道
+ */
+function calculateSupportResistanceChannels(candleData, params = {}) {
+    console.log('📊 [Support Resistance Channels] 开始计算');
+    
+    const {
+        pivot_period = 10,
+        pivot_source = 'High/Low',
+        channel_width_percent = 5,
+        min_strength = 1,
+        max_channels = 6,
+        loopback_period = 290
+    } = params;
+    
+    const n = candleData.length;
+    if (n < pivot_period * 2 + 10) {
+        console.warn('❌ K线数量不足，需要至少', pivot_period * 2 + 10, '根');
+        return { channels: [], pivots: [] };
+    }
+    
+    // 1. 检测Pivot High/Low点
+    const pivots = [];  // { type: 'high'|'low', price: number, barIndex: number, time: number }
+    
+    for (let i = pivot_period; i < n - pivot_period; i++) {
+        const src1 = pivot_source === 'High/Low' ? candleData[i].high : Math.max(candleData[i].close, candleData[i].open);
+        const src2 = pivot_source === 'High/Low' ? candleData[i].low : Math.min(candleData[i].close, candleData[i].open);
+        
+        // 检测Pivot High
+        let isPivotHigh = true;
+        for (let j = 1; j <= pivot_period; j++) {
+            const leftSrc = pivot_source === 'High/Low' ? candleData[i - j].high : Math.max(candleData[i - j].close, candleData[i - j].open);
+            const rightSrc = pivot_source === 'High/Low' ? candleData[i + j].high : Math.max(candleData[i + j].close, candleData[i + j].open);
+            if (src1 <= leftSrc || src1 <= rightSrc) {
+                isPivotHigh = false;
+                break;
+            }
+        }
+        
+        if (isPivotHigh) {
+            pivots.push({
+                type: 'high',
+                price: src1,
+                barIndex: i,
+                time: candleData[i].time
+            });
+        }
+        
+        // 检测Pivot Low
+        let isPivotLow = true;
+        for (let j = 1; j <= pivot_period; j++) {
+            const leftSrc = pivot_source === 'High/Low' ? candleData[i - j].low : Math.min(candleData[i - j].close, candleData[i - j].open);
+            const rightSrc = pivot_source === 'High/Low' ? candleData[i + j].low : Math.min(candleData[i + j].close, candleData[i + j].open);
+            if (src2 >= leftSrc || src2 >= rightSrc) {
+                isPivotLow = false;
+                break;
+            }
+        }
+        
+        if (isPivotLow) {
+            pivots.push({
+                type: 'low',
+                price: src2,
+                barIndex: i,
+                time: candleData[i].time
+            });
+        }
+    }
+    
+    // 只保留回溯期内的Pivot点
+    const currentBar = n - 1;
+    const validPivots = pivots.filter(p => currentBar - p.barIndex <= loopback_period);
+    
+    if (validPivots.length === 0) {
+        console.log('⚠️ 未检测到有效Pivot点');
+        return { channels: [], pivots: [] };
+    }
+    
+    // 2. 计算动态通道宽度
+    const priceRange300 = [];
+    for (let i = Math.max(0, n - 300); i < n; i++) {
+        priceRange300.push(candleData[i].high);
+        priceRange300.push(candleData[i].low);
+    }
+    const highest300 = Math.max(...priceRange300);
+    const lowest300 = Math.min(...priceRange300);
+    const maxChannelWidth = (highest300 - lowest300) * channel_width_percent / 100;
+    
+    // 3. 为每个Pivot点构建通道
+    const channelCandidates = [];
+    
+    for (let i = 0; i < validPivots.length; i++) {
+        let hi = validPivots[i].price;
+        let lo = validPivots[i].price;
+        let numPivots = 0;
+        
+        // 尝试将其他Pivot点加入通道
+        for (let j = 0; j < validPivots.length; j++) {
+            const pivotPrice = validPivots[j].price;
+            const width = pivotPrice <= hi ? hi - pivotPrice : pivotPrice - lo;
+            
+            if (width <= maxChannelWidth) {
+                if (pivotPrice <= hi) {
+                    lo = Math.min(lo, pivotPrice);
+                } else {
+                    hi = Math.max(hi, pivotPrice);
+                }
+                numPivots += 20;  // 每个Pivot点贡献20分
+            }
+        }
+        
+        // 4. 计算历史触及次数
+        let touchCount = 0;
+        for (let k = 0; k < Math.min(loopback_period, n); k++) {
+            const bar = candleData[n - 1 - k];
+            if ((bar.high <= hi && bar.high >= lo) || (bar.low <= hi && bar.low >= lo)) {
+                touchCount++;
+            }
+        }
+        
+        const totalStrength = numPivots + touchCount;
+        
+        channelCandidates.push({
+            high: hi,
+            low: lo,
+            strength: totalStrength,
+            pivotIndex: i
+        });
+    }
+    
+    // 5. 去重和排序
+    const uniqueChannels = [];
+    const used = new Set();
+    
+    // 按强度排序
+    channelCandidates.sort((a, b) => b.strength - a.strength);
+    
+    for (const candidate of channelCandidates) {
+        if (candidate.strength < min_strength * 20) continue;
+        if (used.has(candidate.pivotIndex)) continue;
+        
+        // 标记所有包含在此通道内的Pivot点为已使用
+        for (let i = 0; i < validPivots.length; i++) {
+            const price = validPivots[i].price;
+            if (price <= candidate.high && price >= candidate.low) {
+                used.add(i);
+            }
+        }
+        
+        uniqueChannels.push(candidate);
+        
+        if (uniqueChannels.length >= max_channels) {
+            break;
+        }
+    }
+    
+    // 6. 判断通道类型（支撑/阻力/在通道内）
+    const currentClose = candleData[n - 1].close;
+    const channels = uniqueChannels.map(ch => {
+        let type = 'in_channel';
+        if (ch.high < currentClose && ch.low < currentClose) {
+            type = 'support';  // 支撑
+        } else if (ch.high > currentClose && ch.low > currentClose) {
+            type = 'resistance';  // 阻力
+        }
+        
+        return {
+            high: ch.high,
+            low: ch.low,
+            strength: ch.strength,
+            type: type
+        };
+    });
+    
+    console.log('✅ [Support Resistance Channels] 计算完成');
+    console.log(`   - 检测到Pivot点: ${pivots.length} (有效: ${validPivots.length})`);
+    console.log(`   - 通道候选数: ${channelCandidates.length}`);
+    console.log(`   - 最终显示通道: ${channels.length}`);
+    console.log(`   - 最大通道宽度: ${maxChannelWidth.toFixed(2)}`);
+    
+    return {
+        channels: channels,
+        pivots: validPivots,
+        renderType: 'support_resistance_channels'
+    };
+}
+

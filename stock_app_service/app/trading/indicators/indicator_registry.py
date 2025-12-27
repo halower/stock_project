@@ -292,7 +292,7 @@ try:
     from app.trading.indicators.tradingview import (
         divergence_detector,
         mirror_candle,
-        pivot_order_blocks,
+        support_resistance_channels,  # 支撑阻力通道（新）
         volume_profile_pivot_anchored,
         smart_money_concepts,  # 聪明钱概念
     )
