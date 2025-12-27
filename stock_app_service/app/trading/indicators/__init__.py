@@ -13,7 +13,8 @@ from app.trading.indicators.tradingview import (
     support_resistance_channels,  # 支撑阻力通道
     volume_profile_pivot_anchored,
     smart_money_concepts,  # 聪明钱概念
-    zigzag,  # ZigZag++（新）
+    zigzag,  # 自动转折线
+    harmonic_patterns,  # 谐波形态识别（新）
 )
 
 # 指标相关内容会从indicator_registry导出

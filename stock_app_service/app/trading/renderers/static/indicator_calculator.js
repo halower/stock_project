@@ -2330,3 +2330,421 @@ function calculateZigZag(candleData, params = {}) {
     };
 }
 
+/**
+ * 谐波形态识别 - Multi Level ZigZag Harmonic Patterns
+ * 自动识别经典谐波形态（Gartley、Bat、Butterfly、Crab等）
+ */
+function calculateHarmonicPatterns(candleData, params = {}) {
+    console.log('📊 [谐波形态识别] 开始计算');
+    
+    const {
+        zigzag_length = 10,
+        error_percent = 20,  // 默认改为20%，更容易匹配
+        wait_confirmation = false,
+        max_risk_reward = 30,
+        show_gartley = true,
+        show_bat = true,
+        show_butterfly = true,
+        show_crab = true,
+        show_deep_crab = true,
+        show_shark = true,
+        show_cypher = true,
+        show_abcd = true,
+        show_ab_eq_cd = true,
+        show_abcd_ext = true,
+        show_three_drives = true,
+        show_five_zero = true,
+        show_double_pattern = true
+    } = params;
+    
+    console.log(`   - ZigZag周期: ${zigzag_length}`);
+    console.log(`   - 容错率: ${error_percent}%`);
+    console.log(`   - 等待确认: ${wait_confirmation}`);
+    console.log(`   - 启用的形态: Gartley=${show_gartley}, Bat=${show_bat}, Butterfly=${show_butterfly}, Crab=${show_crab}`);
+    
+    const n = candleData.length;
+    if (n < zigzag_length * 6) {
+        console.warn('❌ K线数量不足，需要至少', zigzag_length * 6, '根');
+        return { patterns: [], zigzagLines: [] };
+    }
+    
+    // 1. 完整实现Pine Script的ZigZag核心算法
+    const zigzagPivots = [];      // 价格数组
+    const zigzagPivotBars = [];   // K线索引数组
+    const zigzagPivotDirs = [];   // 方向数组
+    
+    let lastDir = 0;
+    
+    // pivots函数：检测当前K线是否是pivot点
+    const detectPivot = (idx, length) => {
+        if (idx < length || idx >= n) return { dir: 0, phigh: null, plow: null };
+        
+        // ta.highestbars(high, length) == 0: 当前K线是过去length根K线的最高点
+        let isHighest = true;
+        for (let j = 1; j <= length; j++) {
+            if (idx - j < 0) continue;
+            if (candleData[idx - j].high >= candleData[idx].high) {
+                isHighest = false;
+                break;
+            }
+        }
+        
+        // ta.lowestbars(low, length) == 0: 当前K线是过去length根K线的最低点
+        let isLowest = true;
+        for (let j = 1; j <= length; j++) {
+            if (idx - j < 0) continue;
+            if (candleData[idx - j].low <= candleData[idx].low) {
+                isLowest = false;
+                break;
+            }
+        }
+        
+        const phigh = isHighest ? candleData[idx].high : null;
+        const plow = isLowest ? candleData[idx].low : null;
+        
+        // 方向判断逻辑（完全按照Pine Script）
+        let dir = 0;
+        if (plow && !phigh) {
+            dir = -1;
+        } else if (phigh && !plow) {
+            dir = 1;
+        } else {
+            dir = lastDir;
+        }
+        
+        if (dir !== 0) lastDir = dir;
+        
+        return { dir, phigh, plow, barIndex: idx };
+    };
+    
+    // zigzagcore函数：核心ZigZag逻辑
+    const zigzagCore = (dir, phigh, plow, phighbar, plowbar) => {
+        if (!phigh && !plow) return false;
+        
+        const value = dir === 1 ? phigh : plow;
+        const bar = phigh ? phighbar : plowbar;
+        let newDir = dir;
+        
+        // 检查方向是否改变
+        const prevDir = zigzagPivotDirs.length > 0 ? (zigzagPivotDirs[0] > 0 ? 1 : -1) : 0;
+        const dirChanged = dir !== prevDir && prevDir !== 0;
+        
+        // 方向未变且已有pivot，检查是否需要替换
+        if (!dirChanged && zigzagPivots.length >= 1) {
+            const pivot = zigzagPivots.shift();
+            const pivotbar = zigzagPivotBars.shift();
+            const pivotdir = zigzagPivotDirs.shift();
+            
+            // useNewValues = value * pivotdir < pivot * pivotdir
+            // 保留更极端的值
+            const useNewValues = value * pivotdir < pivot * pivotdir;
+            const finalValue = useNewValues ? pivot : value;
+            const finalBar = useNewValues ? pivotbar : bar;
+            
+            // 重新计算newDir
+            if (zigzagPivots.length >= 1) {
+                const lastPoint = zigzagPivots[0];
+                // dir * value > dir * LastPoint 时标记为 dir * 2
+                newDir = dir * finalValue > dir * lastPoint ? dir * 2 : dir;
+            }
+            
+            zigzagPivots.unshift(finalValue);
+            zigzagPivotBars.unshift(finalBar);
+            zigzagPivotDirs.unshift(newDir);
+        } else {
+            // 方向改变或第一个pivot
+            if (zigzagPivots.length >= 1) {
+                const lastPoint = zigzagPivots[0];
+                newDir = dir * value > dir * lastPoint ? dir * 2 : dir;
+            }
+            
+            zigzagPivots.unshift(value);
+            zigzagPivotBars.unshift(bar);
+            zigzagPivotDirs.unshift(newDir);
+        }
+        
+        // 限制数组大小
+        if (zigzagPivots.length > 200) {
+            zigzagPivots.pop();
+            zigzagPivotBars.pop();
+            zigzagPivotDirs.pop();
+        }
+        
+        return true;
+    };
+    
+    // 主循环：扫描所有K线
+    for (let i = zigzag_length; i < n; i++) {
+        const { dir, phigh, plow, barIndex } = detectPivot(i, zigzag_length);
+        if (dir !== 0) {
+            zigzagCore(dir, phigh, plow, barIndex, barIndex);
+        }
+    }
+    
+    // 转换为标准格式
+    const pivots = [];
+    for (let i = zigzagPivots.length - 1; i >= 0; i--) {
+        pivots.push({
+            price: zigzagPivots[i],
+            barIndex: zigzagPivotBars[i],
+            time: candleData[zigzagPivotBars[i]].time,
+            type: zigzagPivotDirs[i] > 0 ? 'high' : 'low',
+            dir: zigzagPivotDirs[i]
+        });
+    }
+    
+    if (pivots.length < 6) {
+        console.warn(`⚠️ Pivot点不足，需要至少6个，当前:${pivots.length}`);
+        return { patterns: [], zigzagLines: [] };
+    }
+    
+    console.log(`✅ 检测到 ${pivots.length} 个Pivot点`);
+    
+    // 2. 生成ZigZag连接线
+    const zigzagLines = [];
+    for (let i = 0; i < pivots.length - 1; i++) {
+        zigzagLines.push({
+            from: pivots[i],
+            to: pivots[i + 1]
+        });
+    }
+    
+    // 3. 识别谐波形态（遍历所有可能的XABCD组合）
+    const patterns = [];
+    const err_min = (100 - error_percent) / 100;
+    const err_max = (100 + error_percent) / 100;
+    
+    console.log(`\n🔢 开始遍历所有pivot组合，总共 ${pivots.length} 个pivot点...`);
+    console.log(`📊 容错范围: ${err_min.toFixed(2)} ~ ${err_max.toFixed(2)} (${error_percent}%)`);
+    
+    // 遍历所有可能的XABCD组合（从老到新）
+    const startIdx = wait_confirmation ? 1 : 0;
+    const endIdx = pivots.length - startIdx;
+    
+    for (let i = 0; i + 4 < endIdx; i++) {
+        const x = pivots[i];
+        const a = pivots[i + 1];
+        const b = pivots[i + 2];
+        const c = pivots[i + 3];
+        const d = pivots[i + 4];
+        const y = i > 0 ? pivots[i - 1] : null;
+        
+        // 计算斐波那契比率
+        const xabRatio = Math.abs(b.price - a.price) / Math.abs(x.price - a.price);
+        const abcRatio = Math.abs(c.price - b.price) / Math.abs(a.price - b.price);
+        const bcdRatio = Math.abs(d.price - c.price) / Math.abs(b.price - c.price);
+        const xadRatio = Math.abs(d.price - a.price) / Math.abs(x.price - a.price);
+        
+        const dir = c.price > d.price ? 1 : -1;  // 1: 看涨, -1: 看跌
+        const patternTypes = [];
+        
+        console.log(`🔍 [${i}] XAB=${xabRatio.toFixed(3)}, ABC=${abcRatio.toFixed(3)}, BCD=${bcdRatio.toFixed(3)}, XAD=${xadRatio.toFixed(3)}`);
+        
+        // 确保B点在合理范围内（放宽条件）
+        const highPoint = Math.max(x.price, a.price, b.price, c.price, d.price);
+        const lowPoint = Math.min(x.price, a.price, b.price, c.price, d.price);
+        const priceRange = highPoint - lowPoint;
+        // B点只要不完全等于极值点就行
+        const bInRange = priceRange === 0 ? true : 
+                         (Math.abs(b.price - highPoint) > priceRange * 0.001 || 
+                          Math.abs(b.price - lowPoint) > priceRange * 0.001);
+        
+        if (!bInRange) {
+            continue; // 跳过不符合条件的组合
+        }
+        
+        // Gartley（加特利）- 原版精确比率
+        if (show_gartley &&
+            xabRatio >= 0.618 * err_min && xabRatio <= 0.618 * err_max &&
+            abcRatio >= 0.382 * err_min && abcRatio <= 0.886 * err_max &&
+            (bcdRatio >= 1.272 * err_min && bcdRatio <= 1.618 * err_max ||
+             xadRatio >= 0.786 * err_min && xadRatio <= 0.786 * err_max)) {
+            patternTypes.push('Gartley');
+        }
+        
+        // Bat（蝙蝠）- 原版精确比率
+        if (show_bat &&
+            xabRatio >= 0.382 * err_min && xabRatio <= 0.50 * err_max &&
+            abcRatio >= 0.382 * err_min && abcRatio <= 0.886 * err_max &&
+            (bcdRatio >= 1.618 * err_min && bcdRatio <= 2.618 * err_max ||
+             xadRatio >= 0.886 * err_min && xadRatio <= 0.886 * err_max)) {
+            patternTypes.push('Bat');
+        }
+        
+        // Butterfly（蝴蝶）- 原版精确比率
+        if (show_butterfly &&
+            xabRatio >= 0.786 * err_min && xabRatio <= 0.786 * err_max &&
+            abcRatio >= 0.382 * err_min && abcRatio <= 0.886 * err_max &&
+            (bcdRatio >= 1.618 * err_min && bcdRatio <= 2.618 * err_max ||
+             xadRatio >= 1.272 * err_min && xadRatio <= 1.618 * err_max)) {
+            patternTypes.push('Butterfly');
+        }
+        
+        // Crab（螃蟹）- 原版精确比率
+        if (show_crab &&
+            xabRatio >= 0.382 * err_min && xabRatio <= 0.618 * err_max &&
+            abcRatio >= 0.382 * err_min && abcRatio <= 0.886 * err_max &&
+            (bcdRatio >= 2.24 * err_min && bcdRatio <= 3.618 * err_max ||
+             xadRatio >= 1.618 * err_min && xadRatio <= 1.618 * err_max)) {
+            patternTypes.push('Crab');
+        }
+        
+        // Deep Crab（深螃蟹）- 原版精确比率
+        if (show_deep_crab &&
+            xabRatio >= 0.886 * err_min && xabRatio <= 0.886 * err_max &&
+            abcRatio >= 0.382 * err_min && abcRatio <= 0.886 * err_max &&
+            (bcdRatio >= 2.00 * err_min && bcdRatio <= 3.618 * err_max ||
+             xadRatio >= 1.618 * err_min && xadRatio <= 1.618 * err_max)) {
+            patternTypes.push('Deep Crab');
+        }
+        
+        // Shark（鲨鱼）- 原版精确比率
+        if (show_shark &&
+            abcRatio >= 1.13 * err_min && abcRatio <= 1.618 * err_max &&
+            bcdRatio >= 1.618 * err_min && bcdRatio <= 2.24 * err_max &&
+            xadRatio >= 0.886 * err_min && xadRatio <= 1.13 * err_max) {
+            patternTypes.push('Shark');
+        }
+        
+        // Cypher（密码）- 原版精确比率
+        if (show_cypher &&
+            xabRatio >= 0.382 * err_min && xabRatio <= 0.618 * err_max &&
+            abcRatio >= 1.13 * err_min && abcRatio <= 1.414 * err_max &&
+            (bcdRatio >= 1.272 * err_min && bcdRatio <= 2.00 * err_max ||
+             xadRatio >= 0.786 * err_min && xadRatio <= 0.786 * err_max)) {
+            patternTypes.push('Cypher');
+        }
+        
+        // 3 Drives 和 5-0 形态（需要Y点）
+        if (y) {
+            const yxaRatio = Math.abs(a.price - x.price) / Math.abs(y.price - x.price);
+            
+            // 3 Drives
+            if (show_three_drives &&
+                yxaRatio >= 0.618 * err_min && yxaRatio <= 0.618 * err_max &&
+                xabRatio >= 1.27 * err_min && xabRatio <= 1.618 * err_max &&
+                abcRatio >= 0.618 * err_min && abcRatio <= 0.618 * err_max &&
+                bcdRatio >= 1.27 * err_min && bcdRatio <= 1.618 * err_max) {
+                patternTypes.push('3 Drives');
+            }
+            
+            // 5-0
+            if (show_five_zero &&
+                xabRatio >= 1.13 * err_min && xabRatio <= 1.618 * err_max &&
+                abcRatio >= 1.618 * err_min && abcRatio <= 2.24 * err_max &&
+                bcdRatio >= 0.5 * err_min && bcdRatio <= 0.5 * err_max) {
+                patternTypes.push('5-0');
+            }
+        }
+        
+        // ABCD形态（需要方向判断）
+        const abcdDirection = a.price < b.price && a.price < c.price && c.price < b.price && 
+                              c.price < d.price && a.price < d.price && b.price < d.price ? 1 :
+                              a.price > b.price && a.price > c.price && c.price > b.price && 
+                              c.price > d.price && a.price > d.price && b.price > d.price ? -1 : 0;
+        
+        if (abcdDirection !== 0) {
+            // ABCD Classic - 原版精确比率
+            if (show_abcd &&
+                abcRatio >= 0.618 * err_min && abcRatio <= 0.786 * err_max &&
+                bcdRatio >= 1.272 * err_min && bcdRatio <= 1.618 * err_max) {
+                patternTypes.push('ABCD');
+            }
+            
+            // AB=CD - 原版精确比率
+            if (show_ab_eq_cd) {
+                const abTime = Math.abs(a.barIndex - b.barIndex);
+                const cdTime = Math.abs(c.barIndex - d.barIndex);
+                const abPrice = Math.abs(a.price - b.price);
+                const cdPrice = Math.abs(c.price - d.price);
+                const timeRatio = cdTime / abTime;
+                const priceRatio = cdPrice / abPrice;
+                
+                if (timeRatio >= err_min && timeRatio <= err_max &&
+                    priceRatio >= err_min && priceRatio <= err_max) {
+                    patternTypes.push('AB=CD');
+                }
+            }
+            
+            // ABCD Extension - 原版精确比率
+            if (show_abcd_ext) {
+                const abPrice = Math.abs(a.price - b.price);
+                const cdPrice = Math.abs(c.price - d.price);
+                const priceRatio = cdPrice / abPrice;
+                
+                if (abcRatio >= 0.618 * err_min && abcRatio <= 0.786 * err_max &&
+                    priceRatio >= 1.272 * err_min && priceRatio <= 1.618 * err_max) {
+                    patternTypes.push('ABCD Ext');
+                }
+            }
+        }
+        
+        // Double Top/Bottom检测 - 完全按照Pine Script逻辑
+        if (show_double_pattern) {
+            const risk = Math.abs(b.price - d.price);
+            const reward = Math.abs(c.price - d.price);
+            const riskPerReward = risk * 100 / (risk + reward);
+            
+            // Pine Script: (dDir == 1 and bDir == 2 and cDir == -1 or dDir == -1 and bDir == -2 and cDir == 1)
+            const dDir = d.dir;
+            const bDir = b.dir;
+            const cDir = c.dir;
+            
+            const isDoubleBottom = dDir === 1 && bDir === 2 && cDir === -1;
+            const isDoubleTop = dDir === -1 && bDir === -2 && cDir === 1;
+            
+            if ((isDoubleBottom || isDoubleTop) && riskPerReward < max_risk_reward) {
+                patternTypes.push(isDoubleBottom ? 'Double Bottom' : 'Double Top');
+            }
+        }
+    
+        // 如果识别到形态，添加到结果中
+        if (patternTypes.length > 0) {
+            console.log(`✅ [${i}] 识别到形态: ${patternTypes.join(', ')}`);
+            patterns.push({
+                type: patternTypes.join(' / '),  // 使用斜杠分隔多个形态
+                direction: dir,
+                points: { x, a, b, c, d },
+                ratios: {
+                    xab: xabRatio.toFixed(3),
+                    abc: abcRatio.toFixed(3),
+                    bcd: bcdRatio.toFixed(3),
+                    xad: xadRatio.toFixed(3)
+                }
+            });
+        }
+    } // 结束for循环
+    
+    console.log('\n✅ [谐波形态识别] 计算完成');
+    console.log(`   - K线数量: ${n}`);
+    console.log(`   - ZigZag周期: ${zigzag_length}`);
+    console.log(`   - Pivot点: ${pivots.length}`);
+    console.log(`   - ZigZag线段: ${zigzagLines.length}`);
+    console.log(`   - 识别到形态: ${patterns.length}`);
+    
+    if (pivots.length > 0) {
+        const lastFew = Math.min(8, pivots.length);
+        console.log(`   - 最近${lastFew}个Pivot:`);
+        pivots.slice(-lastFew).forEach((p, idx) => {
+            console.log(`     [${idx}] ${p.type}(${p.price.toFixed(2)}) dir=${p.dir} bar=${p.barIndex}`);
+        });
+    }
+    
+    if (patterns.length > 0) {
+        patterns.forEach(p => {
+            console.log(`   ✨ 形态: ${p.type}, 方向=${p.direction > 0 ? '看涨' : '看跌'}`);
+            console.log(`      比率: XAB=${p.ratios.xab}, ABC=${p.ratios.abc}, BCD=${p.ratios.bcd}, XAD=${p.ratios.xad}`);
+            console.log(`      X(${p.points.x.price.toFixed(2)}) -> A(${p.points.a.price.toFixed(2)}) -> B(${p.points.b.price.toFixed(2)}) -> C(${p.points.c.price.toFixed(2)}) -> D(${p.points.d.price.toFixed(2)})`);
+        });
+    } else {
+        console.log('   ⚠️ 未识别到任何形态');
+    }
+    
+    return {
+        patterns: patterns,
+        zigzagLines: zigzagLines,
+        pivots: pivots,
+        renderType: 'harmonic_patterns'
+    };
+}
+

@@ -85,7 +85,8 @@ class IndicatorPoolMixin:
             'volume_profile_pivot',  # 成交量分布：✅ 已实现JS版本，前端计算
             'support_resistance_channels',  # 支撑阻力通道：前端计算
             'smart_money_concepts',  # 聪明钱概念：前端计算
-            'zigzag',  # ZigZag++：前端计算
+            'zigzag',  # 自动转折线：前端计算
+            'harmonic_patterns',  # 谐波形态识别：前端计算
         }
         
         # 🗑️ 重量级指标列表已废弃（所有指标都已前端化）
@@ -228,6 +229,8 @@ class IndicatorPoolMixin:
                 render_function = 'renderSupportResistanceChannels' if data else None
             elif ind_id == 'zigzag':
                 render_function = 'renderZigZag' if data else None
+            elif ind_id == 'harmonic_patterns':
+                render_function = 'renderHarmonicPatterns' if data else None
             elif ind_id == 'volume_profile_pivot':
                 render_function = 'renderVolumeProfilePivot' if data else None
             elif ind_id == 'divergence_detector':
@@ -1444,6 +1447,187 @@ class IndicatorPoolMixin:
             return seriesList;
         }
         
+        // 谐波形态识别 渲染函数
+        function renderHarmonicPatterns(hpData, chart) {
+            console.log('📊 [谐波形态识别] 开始渲染');
+            
+            // 检查是否需要前端计算
+            if (!hpData || (!hpData.patterns && !hpData.zigzagLines)) {
+                console.log('⚙️ [谐波形态] 数据为空，开始前端计算...');
+                const config = INDICATOR_POOL['harmonic_patterns'] || {};
+                const params = config.params || {};
+                hpData = calculateHarmonicPatterns(chartData, params);
+                
+                if (!hpData || (!hpData.patterns && !hpData.zigzagLines)) {
+                    console.error('❌ [谐波形态] 计算失败');
+                    return [];
+                }
+                console.log('✅ [谐波形态] 前端计算完成');
+            }
+            
+            const seriesList = [];
+            const config = INDICATOR_POOL['harmonic_patterns'] || {};
+            const params = config.params || {};
+            
+            // 获取颜色配置（每种形态使用不同颜色）🎨
+            const zigzagBaseColor = params.zigzag_color || '#78909C';
+            const patternColors = {
+                'Gartley': params.gartley_color || '#2196F3',
+                'Bat': params.bat_color || '#9C27B0',
+                'Butterfly': params.butterfly_color || '#FF9800',
+                'Crab': params.crab_color || '#F44336',
+                'Deep Crab': params.deep_crab_color || '#C62828',
+                'Shark': params.shark_color || '#00BCD4',
+                'Cypher': params.cypher_color || '#E91E63',
+                '3 Drives': params.three_drives_color || '#4CAF50',
+                '5-0': params.five_zero_color || '#FFC107',
+                'ABCD': params.abcd_color || '#3F51B5',
+                'AB=CD': params.ab_eq_cd_color || '#009688',
+                'ABCD Ext': params.abcd_ext_color || '#FF5722',
+                'Double Top': params.double_pattern_color || '#607D8B',
+                'Double Bottom': params.double_pattern_color || '#607D8B'
+            };
+            const showZigZag = params.show_zigzag !== false;
+            const showLabels = params.show_labels !== false;
+            const showPointLabels = params.show_point_labels !== false;
+            const lineWidth = params.pattern_line_width || 2;
+            
+            // 1. 渲染ZigZag基础线条
+            if (showZigZag && hpData.zigzagLines && hpData.zigzagLines.length > 0) {
+                hpData.zigzagLines.forEach(line => {
+                    const lineSeries = chart.addLineSeries({
+                        color: zigzagBaseColor,
+                        lineWidth: 1,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    
+                    lineSeries.setData([
+                        { time: line.from.time, value: line.from.price },
+                        { time: line.to.time, value: line.to.price }
+                    ]);
+                    
+                    seriesList.push(lineSeries);
+                });
+                
+                console.log(`   - 已绘制 ${hpData.zigzagLines.length} 条ZigZag线段（灰蓝色）`);
+            }
+            
+            // 2. 渲染谐波形态
+            if (hpData.patterns && hpData.patterns.length > 0) {
+                hpData.patterns.forEach(pattern => {
+                    // 根据形态类型选择颜色（支持组合形态，如"Gartley / Bat"）
+                    const patternType = pattern.type.split(' / ')[0].trim();
+                    const color = patternColors[patternType] || '#2196F3';  // 默认蓝色
+                    const points = pattern.points;
+                    
+                    console.log(`   🎨 渲染形态: ${pattern.type}, 颜色: ${color}`);
+                    
+                    // 绘制主要结构线条（X-A-B-C-D）
+                    const mainLines = [
+                        { from: points.x, to: points.a, label: 'XA' },
+                        { from: points.a, to: points.b, label: 'AB' },
+                        { from: points.b, to: points.c, label: 'BC' },
+                        { from: points.c, to: points.d, label: 'CD' }
+                    ];
+                    
+                    mainLines.forEach(line => {
+                        const patternLine = chart.addLineSeries({
+                            color: color,
+                            lineWidth: lineWidth + 1,
+                            lastValueVisible: false,
+                            priceLineVisible: false
+                        });
+                        
+                        patternLine.setData([
+                            { time: line.from.time, value: line.from.price },
+                            { time: line.to.time, value: line.to.price }
+                        ]);
+                        
+                        seriesList.push(patternLine);
+                    });
+                    
+                    // 添加辅助参考线（X-B, B-D, X-D, A-C）- 使用更淡的颜色
+                    const auxiliaryLines = [
+                        { from: points.x, to: points.b },
+                        { from: points.b, to: points.d },
+                        { from: points.x, to: points.d },
+                        { from: points.a, to: points.c }
+                    ];
+                    
+                    auxiliaryLines.forEach(line => {
+                        const auxLine = chart.addLineSeries({
+                            color: color.replace(/[\\d\\.]+\\)$/, '0.25)'),
+                            lineWidth: 1,
+                            lastValueVisible: false,
+                            priceLineVisible: false
+                        });
+                        
+                        auxLine.setData([
+                            { time: line.from.time, value: line.from.price },
+                            { time: line.to.time, value: line.to.price }
+                        ]);
+                        
+                        seriesList.push(auxLine);
+                    });
+                    
+                    // 添加XABCD点标签和形态标签
+                    if (window.candleSeries) {
+                        try {
+                            const existingMarkers = window.initialMarkers || [];
+                            const harmonicMarkers = [];
+                            
+                            // 添加X、A、B、C点标签（如果启用）
+                            if (showPointLabels) {
+                                const pointLabels = [
+                                    { point: points.x, label: 'X' },
+                                    { point: points.a, label: 'A' },
+                                    { point: points.b, label: 'B' },
+                                    { point: points.c, label: 'C' }
+                                ];
+                                
+                                pointLabels.forEach(({ point, label }) => {
+                                    harmonicMarkers.push({
+                                        time: point.time,
+                                        position: point.type === 'high' ? 'aboveBar' : 'belowBar',
+                                        color: color.replace(/[\\d\\.]+\\)$/, '0.6)'),
+                                        shape: 'circle',
+                                        text: label,
+                                        size: 0.7
+                                    });
+                                });
+                            }
+                            
+                            // 添加D点的形态标签（总是显示，如果启用了标签）
+                            if (showLabels) {
+                                harmonicMarkers.push({
+                                    time: points.d.time,
+                                    position: points.d.type === 'high' ? 'aboveBar' : 'belowBar',
+                                    color: color,  // 使用形态对应的颜色
+                                    shape: points.d.type === 'high' ? 'arrowDown' : 'arrowUp',
+                                    text: pattern.type,
+                                    size: 1.2
+                                });
+                            }
+                            
+                            if (harmonicMarkers.length > 0) {
+                                window.candleSeries.setMarkers([...existingMarkers, ...harmonicMarkers]);
+                                const labelInfo = showPointLabels ? '(含XABCD点)' : '(仅形态名)';
+                                console.log(`   - 已添加形态标签: ${pattern.type} ${labelInfo}`);
+                            }
+                        } catch (e) {
+                            console.warn('   - 添加形态标签失败:', e);
+                        }
+                    }
+                });
+                
+                console.log(`   - 识别到 ${hpData.patterns.length} 个谐波形态`);
+            }
+            
+            console.log(`✅ [谐波形态识别] 渲染完成: ${seriesList.length} 个图形元素`);
+            return seriesList;
+        }
+        
         // 全局副图变量
         let mirrorSubchart = null;
         let mirrorCandleSeries = null;
@@ -1761,10 +1945,15 @@ class IndicatorPoolMixin:
                     indicatorSeries.set(id, elements);
                     console.log('✅ [启用指标] 支撑阻力通道渲染完成');
                 } else if (config.renderFunction === 'renderZigZag') {
-                    console.log('🎯 [启用指标] ZigZag++');
+                    console.log('🎯 [启用指标] 自动转折线');
                     const elements = renderZigZag(config.data, chart);
                     indicatorSeries.set(id, elements);
-                    console.log('✅ [启用指标] ZigZag++渲染完成');
+                    console.log('✅ [启用指标] 自动转折线渲染完成');
+                } else if (config.renderFunction === 'renderHarmonicPatterns') {
+                    console.log('🎯 [启用指标] 谐波形态识别');
+                    const elements = renderHarmonicPatterns(config.data, chart);
+                    indicatorSeries.set(id, elements);
+                    console.log('✅ [启用指标] 谐波形态识别渲染完成');
                 }
             } else if (config.renderType === 'subchart' && config.renderFunction) {
                 // subchart类型指标需要自定义渲染
@@ -1979,7 +2168,8 @@ class IndicatorPoolMixin:
         visible_indicators = [
             'ma_combo',                       # 移动均线组合
             'vegas_tunnel',                   # Vegas隧道
-            'zigzag',                         # ZigZag++（新）
+            'zigzag',                         # 自动转折线
+            'harmonic_patterns',              # 谐波形态识别（新）
             'volume_profile_pivot',           # Volume Profile
             'support_resistance_channels',    # 支撑阻力通道
             'divergence_detector',            # 背离检测
