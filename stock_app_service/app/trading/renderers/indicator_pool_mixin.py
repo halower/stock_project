@@ -4,7 +4,7 @@
 """
 import json
 import pandas as pd
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from app.core.logging import logger
 
 
@@ -16,36 +16,171 @@ class IndicatorPoolMixin:
         """
         使用自动渲染器生成指标池JavaScript代码（新方法）
         
-        这个方法会自动计算所有已注册的指标并生成配置
+        ⚡ 前端按需计算版本：
+        - 只传输指标定义（不包含data）
+        - 前端在用户启用指标时实时计算
+        - 类似TradingView的架构
         
         Args:
-            df: 股票数据DataFrame
-            lazy_load: 是否懒加载（默认False，全部计算以确保前端可用）
+            df: 股票数据DataFrame（仅用于获取指标注册信息，不计算数据）
+            lazy_load: 是否懒加载（此参数在前端按需计算模式下无效，保留仅为兼容）
             
         Returns:
-            完整的JavaScript代码（配置 + 逻辑）
+            完整的JavaScript代码（配置 + 逻辑 + 计算引擎）
         """
-        from app.trading.renderers.indicator_auto_renderer import IndicatorAutoRenderer
+        from app.trading.indicators.indicator_registry import IndicatorRegistry
         
         try:
-            # 使用自动渲染器生成指标池配置
-            # 默认 lazy_load=False 确保所有指标前端都能渲染
-            indicator_pool = IndicatorAutoRenderer.generate_indicator_pool_config(df, lazy_load=lazy_load)
+            # ⚡ 混合策略：轻量级指标前端计算，重量级指标服务端预计算
+            indicator_pool = cls._generate_indicator_metadata_only(df)
             
-            # 生成配置JavaScript
+            # 生成配置JavaScript（不包含data字段）
             indicator_config_js = f"const INDICATOR_POOL = {json.dumps(indicator_pool, ensure_ascii=False)};"
             
             # 获取渲染逻辑JavaScript（保持不变）
             indicator_logic_js = cls._generate_indicator_pool_logic_js()
             
-            logger.debug(f"✅ 自动渲染器生成指标池脚本，共 {len(indicator_pool)} 个指标")
+            # 读取前端指标计算引擎JavaScript文件
+            calculator_js = cls._load_indicator_calculator_js()
             
-            return f"\n{indicator_config_js}\n{indicator_logic_js}\n"
+            logger.info(f"✅ 生成指标池脚本（前端按需计算模式），共 {len(indicator_pool)} 个指标")
+            
+            return f"\n{calculator_js}\n{indicator_config_js}\n{indicator_logic_js}\n"
             
         except Exception as e:
-            logger.error(f"自动渲染器生成指标池脚本失败: {e}")
+            logger.error(f"生成指标池脚本失败: {e}")
             # 降级：返回空配置（保证不崩溃）
             return "\nconst INDICATOR_POOL = {};\n"
+    
+    @classmethod
+    def _generate_indicator_metadata_only(cls, df: pd.DataFrame = None) -> Dict[str, Any]:
+        """
+        生成指标池元数据配置（智能混合策略）
+        
+        策略：
+        - 轻量级指标（EMA等）：data=None，前端计算
+        - 重量级指标（背离检测等）：data=预计算，服务端计算
+        
+        Args:
+            df: 股票数据DataFrame（可选，用于服务端预计算重量级指标）
+        
+        Returns:
+            指标池配置字典
+        """
+        from app.trading.indicators.indicator_registry import IndicatorRegistry
+        from app.trading.renderers.indicator_auto_renderer import IndicatorAutoRenderer
+        
+        indicator_pool = {}
+        all_indicators = IndicatorRegistry.get_all()
+        
+        # ✅ 所有指标均已实现JavaScript版本，全部前端计算！
+        # 优势：
+        # 1. 服务器响应速度极快（不计算指标）
+        # 2. 支持任意数量指标（不影响加载速度）
+        # 3. 用户体验与TradingView一致
+        lightweight_indicators = {
+            'ema6', 'ema12', 'ema18', 'ema144', 'ema169',
+            'mirror_candle',  # 镜像K线：前端计算
+            'divergence_detector',  # 多指标背离：✅ 已实现JS版本，前端计算
+            'volume_profile_pivot',  # 成交量分布：✅ 已实现JS版本，前端计算
+            'pivot_order_blocks',  # 支撑阻力：✅ 已实现JS版本，前端计算
+        }
+        
+        # 🗑️ 重量级指标列表已废弃（所有指标都已前端化）
+        # Python版本保留用于：
+        # - 服务端数据分析和回测
+        # - 作为JavaScript实现的验证基准
+        # - 批量计算和离线分析
+        heavyweight_indicators = set()  # 空集合，不再使用后端预计算
+        
+        for indicator_id, indicator_def in all_indicators.items():
+            # 构建基础配置
+            config = {
+                'name': indicator_def.name,
+                'category': indicator_def.category,
+                'renderType': indicator_def.render_type,
+                'enabled': indicator_def.enabled_by_default,
+                'color': indicator_def.color,
+                'params': indicator_def.default_params
+            }
+            
+            # 智能选择计算方式
+            if indicator_id in lightweight_indicators:
+                # 轻量级：前端计算
+                config['data'] = None
+                logger.debug(f"📱 {indicator_def.name}: 前端计算")
+            elif indicator_id in heavyweight_indicators and df is not None:
+                # 重量级：服务端预计算
+                try:
+                    logger.debug(f"🖥️  开始计算 {indicator_def.name}...")
+                    calculated_data = IndicatorRegistry.calculate(indicator_id, df)
+                    
+                    # 转换为JS格式
+                    js_data = IndicatorAutoRenderer.prepare_indicator_data_for_js(
+                        indicator_id, calculated_data, df
+                    )
+                    config['data'] = js_data
+                    
+                    data_info = f"{len(js_data)} 项" if isinstance(js_data, list) else "对象"
+                    logger.info(f"✅ {indicator_def.name}: 服务端预计算完成，数据: {data_info}")
+                except Exception as e:
+                    logger.warning(f"⚠️  服务端计算 {indicator_def.name} 失败: {e}")
+                    config['data'] = None
+            else:
+                # 默认：尝试前端计算
+                config['data'] = None
+                logger.debug(f"⚡ {indicator_def.name}: 尝试前端计算")
+            
+            # 如果是复合指标
+            if indicator_def.is_composite:
+                config['isComposite'] = True
+                config['subIndicators'] = indicator_def.sub_indicators
+            
+            # 如果有render_config
+            if indicator_def.render_config:
+                config['renderConfig'] = indicator_def.render_config
+                if 'render_function' in indicator_def.render_config:
+                    config['renderFunction'] = indicator_def.render_config['render_function']
+            
+            indicator_pool[indicator_id] = config
+        
+        # 统计
+        lightweight_count = sum(1 for id in indicator_pool.keys() if id in lightweight_indicators)
+        heavyweight_count = sum(1 for id in indicator_pool.keys() if id in heavyweight_indicators)
+        
+        logger.info(f"✅ 生成指标配置（混合策略）: 总计 {len(indicator_pool)} 个")
+        logger.info(f"   - 轻量级（前端计算）: {lightweight_count} 个")
+        logger.info(f"   - 重量级（服务端计算）: {heavyweight_count} 个")
+        
+        return indicator_pool
+    
+    @classmethod
+    def _load_indicator_calculator_js(cls) -> str:
+        """
+        加载前端指标计算引擎JavaScript文件
+        
+        Returns:
+            JavaScript代码字符串
+        """
+        import os
+        from pathlib import Path
+        
+        # 获取静态文件路径
+        static_dir = Path(__file__).parent / 'static'
+        calculator_file = static_dir / 'indicator_calculator.js'
+        
+        if not calculator_file.exists():
+            logger.warning(f"指标计算引擎文件不存在: {calculator_file}")
+            return "// 指标计算引擎未找到\n"
+        
+        try:
+            with open(calculator_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            logger.debug(f"✅ 已加载指标计算引擎: {len(content)} 字符")
+            return content
+        except Exception as e:
+            logger.error(f"读取指标计算引擎失败: {e}")
+            return "// 指标计算引擎加载失败\n"
     
     @classmethod
     def _generate_indicator_pool_scripts(cls, ema6_data, ema12_data, ema18_data, 
@@ -748,7 +883,7 @@ class IndicatorPoolMixin:
             toggleIndicator(mirrorId, newState);
         }
         
-        // 开启指标
+        // 开启指标（⚡ 支持前端动态计算）
         function enableIndicator(id, savePreference = true) {
             const config = INDICATOR_POOL[id];
             if (!config) {
@@ -764,6 +899,23 @@ class IndicatorPoolMixin:
             if (indicatorSeries.has(id)) {
                 console.log('指标已存在，跳过:', config.name);
                 return;
+            }
+            
+            // ⚡ 如果data为null，则前端动态计算
+            if (!config.data && window.IndicatorCalculator) {
+                console.log('⚡ [动态计算] 指标:', config.name, '参数:', config.params);
+                try {
+                    const calculatedData = window.IndicatorCalculator.calculate(id, window.candleData, config.params || {});
+                    if (calculatedData) {
+                        config.data = calculatedData;
+                        console.log('✅ [动态计算] 完成:', config.name, '- 数据点:', 
+                            Array.isArray(calculatedData) ? calculatedData.length : '对象');
+                    } else {
+                        console.warn('⚠️ [动态计算] 失败:', config.name, '- 计算结果为空');
+                    }
+                } catch (error) {
+                    console.error('❌ [动态计算] 出错:', config.name, error);
+                }
             }
             
             if (config.isComposite) {
