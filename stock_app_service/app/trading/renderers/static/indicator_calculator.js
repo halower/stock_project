@@ -1542,6 +1542,9 @@ function calculateSmartMoneyConcepts(candleData, params) {
         show_equal_hl = true,
         equal_hl_length = 3,
         equal_hl_threshold = 0.1,
+        show_fvg = false,           // FVG（公平价值缺口）- 默认关闭
+        fvg_extend = 20,            // FVG延伸K线数
+        fvg_threshold = 0.5,        // FVG阈值（过滤小缺口）
         style = 'Colored',
         mode = 'Historical'
     } = params;
@@ -1620,6 +1623,7 @@ function calculateSmartMoneyConcepts(candleData, params) {
     const internalOrderBlocks = [];
     const swingPoints = [];
     const equalHighsLows = [];
+    const fairValueGaps = [];
     
     // 摆动Pivot追踪
     let swingHigh = {level: null, lastLevel: null, crossed: false, barIndex: -1, time: null};
@@ -1653,11 +1657,29 @@ function calculateSmartMoneyConcepts(candleData, params) {
                 if (swingLeg === 1) {
                     // 新的看涨Leg -> 前一个低点是Pivot Low
                     const pivotIdx = i - swing_length;
+                    const pivotLow = candleData[pivotIdx].low;
+                    
+                    // 检测Equal Low（在发现新Pivot时）
+                    if (show_equal_hl && equalLow.level !== null && Math.abs(equalLow.level - pivotLow) < equal_hl_threshold * atr[i]) {
+                        equalHighsLows.push({
+                            type: 'low',
+                            price: equalLow.level,
+                            startTime: equalLow.time,
+                            endTime: candleData[pivotIdx].time,
+                            startIndex: equalLow.barIndex,
+                            endIndex: pivotIdx
+                        });
+                    }
+                    
                     swingLow.lastLevel = swingLow.level;
-                    swingLow.level = candleData[pivotIdx].low;
+                    swingLow.level = pivotLow;
                     swingLow.crossed = false;
                     swingLow.barIndex = pivotIdx;
                     swingLow.time = candleData[pivotIdx].time;
+                    
+                    equalLow.level = pivotLow;
+                    equalLow.barIndex = pivotIdx;
+                    equalLow.time = candleData[pivotIdx].time;
                     
                     if (show_swing_points && swingLow.lastLevel !== null) {
                         const label = swingLow.level < swingLow.lastLevel ? 'LL' : 'HL';
@@ -1671,11 +1693,29 @@ function calculateSmartMoneyConcepts(candleData, params) {
                 } else {
                     // 新的看跌Leg -> 前一个高点是Pivot High
                     const pivotIdx = i - swing_length;
+                    const pivotHigh = candleData[pivotIdx].high;
+                    
+                    // 检测Equal High（在发现新Pivot时）
+                    if (show_equal_hl && equalHigh.level !== null && Math.abs(equalHigh.level - pivotHigh) < equal_hl_threshold * atr[i]) {
+                        equalHighsLows.push({
+                            type: 'high',
+                            price: equalHigh.level,
+                            startTime: equalHigh.time,
+                            endTime: candleData[pivotIdx].time,
+                            startIndex: equalHigh.barIndex,
+                            endIndex: pivotIdx
+                        });
+                    }
+                    
                     swingHigh.lastLevel = swingHigh.level;
-                    swingHigh.level = candleData[pivotIdx].high;
+                    swingHigh.level = pivotHigh;
                     swingHigh.crossed = false;
                     swingHigh.barIndex = pivotIdx;
                     swingHigh.time = candleData[pivotIdx].time;
+                    
+                    equalHigh.level = pivotHigh;
+                    equalHigh.barIndex = pivotIdx;
+                    equalHigh.time = candleData[pivotIdx].time;
                     
                     if (show_swing_points && swingHigh.lastLevel !== null) {
                         const label = swingHigh.level > swingHigh.lastLevel ? 'HH' : 'LH';
@@ -1706,7 +1746,7 @@ function calculateSmartMoneyConcepts(candleData, params) {
                 
                 // 创建订单块
                 if (show_swing_ob) {
-                    createOrderBlock(swingHigh, false, 1, candleData, parsedHighs, parsedLows, swingOrderBlocks);
+                    createOrderBlock(swingHigh, false, 1, candleData, parsedHighs, parsedLows, swingOrderBlocks, i);
                 }
             }
             
@@ -1726,7 +1766,7 @@ function calculateSmartMoneyConcepts(candleData, params) {
                 
                 // 创建订单块
                 if (show_swing_ob) {
-                    createOrderBlock(swingLow, false, -1, candleData, parsedHighs, parsedLows, swingOrderBlocks);
+                    createOrderBlock(swingLow, false, -1, candleData, parsedHighs, parsedLows, swingOrderBlocks, i);
                 }
             }
         }
@@ -1769,7 +1809,7 @@ function calculateSmartMoneyConcepts(candleData, params) {
                 internalTrend = 1;
                 
                 if (show_internal_ob) {
-                    createOrderBlock(internalHigh, true, 1, candleData, parsedHighs, parsedLows, internalOrderBlocks);
+                    createOrderBlock(internalHigh, true, 1, candleData, parsedHighs, parsedLows, internalOrderBlocks, i);
                 }
             }
             
@@ -1788,53 +1828,70 @@ function calculateSmartMoneyConcepts(candleData, params) {
                 internalTrend = -1;
                 
                 if (show_internal_ob) {
-                    createOrderBlock(internalLow, true, -1, candleData, parsedHighs, parsedLows, internalOrderBlocks);
+                    createOrderBlock(internalLow, true, -1, candleData, parsedHighs, parsedLows, internalOrderBlocks, i);
                 }
             }
         }
         
-        // ========== Equal Highs/Lows检测 ==========
-        if (show_equal_hl && i >= equal_hl_length) {
-            // 检测Equal High
-            if (swingHigh.level !== null && Math.abs(swingHigh.level - high) < equal_hl_threshold * atr[i]) {
-                if (equalHigh.level === null || Math.abs(equalHigh.level - swingHigh.level) > 0.0001) {
-                    equalHighsLows.push({
-                        type: 'high',
-                        price: swingHigh.level,
-                        startTime: swingHigh.time,
-                        endTime: time,
-                        startIndex: swingHigh.barIndex,
-                        endIndex: i
-                    });
-                    equalHigh.level = swingHigh.level;
-                    equalHigh.barIndex = i;
-                    equalHigh.time = time;
-                }
-            }
+        // ========== Fair Value Gaps检测（FVG - 公平价值缺口）==========
+        if (show_fvg && i >= 2) {
+            const c1 = candleData[i - 2];  // 第1根K线
+            const c2 = candleData[i - 1];  // 第2根K线
+            const c3 = candleData[i];      // 第3根K线（当前）
             
-            // 检测Equal Low
-            if (swingLow.level !== null && Math.abs(swingLow.level - low) < equal_hl_threshold * atr[i]) {
-                if (equalLow.level === null || Math.abs(equalLow.level - swingLow.level) > 0.0001) {
-                    equalHighsLows.push({
-                        type: 'low',
-                        price: swingLow.level,
-                        startTime: swingLow.time,
-                        endTime: time,
-                        startIndex: swingLow.barIndex,
-                        endIndex: i
-                    });
-                    equalLow.level = swingLow.level;
-                    equalLow.barIndex = i;
-                    equalLow.time = time;
-                }
+            // 看涨FVG: c3的低点 > c1的高点（向上跳空）
+            const bullishGap = c3.low - c1.high;
+            if (bullishGap > 0 && bullishGap > fvg_threshold * atr[i]) {
+                fairValueGaps.push({
+                    type: 'bullish',
+                    top: c3.low,
+                    bottom: c1.high,
+                    bias: 1,
+                    time: c2.time,
+                    endTime: candleData[Math.min(i + fvg_extend, n - 1)].time
+                });
+            }
+            // 看跌FVG: c3的高点 < c1的低点（向下跳空）
+            const bearishGap = c1.low - c3.high;
+            if (bearishGap > 0 && bearishGap > fvg_threshold * atr[i]) {
+                fairValueGaps.push({
+                    type: 'bearish',
+                    top: c1.low,
+                    bottom: c3.high,
+                    bias: -1,
+                    time: c2.time,
+                    endTime: candleData[Math.min(i + fvg_extend, n - 1)].time
+                });
+            }
+        }
+        
+        // ========== 订单块破坏检测（每根K线检查）==========
+        const mitigationHigh = ob_mitigation === 'Close' ? close : high;
+        const mitigationLow = ob_mitigation === 'Close' ? close : low;
+        
+        // 检查摆动订单块
+        for (let j = swingOrderBlocks.length - 1; j >= 0; j--) {
+            const block = swingOrderBlocks[j];
+            if ((block.bias === -1 && mitigationHigh > block.top) ||
+                (block.bias === 1 && mitigationLow < block.bottom)) {
+                swingOrderBlocks.splice(j, 1);  // 立即删除
+            }
+        }
+        
+        // 检查内部订单块
+        for (let j = internalOrderBlocks.length - 1; j >= 0; j--) {
+            const block = internalOrderBlocks[j];
+            if ((block.bias === -1 && mitigationHigh > block.top) ||
+                (block.bias === 1 && mitigationLow < block.bottom)) {
+                internalOrderBlocks.splice(j, 1);  // 立即删除
             }
         }
     }
     
     // 6. 创建订单块的辅助函数
-    function createOrderBlock(pivot, isInternal, bias, candleData, parsedHighs, parsedLows, orderBlockArray) {
+    function createOrderBlock(pivot, isInternal, bias, candleData, parsedHighs, parsedLows, orderBlockArray, currentBarIndex) {
         const startIdx = Math.max(0, pivot.barIndex);
-        const endIdx = Math.min(candleData.length - 1, pivot.barIndex + (isInternal ? internal_length : swing_length));
+        const endIdx = currentBarIndex;  // 关键修复：从pivot到当前K线
         
         let extremeIdx = startIdx;
         if (bias === -1) {
@@ -1857,53 +1914,46 @@ function calculateSmartMoneyConcepts(candleData, params) {
             }
         }
         
-        orderBlockArray.push({
+        const newBlock = {
             top: parsedHighs[extremeIdx],
             bottom: parsedLows[extremeIdx],
             time: candleData[extremeIdx].time,
+            barIndex: extremeIdx,  // 记录创建时的索引
             bias: bias,
-            broken: false,
             internal: isInternal
-        });
-    }
-    
-    // 7. 检查订单块是否被突破，并清理
-    const mitigationSource = ob_mitigation === 'Close' ? 'close' : null;
-    for (let i = 0; i < n; i++) {
-        const high = mitigationSource ? candleData[i][mitigationSource] : candleData[i].high;
-        const low = mitigationSource ? candleData[i][mitigationSource] : candleData[i].low;
+        };
+        orderBlockArray.push(newBlock);
         
-        // 检查摆动订单块
-        for (let j = swingOrderBlocks.length - 1; j >= 0; j--) {
-            const block = swingOrderBlocks[j];
-            if (block.bias === -1 && high > block.top) {
-                block.broken = true;
-            } else if (block.bias === 1 && low < block.bottom) {
-                block.broken = true;
-            }
-        }
-        
-        // 检查内部订单块
-        for (let j = internalOrderBlocks.length - 1; j >= 0; j--) {
-            const block = internalOrderBlocks[j];
-            if (block.bias === -1 && high > block.top) {
-                block.broken = true;
-            } else if (block.bias === 1 && low < block.bottom) {
-                block.broken = true;
-            }
+        if (orderBlockArray.length <= 5) {  // 只打印前5个
+            console.log(`   [创建${isInternal?'内部':'摆动'}OB] pivot=${pivot.barIndex}, current=${currentBarIndex}, extreme=${extremeIdx}, bias=${bias}, top=${newBlock.top.toFixed(2)}, bottom=${newBlock.bottom.toFixed(2)}`);
         }
     }
     
-    // 8. 过滤并返回最终结果
-    const activeSwingOB = swingOrderBlocks.filter(b => !b.broken).slice(-swing_ob_count);
-    const activeInternalOB = internalOrderBlocks.filter(b => !b.broken).slice(-internal_ob_count);
+    // 7. 过滤并返回最终结果（只保留最近的N个订单块）
+    const activeSwingOB = swingOrderBlocks.slice(-swing_ob_count);
+    const activeInternalOB = internalOrderBlocks.slice(-internal_ob_count);
     
     console.log('✅ [Smart Money Concepts] 计算完成');
     console.log(`   - 摆动结构: ${swingStructures.length}`);
     console.log(`   - 内部结构: ${internalStructures.length}`);
-    console.log(`   - 摆动订单块: ${activeSwingOB.length}`);
-    console.log(`   - 内部订单块: ${activeInternalOB.length}`);
-    console.log(`   - 等高等低: ${equalHighsLows.length}`);
+    console.log(`   - 摆动订单块: ${activeSwingOB.length} (show_swing_ob: ${show_swing_ob})`);
+    console.log(`   - 内部订单块: ${activeInternalOB.length} (show_internal_ob: ${show_internal_ob})`);
+    console.log(`   - 等高等低: ${equalHighsLows.length} (show_equal_hl: ${show_equal_hl})`);
+    console.log(`   - 公平价值缺口(FVG): ${fairValueGaps.length} (show_fvg: ${show_fvg})`);
+    
+    // 打印订单块详情
+    if (activeInternalOB.length > 0) {
+        console.log('   [内部订单块详情]:');
+        activeInternalOB.forEach((block, i) => {
+            console.log(`     ${i+1}. top=${block.top.toFixed(2)}, bottom=${block.bottom.toFixed(2)}, 高度=${(block.top - block.bottom).toFixed(2)}, bias=${block.bias}`);
+        });
+    }
+    if (activeSwingOB.length > 0) {
+        console.log('   [摆动订单块详情]:');
+        activeSwingOB.forEach((block, i) => {
+            console.log(`     ${i+1}. top=${block.top.toFixed(2)}, bottom=${block.bottom.toFixed(2)}, 高度=${(block.top - block.bottom).toFixed(2)}, bias=${block.bias}`);
+        });
+    }
     
     return {
         swingStructures: mode === 'Present' ? swingStructures.slice(-1) : swingStructures,
@@ -1911,6 +1961,7 @@ function calculateSmartMoneyConcepts(candleData, params) {
         swingOrderBlocks: activeSwingOB,
         internalOrderBlocks: activeInternalOB,
         equalHighsLows: equalHighsLows,
+        fairValueGaps: fairValueGaps,
         swingPoints: swingPoints,
         renderType: 'smart_money_concepts'
     };

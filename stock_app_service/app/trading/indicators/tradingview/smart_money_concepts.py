@@ -45,7 +45,7 @@ from app.trading.indicators.indicator_registry import register_indicator
         # Order Blocks参数
         'show_internal_ob': True,        # 显示内部订单块
         'internal_ob_count': 5,          # 内部订单块数量
-        'show_swing_ob': False,          # 显示摆动订单块
+        'show_swing_ob': True,           # 显示摆动订单块
         'swing_ob_count': 5,             # 摆动订单块数量
         'ob_filter': 'Atr',              # 订单块过滤方式（Atr/Range）
         'ob_mitigation': 'High/Low',     # 订单块突破方式（Close/High/Low）
@@ -54,6 +54,11 @@ from app.trading.indicators.indicator_registry import register_indicator
         'show_equal_hl': True,           # 显示等高等低
         'equal_hl_length': 3,            # 等高等低确认周期
         'equal_hl_threshold': 0.1,       # 等高等低敏感度（0-0.5）
+        
+        # Fair Value Gaps参数
+        'show_fvg': False,               # 显示公平价值缺口（FVG）- 默认关闭
+        'fvg_extend': 20,                # FVG延伸K线数
+        'fvg_threshold': 0.5,            # FVG阈值（相对ATR，过滤小缺口）
         
         # 样式参数
         'style': 'Colored',              # 样式（Colored/Monochrome）

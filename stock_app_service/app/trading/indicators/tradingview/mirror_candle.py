@@ -39,7 +39,7 @@ def calculate_mirror_candle(df: pd.DataFrame, **params) -> List[Dict]:
     Args:
         df: K线数据（接口兼容，实际不使用）
         **params: 指标参数
-    
+        
     Returns:
         空数据，前端会自动计算
     """

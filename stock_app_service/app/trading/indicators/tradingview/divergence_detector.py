@@ -47,7 +47,7 @@ def calculate_divergence_detector(df: pd.DataFrame, **params) -> List[Dict[str, 
     Args:
         df: K线数据（此参数保留用于接口兼容，实际不使用）
         **params: 指标参数（传递给前端）
-    
+        
     Returns:
         空数据，前端会自动计算
     """

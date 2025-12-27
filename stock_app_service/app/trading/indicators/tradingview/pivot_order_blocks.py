@@ -50,7 +50,7 @@ def calculate_pivot_order_blocks(df: pd.DataFrame, **params) -> Optional[List[Di
             - box_count: 最大显示数量
             - percentage_change: 价格变化阈值
             - box_extend_to_end: 是否延伸到最新K线
-    
+        
     Returns:
         空数据，前端会自动计算
     """

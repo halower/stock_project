@@ -54,7 +54,7 @@ def calculate_volume_profile_pivot_anchored(df: pd.DataFrame, **params) -> Optio
             - profile_levels: 价格区间数量
             - value_area_percent: Value Area占比
             - profile_width: Profile宽度占比
-    
+        
     Returns:
         空数据，前端会自动计算
     """

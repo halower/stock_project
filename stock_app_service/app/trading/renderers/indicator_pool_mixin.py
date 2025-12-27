@@ -837,42 +837,77 @@ class IndicatorPoolMixin:
                 }
             }
             
-            // 3. 渲染摆动订单块（矩形）
+            // 3. 渲染摆动订单块（使用LineSeries画矩形边框，更深颜色）
             if (smcData.swingOrderBlocks && smcData.swingOrderBlocks.length > 0) {
-                smcData.swingOrderBlocks.forEach(block => {
-                    const fillColor = block.bias === 1 ? 
-                        'rgba(24, 72, 204, 0.3)' :  // 看涨：深蓝色半透明
-                        'rgba(178, 40, 51, 0.3)';   // 看跌：深红色半透明
+                console.log(`   [渲染摆动订单块] 数量: ${smcData.swingOrderBlocks.length}`);
+                smcData.swingOrderBlocks.forEach((block, idx) => {
+                    console.log(`     ${idx+1}. top=${block.top}, bottom=${block.bottom}, height=${block.top - block.bottom}, bias=${block.bias}`);
                     
-                    const fillSeries = chart.addHistogramSeries({
-                        color: fillColor,
-                        priceFormat: { type: 'price' },
-                        lastValueVisible: false,
-                        priceLineVisible: false,
-                        base: block.bottom
-                    });
-                    
-                    const fillData = [];
-                    const startIdx = chartData.findIndex(c => c.time >= block.time);
-                    if (startIdx >= 0) {
-                        for (let i = startIdx; i < chartData.length; i++) {
-                            fillData.push({
-                                time: chartData[i].time,
-                                value: block.top - block.bottom,
-                                color: fillColor
-                            });
-                        }
-                    }
-                    
-                    if (fillData.length > 0) {
-                        fillSeries.setData(fillData);
-                        seriesList.push(fillSeries);
-                    }
-                    
-                    // 边框线
                     const borderColor = block.bias === 1 ? 
-                        'rgb(24, 72, 204)' : 'rgb(178, 40, 51)';
+                        'rgba(24, 72, 204, 0.8)' :  // 看涨：深蓝色
+                        'rgba(178, 40, 51, 0.8)';   // 看跌：深红色
                     
+                    // 上边框（加粗）
+                    const topLine = chart.addLineSeries({
+                        color: borderColor,
+                        lineWidth: 2,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    topLine.setData([
+                        { time: block.time, value: block.top },
+                        { time: endTime, value: block.top }
+                    ]);
+                    seriesList.push(topLine);
+                    
+                    // 下边框（加粗）
+                    const bottomLine = chart.addLineSeries({
+                        color: borderColor,
+                        lineWidth: 2,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    bottomLine.setData([
+                        { time: block.time, value: block.bottom },
+                        { time: endTime, value: block.bottom }
+                    ]);
+                    seriesList.push(bottomLine);
+                    
+                    // 中间填充线
+                    const fillColor = block.bias === 1 ? 
+                        'rgba(24, 72, 204, 0.2)' :
+                        'rgba(178, 40, 51, 0.2)';
+                    const step = (block.top - block.bottom) / 10;
+                    for (let i = 1; i < 10; i++) {
+                        const price = block.bottom + step * i;
+                        const fillLine = chart.addLineSeries({
+                            color: fillColor,
+                            lineWidth: 1,
+                            lastValueVisible: false,
+                            priceLineVisible: false
+                        });
+                        fillLine.setData([
+                            { time: block.time, value: price },
+                            { time: endTime, value: price }
+                        ]);
+                        seriesList.push(fillLine);
+                    }
+                    
+                    console.log(`     ✅ 摆动订单块渲染完成`);
+                });
+            }
+            
+            // 4. 渲染内部订单块（使用LineSeries画矩形边框）
+            if (smcData.internalOrderBlocks && smcData.internalOrderBlocks.length > 0) {
+                console.log(`   [渲染内部订单块] 数量: ${smcData.internalOrderBlocks.length}`);
+                smcData.internalOrderBlocks.forEach((block, idx) => {
+                    console.log(`     ${idx+1}. top=${block.top}, bottom=${block.bottom}, height=${block.top - block.bottom}, bias=${block.bias}`);
+                    
+                    const borderColor = block.bias === 1 ? 
+                        'rgba(49, 121, 245, 0.6)' :  // 看涨：亮蓝色
+                        'rgba(247, 124, 128, 0.6)';  // 看跌：亮红色
+                    
+                    // 上边框
                     const topLine = chart.addLineSeries({
                         color: borderColor,
                         lineWidth: 1,
@@ -885,6 +920,7 @@ class IndicatorPoolMixin:
                     ]);
                     seriesList.push(topLine);
                     
+                    // 下边框
                     const bottomLine = chart.addLineSeries({
                         color: borderColor,
                         lineWidth: 1,
@@ -896,43 +932,29 @@ class IndicatorPoolMixin:
                         { time: endTime, value: block.bottom }
                     ]);
                     seriesList.push(bottomLine);
-                });
-                console.log(`   - 摆动订单块: ${smcData.swingOrderBlocks.length}`);
-            }
-            
-            // 4. 渲染内部订单块
-            if (smcData.internalOrderBlocks && smcData.internalOrderBlocks.length > 0) {
-                smcData.internalOrderBlocks.forEach(block => {
+                    
+                    // 中间填充线（多条半透明线模拟填充）
                     const fillColor = block.bias === 1 ? 
-                        'rgba(49, 121, 245, 0.25)' :  // 看涨：亮蓝色
-                        'rgba(247, 124, 128, 0.25)';  // 看跌：亮红色
-                    
-                    const fillSeries = chart.addHistogramSeries({
-                        color: fillColor,
-                        priceFormat: { type: 'price' },
-                        lastValueVisible: false,
-                        priceLineVisible: false,
-                        base: block.bottom
-                    });
-                    
-                    const fillData = [];
-                    const startIdx = chartData.findIndex(c => c.time >= block.time);
-                    if (startIdx >= 0) {
-                        for (let i = startIdx; i < chartData.length; i++) {
-                            fillData.push({
-                                time: chartData[i].time,
-                                value: block.top - block.bottom,
-                                color: fillColor
-                            });
-                        }
+                        'rgba(49, 121, 245, 0.15)' :
+                        'rgba(247, 124, 128, 0.15)';
+                    const step = (block.top - block.bottom) / 10;  // 画10条线填充
+                    for (let i = 1; i < 10; i++) {
+                        const price = block.bottom + step * i;
+                        const fillLine = chart.addLineSeries({
+                            color: fillColor,
+                            lineWidth: 1,
+                            lastValueVisible: false,
+                            priceLineVisible: false
+                        });
+                        fillLine.setData([
+                            { time: block.time, value: price },
+                            { time: endTime, value: price }
+                        ]);
+                        seriesList.push(fillLine);
                     }
                     
-                    if (fillData.length > 0) {
-                        fillSeries.setData(fillData);
-                        seriesList.push(fillSeries);
-                    }
+                    console.log(`     ✅ 内部订单块渲染完成`);
                 });
-                console.log(`   - 内部订单块: ${smcData.internalOrderBlocks.length}`);
             }
             
             // 5. 渲染等高等低线 - 使用markers显示中文标签
@@ -999,7 +1021,92 @@ class IndicatorPoolMixin:
                 }
             }
             
-            // 6. 渲染摆动点标签（可选功能，默认不启用）
+            // 6. 渲染Fair Value Gaps（FVG - 公平价值缺口）
+            if (smcData.fairValueGaps && smcData.fairValueGaps.length > 0) {
+                console.log(`   [渲染FVG] 数量: ${smcData.fairValueGaps.length}`);
+                smcData.fairValueGaps.forEach((fvg, idx) => {
+                    const isBullish = fvg.type === 'bullish';
+                    const borderColor = isBullish ? 
+                        'rgba(0, 255, 104, 0.6)' :  // 看涨：绿色
+                        'rgba(255, 0, 8, 0.6)';     // 看跌：红色
+                    const fillColor = isBullish ?
+                        'rgba(0, 255, 104, 0.1)' :
+                        'rgba(255, 0, 8, 0.1)';
+                    
+                    // 上边框
+                    const topLine = chart.addLineSeries({
+                        color: borderColor,
+                        lineWidth: 1,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    topLine.setData([
+                        { time: fvg.time, value: fvg.top },
+                        { time: fvg.endTime, value: fvg.top }
+                    ]);
+                    seriesList.push(topLine);
+                    
+                    // 下边框
+                    const bottomLine = chart.addLineSeries({
+                        color: borderColor,
+                        lineWidth: 1,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    bottomLine.setData([
+                        { time: fvg.time, value: fvg.bottom },
+                        { time: fvg.endTime, value: fvg.bottom }
+                    ]);
+                    seriesList.push(bottomLine);
+                    
+                    // 中间填充线
+                    const step = (fvg.top - fvg.bottom) / 5;  // 画5条线填充
+                    for (let i = 1; i < 5; i++) {
+                        const price = fvg.bottom + step * i;
+                        const fillLine = chart.addLineSeries({
+                            color: fillColor,
+                            lineWidth: 1,
+                            lastValueVisible: false,
+                            priceLineVisible: false
+                        });
+                        fillLine.setData([
+                            { time: fvg.time, value: price },
+                            { time: fvg.endTime, value: price }
+                        ]);
+                        seriesList.push(fillLine);
+                    }
+                    
+                    // 添加FVG标签在价格轴上
+                    const midPrice = (fvg.top + fvg.bottom) / 2;
+                    const labelLine = chart.addLineSeries({
+                        color: 'rgba(0,0,0,0)',
+                        lineWidth: 0,
+                        lastValueVisible: false,
+                        priceLineVisible: false
+                    });
+                    labelLine.setData([
+                        { time: fvg.time, value: midPrice }
+                    ]);
+                    
+                    try {
+                        labelLine.createPriceLine({
+                            price: midPrice,
+                            color: borderColor,
+                            lineWidth: 0,
+                            lineStyle: 2,
+                            axisLabelVisible: true,
+                            title: 'FVG'
+                        });
+                    } catch (e) {
+                        console.warn('   - 无法添加FVG标签');
+                    }
+                    
+                    seriesList.push(labelLine);
+                });
+                console.log(`   ✅ FVG渲染完成: ${smcData.fairValueGaps.length} 个`);
+            }
+            
+            // 7. 渲染摆动点标签（可选功能，默认不启用）
             // 注意：摆动点标签会显示在K线上，可能与其他指标标签冲突
             if (smcData.swingPoints && smcData.swingPoints.length > 0 && false) {
                 // 暂时禁用摆动点标签，避免图表过于拥挤
@@ -1007,7 +1114,7 @@ class IndicatorPoolMixin:
                 console.log(`   - 摆动点: ${smcData.swingPoints.length} (已禁用显示)`);
             }
             
-            // 7. 统一添加所有标签到K线图上（追加模式，不覆盖原有标签）
+            // 8. 统一添加所有标签到K线图上（追加模式，不覆盖原有标签）
             if (typeof window.candleSeries !== 'undefined' && window.candleSeries && window.smcMarkers) {
                 try {
                     const smcMarkersArray = [
