@@ -91,19 +91,18 @@ class StrategyStatsList extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 策略名称和盈亏
+              // 策略名称 - 独占一行
               Row(
                 children: [
-                  // 策略图标
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: totalProfit >= 0
                             ? FinancialColors.profitGradient
                             : FinancialColors.lossGradient,
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
                           color: (totalProfit >= 0
@@ -118,93 +117,81 @@ class StrategyStatsList extends StatelessWidget {
                     child: Icon(
                       Icons.auto_graph_rounded,
                       color: Colors.white,
-                      size: 22,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  // 策略名称
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Text(
+                      strategy,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.grey[800],
+                        letterSpacing: 0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 14),
+              
+              // 盈亏金额和状态标签 - 横向排列
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      NumberFormat.currency(symbol: '¥').format(totalProfit),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: totalProfit >= 0
+                            ? FinancialColors.profit
+                            : FinancialColors.loss,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (totalProfit >= 0
+                              ? FinancialColors.profit
+                              : FinancialColors.loss)
+                          .withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          strategy,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.grey[800],
-                            letterSpacing: 0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Icon(
+                          totalProfit >= 0
+                              ? Icons.trending_up
+                              : Icons.trending_down,
+                          size: 16,
+                          color: totalProfit >= 0
+                              ? FinancialColors.profit
+                              : FinancialColors.loss,
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(width: 6),
                         Text(
-                          'Strategy',
+                          totalProfit >= 0 ? '盈利' : '亏损',
                           style: TextStyle(
-                            fontSize: 10,
-                            color: isDarkMode ? Colors.white60 : Colors.grey[600],
-                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: totalProfit >= 0
+                                ? FinancialColors.profit
+                                : FinancialColors.loss,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  // 盈亏金额
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        NumberFormat.currency(symbol: '¥').format(totalProfit),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: totalProfit >= 0
-                              ? FinancialColors.profit
-                              : FinancialColors.loss,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (totalProfit >= 0
-                                  ? FinancialColors.profit
-                                  : FinancialColors.loss)
-                              .withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              totalProfit >= 0
-                                  ? Icons.trending_up
-                                  : Icons.trending_down,
-                              size: 12,
-                              color: totalProfit >= 0
-                                  ? FinancialColors.profit
-                                  : FinancialColors.loss,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              totalProfit >= 0 ? '盈利' : '亏损',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: totalProfit >= 0
-                                    ? FinancialColors.profit
-                                    : FinancialColors.loss,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),

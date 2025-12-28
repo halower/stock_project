@@ -544,13 +544,16 @@ class IndexChartService:
             else:
                 vol_trend = "显著缩量"
             
-            # 8. 市场强度（基于连续涨跌）- 修复逻辑错误
+            # 8. 市场强度（基于连续涨跌）- 使用更长时间窗口（30天）
             consecutive_up = 0
             consecutive_down = 0
             
+            # 获取最近30天数据，用于准确计算连涨/连跌天数
+            recent_30 = df.tail(30)
+            
             # 从最新的一天往前数，计算连续上涨或下跌天数
-            for i in range(len(recent_5) - 1, -1, -1):
-                pct_chg = recent_5.iloc[i]['pct_chg']
+            for i in range(len(recent_30) - 1, -1, -1):
+                pct_chg = recent_30.iloc[i]['pct_chg']
                 
                 if pct_chg > 0:
                     # 如果当前是上涨，但之前已经在计算下跌天数，说明连续下跌中断

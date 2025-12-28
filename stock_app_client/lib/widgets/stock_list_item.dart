@@ -801,7 +801,9 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                       Expanded(
                         child: _buildPriceCard(
                           '止损',
-                    '¥${analysisData['stop_loss']}',
+                          analysisData['stop_loss'] != null 
+                              ? '¥${(analysisData['stop_loss'] as num).toDouble().toStringAsFixed(2)}'
+                              : '-',
                           const Color(0xFFEF4444),
                           Icons.shield_outlined,
                     isDarkMode,
@@ -816,7 +818,9 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                       Expanded(
                         child: _buildPriceCard(
                           '目标',
-                    '¥${analysisData['take_profit']}',
+                          analysisData['take_profit'] != null 
+                              ? '¥${(analysisData['take_profit'] as num).toDouble().toStringAsFixed(2)}'
+                              : '-',
                           const Color(0xFF10B981),
                           Icons.flag_outlined,
                     isDarkMode,
@@ -1122,6 +1126,25 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
   
   // 构建支撑阻力位显示
   Widget _buildSupportResistance(dynamic support, dynamic resistance, bool isDarkMode) {
+    // 格式化支撑阻力价格为2位小数
+    String formatPrice(dynamic price) {
+      if (price == null) return '-';
+      if (price is num) {
+        return '¥${price.toDouble().toStringAsFixed(2)}';
+      }
+      // 如果已经是字符串，检查是否包含¥符号
+      String priceStr = price.toString();
+      if (priceStr.contains('¥')) {
+        return priceStr; // 已经格式化过了
+      }
+      // 尝试解析为数字并格式化
+      final numPrice = double.tryParse(priceStr);
+      if (numPrice != null) {
+        return '¥${numPrice.toStringAsFixed(2)}';
+      }
+      return priceStr;
+    }
+    
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -1181,7 +1204,7 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                             ),
                           ),
                           Text(
-                            '¥${support}',
+                            formatPrice(support),
                             style: const TextStyle(
                               fontSize: 11,
                               color: Color(0xFF10B981),
@@ -1221,7 +1244,7 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
                             ),
                           ),
                           Text(
-                            '¥${resistance}',
+                            formatPrice(resistance),
             style: const TextStyle(
               fontSize: 11,
                               color: Color(0xFFEF4444),
@@ -1265,9 +1288,10 @@ class _StockListItemState extends State<StockListItem> with SingleTickerProvider
       if (data[key] != null) {
         String value = '';
         if (data[key] is num) {
-          value = data[key].toString();
           if (key == 'support' || key == 'resistance') {
-            value = '¥$value';
+            value = '¥${(data[key] as num).toDouble().toStringAsFixed(2)}';
+          } else {
+            value = data[key].toString();
           }
         } else {
           value = data[key].toString();

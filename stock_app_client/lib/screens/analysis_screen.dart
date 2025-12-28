@@ -336,17 +336,98 @@ class AnalysisScreen extends StatelessWidget {
             
             const SizedBox(height: 16),
             
-            // 平均盈亏单独占一行，使其更突出 - 使用A股色彩
-            _buildModernStatCard(
-                  context,
-                  '平均盈亏',
-                  NumberFormat.currency(symbol: '¥').format(averageProfit),
-              averageProfit >= 0 
-                  ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)] // A股红色：盈利
-                  : [const Color(0xFF059669), const Color(0xFF047857)], // A股绿色：亏损
-              Icons.trending_flat,
-              averageProfit >= 0 ? '+' : '',
-              isFullWidth: true,
+            // 平均盈亏 - 保持宽度，但横向布局
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: averageProfit >= 0 
+                      ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
+                      : [const Color(0xFF059669), const Color(0xFF047857)],
+                ),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: (averageProfit >= 0 
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF059669)).withOpacity(0.4),
+                    blurRadius: 20,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // 图标
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.trending_flat,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  // 标题和数值
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '平均盈亏',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '${averageProfit >= 0 ? '+' : ''}${NumberFormat.currency(symbol: '¥').format(averageProfit)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 趋势图标
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.trending_up,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
