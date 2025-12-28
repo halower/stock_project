@@ -5,6 +5,7 @@ import '../models/watchlist_item.dart';
 import '../services/watchlist_service.dart';
 import '../services/providers/api_provider.dart';
 import '../services/providers/stock_provider.dart';
+import '../services/strategy_config_service.dart';
 import '../widgets/watchlist_item_widget.dart';
 import '../widgets/professional_watchlist_header.dart';
 
@@ -446,12 +447,29 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
   }
 
   // 手动添加股票对话框
-  void _showAddStockDialog() {
+  void _showAddStockDialog() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final codeController = TextEditingController();
     String selectedStrategy = 'volume_wave';
     bool isSearching = false;
     List<Map<String, dynamic>> searchResults = [];
+    
+    // 从API动态获取策略列表
+    List<Map<String, String>> strategies = [];
+    try {
+      strategies = await StrategyConfigService.getStrategies();
+      if (strategies.isNotEmpty) {
+        selectedStrategy = strategies[0]['value'] ?? 'volume_wave';
+      }
+    } catch (e) {
+      debugPrint('获取策略列表失败: $e');
+      // 使用默认策略
+      strategies = [
+        {'value': 'volume_wave', 'label': '量价突破'},
+        {'value': 'volume_wave_enhanced', 'label': '量价进阶'},
+        {'value': 'volatility_conservation', 'label': '趋势追踪'},
+      ];
+    }
     
     showModalBottomSheet(
       context: context,
@@ -647,65 +665,50 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                   ),
                 ),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 
-                // 策略选择
+                // 模型选择（紧凑样式）
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)]
-                            : [Colors.blue.shade50.withOpacity(0.5), Colors.white],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
+                      color: isDark 
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.blue.shade50.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isDark 
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.blue.shade100,
-                        width: 1.5,
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.blue.shade100.withOpacity(0.5),
+                        width: 1,
                       ),
                     ),
                   child: Row(
                     children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.analytics_outlined,
-                            color: const Color(0xFF3B82F6),
-                            size: 20,
-                          ),
+                        Icon(
+                          Icons.analytics_outlined,
+                          color: const Color(0xFF3B82F6),
+                          size: 16,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                       Text(
-                          '策略：',
+                          '模型',
                         style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                         ),
                       ),
                         const SizedBox(width: 8),
                       Expanded(
                         child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
                           decoration: BoxDecoration(
                               color: isDark 
-                                  ? Colors.white.withOpacity(0.08)
-                                  : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isDark 
-                                    ? Colors.white.withOpacity(0.1)
-                                    : Colors.grey.shade200,
-                                width: 1,
-                              ),
+                                  ? Colors.white.withOpacity(0.06)
+                                  : Colors.white.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
@@ -713,18 +716,22 @@ class _WatchlistScreenState extends State<WatchlistScreen> with TickerProviderSt
                               isExpanded: true,
                                 dropdownColor: isDark ? const Color(0xFF2A2A3E) : Colors.white,
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
                                   color: isDark ? Colors.white : Colors.black87,
                                 ),
                                 icon: Icon(
                                   Icons.keyboard_arrow_down_rounded,
                                   color: const Color(0xFF3B82F6),
+                                  size: 18,
                                 ),
-                              items: const [
-                                DropdownMenuItem(value: 'volume_wave', child: Text('动量守恒')),
-                                DropdownMenuItem(value: 'volume_wave_enhanced', child: Text('动量守恒增强版')),
-                              ],
+                                isDense: true,
+                              items: strategies.map((strategy) {
+                                return DropdownMenuItem<String>(
+                                  value: strategy['value'],
+                                  child: Text(strategy['label'] ?? strategy['value'] ?? ''),
+                                );
+                              }).toList(),
                               onChanged: (value) {
                                 if (value != null) {
                                   setModalState(() => selectedStrategy = value);

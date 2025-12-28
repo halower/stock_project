@@ -5,10 +5,12 @@ import '../config/api_config.dart';
 import 'http_client.dart';
 
 // 备用的本地策略列表（仅在API完全失败时使用）
+// ⚠️ 注意：这些策略必须与后端 app/trading/strategies/ 目录下注册的策略完全一致
 List<Map<String, String>> _getDefaultStrategyList() {
   return [
-    {'value': 'volume_wave', 'label': '量价波动', 'description': '基于成交量和价格波动的短线交易模型，通过检测特定波动模式产生买卖信号'},
-    {'value': 'trend_continuation', 'label': '趋势延续', 'description': '基于123价格形态的趋势延续，可识别关键支撑阻力位并提供止损止盈参考'},
+    {'value': 'volume_wave', 'label': '量价突破', 'description': '基于成交量和价格波动的短线交易模型，通过检测特定波动模式产生买卖信号'},
+    {'value': 'volume_wave_enhanced', 'label': '量价进阶', 'description': '量价突破的增强版，提供更精确的买卖信号和支撑阻力位识别'},
+    {'value': 'volatility_conservation', 'label': '趋势追踪', 'description': '基于波动守恒原理的趋势追踪策略，识别关键支撑阻力位并提供止损止盈参考'},
   ];
 }
 
@@ -17,7 +19,7 @@ class StrategyConfigService {
   static const String _strategiesCacheTimeKey = 'api_strategies_cache_time';
   static const String _strategyNamesCacheKey = 'strategy_names_cache';
   static const String _strategyNamesCacheTimeKey = 'strategy_names_cache_time';
-  static const int _cacheDuration = 10 * 60 * 1000; // 10分钟的缓存时间（毫秒）
+  static const int _cacheDuration = 24 * 60 * 60 * 1000; // 1天的缓存时间（毫秒）
   
   // 内存缓存，避免频繁读取SharedPreferences
   static List<Map<String, String>>? _memoryCache;
@@ -33,9 +35,10 @@ class StrategyConfigService {
         final now = DateTime.now().millisecondsSinceEpoch;
         final cacheAge = now - _memoryCacheTime!.millisecondsSinceEpoch;
         
-        // 如果内存缓存未过期（10分钟），直接返回
+        // 如果内存缓存未过期（1天），直接返回
         if (cacheAge < _cacheDuration) {
-          debugPrint('使用内存缓存的策略列表数据（缓存年龄: ${(cacheAge / 1000 / 60).toStringAsFixed(1)}分钟）');
+          final cacheAgeHours = (cacheAge / 1000 / 60 / 60).toStringAsFixed(1);
+          debugPrint('使用内存缓存的策略列表数据（缓存年龄: ${cacheAgeHours}小时）');
           return _memoryCache!;
         } else {
           debugPrint('内存缓存已过期，清除内存缓存');
@@ -216,9 +219,9 @@ class StrategyConfigService {
       final cacheTime = int.tryParse(cacheTimeStr) ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
       
-      // 检查缓存是否过期（10分钟）
+      // 检查缓存是否过期（1天）
       if (now - cacheTime > _cacheDuration) {
-        debugPrint('策略列表缓存已过期（超过10分钟）');
+        debugPrint('策略列表缓存已过期（超过1天）');
         return null;
       }
       
@@ -274,9 +277,9 @@ class StrategyConfigService {
       final cacheTime = int.tryParse(cacheTimeStr) ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
       
-      // 检查缓存是否过期（10分钟）
+      // 检查缓存是否过期（1天）
       if (now - cacheTime > _cacheDuration) {
-        debugPrint('策略名称缓存已过期（超过10分钟）');
+        debugPrint('策略名称缓存已过期（超过1天）');
         return null;
       }
       
