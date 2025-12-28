@@ -49,7 +49,8 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
     // 获取当前主题（light或dark）
     final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
     final theme = brightness == Brightness.dark ? 'dark' : 'light';
-    _chartUrl = '${ApiConfig.baseUrl}/api/index/chart?index_code=$_selectedIndexCode&days=180&theme=$theme';
+    // 使用新的统一接口格式：/api/chart/{code}?theme=xxx
+    _chartUrl = '${ApiConfig.baseUrl}/api/chart/$_selectedIndexCode?theme=$theme';
     debugPrint('指数图表URL: $_chartUrl');
   }
 
