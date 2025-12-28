@@ -536,19 +536,19 @@ class IndicatorPoolMixin:
             const seriesList = [];
             const markers = [];
             
-            // 颜色映射
+            // 颜色映射（优化白底对比度）
             const colorMap = {
-                'bullish': 'rgba(255, 215, 0, 0.9)',           // 金色 - 正背离（看涨）
+                'bullish': 'rgba(156, 39, 176, 0.9)',          // 紫色 - 正背离（看涨）
                 'bearish': 'rgba(0, 51, 153, 0.9)',            // 深蓝 - 负背离（看跌）
-                'bullish_hidden': 'rgba(0, 255, 0, 0.9)',      // 绿色 - 隐藏正背离
-                'bearish_hidden': 'rgba(255, 0, 0, 0.9)'       // 红色 - 隐藏负背离
+                'bullish_hidden': 'rgba(76, 175, 80, 0.9)',    // 深绿色 - 隐藏正背离（白底清晰）
+                'bearish_hidden': 'rgba(211, 47, 47, 0.9)'     // 深红色 - 隐藏负背离（白底清晰）
             };
             
             const labelColorMap = {
-                'bullish': '#FFD700',           // 金色
+                'bullish': '#9C27B0',           // 紫色
                 'bearish': '#003399',           // 深蓝
-                'bullish_hidden': '#00FF00',    // 绿色
-                'bearish_hidden': '#FF0000'     // 红色
+                'bullish_hidden': '#4CAF50',    // 深绿色（Material Design Green）
+                'bearish_hidden': '#D32F2F'     // 深红色（Material Design Red）
             };
             
             // 为每个背离组绘制连线和标签
