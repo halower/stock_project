@@ -46,7 +46,10 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
 
   /// 初始化图表URL
   void _initChartUrl() {
-    _chartUrl = '${ApiConfig.baseUrl}/api/index/chart?index_code=$_selectedIndexCode&days=180&theme=dark';
+    // 获取当前主题（light或dark）
+    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final theme = brightness == Brightness.dark ? 'dark' : 'light';
+    _chartUrl = '${ApiConfig.baseUrl}/api/index/chart?index_code=$_selectedIndexCode&days=180&theme=$theme';
     debugPrint('指数图表URL: $_chartUrl');
   }
 
@@ -74,7 +77,10 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
   /// 加载专业分析数据
   Future<void> _loadStatistics() async {
     try {
-      final url = '${ApiConfig.baseUrl}/api/index/analysis?index_code=$_selectedIndexCode&days=180&theme=dark';
+      // 获取当前主题（light或dark）
+      final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      final theme = brightness == Brightness.dark ? 'dark' : 'light';
+      final url = '${ApiConfig.baseUrl}/api/index/analysis?index_code=$_selectedIndexCode&days=180&theme=$theme';
       debugPrint('🔄 开始加载专业分析数据: $url');
       
       final response = await http_client.HttpClient.get(url);
@@ -767,7 +773,7 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
   }
 
   /// 构建交易建议项
-  Widget _buildAdviceItem(String label, dynamic value, dynamic? percent, Color color) {
+  Widget _buildAdviceItem(String label, dynamic value, dynamic percent, Color color) {
     return Column(
       children: [
         Text(
