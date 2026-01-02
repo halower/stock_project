@@ -455,41 +455,47 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
                 }}
                 
-                /* 竖屏模式优化 */
+                /* 竖屏模式优化 - 更紧凑的布局 */
                 @media (max-width: 768px) and (orientation: portrait) {{
                     .chart-title {{
+                        top: 4px;
+                        left: 4px;
+                        right: 4px;
+                        transform: none;
                         flex-direction: row;
                         align-items: center;
                         justify-content: space-between;
-                        gap: 12px;
-                        padding: 8px 12px;
-                        left: 10px;
-                        right: 10px;
-                        transform: none;
+                        gap: 8px;
+                        padding: 6px 10px;
                         width: auto;
-                        max-width: calc(100% - 20px);
+                        max-width: calc(100% - 8px);
                     }}
                     
                     .title-left {{
                         flex: 1;
                         min-width: 0;
-                        gap: 8px;
-                        flex-wrap: wrap;
+                        gap: 6px;
+                        overflow: hidden;
                     }}
                     
                     .stock-name {{
-                        font-size: 15px;
+                        font-size: 11px;
+                        padding: 2px 6px;
+                        max-width: 140px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
                     }}
                     
                     .strategy-tag {{
-                        font-size: 11px;
+                        font-size: 10px;
                         padding: 2px 6px;
                         white-space: nowrap;
                     }}
                     
                     .analysis-btn {{
-                        padding: 6px 12px;
-                        font-size: 13px;
+                        padding: 4px 10px;
+                        font-size: 11px;
                         flex-shrink: 0;
                     }}
                 }}

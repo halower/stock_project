@@ -81,34 +81,45 @@
         
         .chart-header {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 8px;
+            left: 8px;
             z-index: 10;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         
         .chart-title {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 600;
-            color: #d1d4dc;
+            color: #ffffff;
+            white-space: nowrap;
         }
         
         .analysis-btn {
-            padding: 6px 16px;
-            background: rgba(0, 0, 0, 0.65);
-            backdrop-filter: blur(10px);
-            border: none;
-            border-radius: 20px;
-            color: #d1d4dc;
-            font-size: 13px;
+            padding: 4px 12px;
+            background: rgba(41, 98, 255, 0.2);
+            border: 1px solid rgba(41, 98, 255, 0.4);
+            border-radius: 6px;
+            color: #2962ff;
+            font-size: 12px;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
         }
         
         .analysis-btn:hover {
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(41, 98, 255, 0.3);
+            border-color: rgba(41, 98, 255, 0.6);
+        }
+        
+        .analysis-btn:active {
+            transform: scale(0.95);
         }
         
         /* 指标面板样式（复用之前的CSS） */
@@ -191,19 +202,48 @@
             cursor: pointer;
         }
         
+        /* 竖屏模式优化 */
         @media (max-width: 768px) and (orientation: portrait) {
+            .chart-header {
+                top: 4px;
+                left: 4px;
+                gap: 6px;
+                padding: 6px 10px;
+                max-width: calc(100vw - 16px);
+            }
+            
+            .chart-title {
+                font-size: 11px;
+                max-width: 150px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            .analysis-btn {
+                padding: 4px 8px;
+                font-size: 10px;
+                flex-shrink: 0;
+            }
+            
             .side-panel {
                 width: 280px;
                 right: -280px;
             }
+        }
+        
+        /* 横屏模式优化 */
+        @media (orientation: landscape) {
+            .chart-header {
+                top: 8px;
+                left: 8px;
+            }
             
             .chart-title {
-                font-size: 16px;
+                font-size: 13px;
             }
             
             .analysis-btn {
-                padding: 5px 12px;
-                font-size: 12px;
+                font-size: 11px;
             }
         }
     </style>
