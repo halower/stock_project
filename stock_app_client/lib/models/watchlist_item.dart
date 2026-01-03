@@ -1,4 +1,5 @@
 import 'stock_indicator.dart';
+import 'price_alert.dart';
 import '../services/industry_service.dart';
 
 class WatchlistItem {
@@ -20,6 +21,9 @@ class WatchlistItem {
   String? signalReason;    // 信号原因
   double? signalConfidence; // 信号置信度
   DateTime? signalUpdateTime; // 信号更新时间
+  
+  // 价格预警信息（新增）
+  List<PriceAlert>? priceAlerts;  // 该股票的所有预警
 
   WatchlistItem({
     required this.code,
@@ -36,7 +40,16 @@ class WatchlistItem {
     this.signalReason,
     this.signalConfidence,
     this.signalUpdateTime,
+    this.priceAlerts,
   });
+  
+  // 判断是否有启用的预警
+  bool get hasActiveAlerts => 
+      priceAlerts?.any((alert) => alert.isActive) ?? false;
+  
+  // 获取活跃预警数量
+  int get activeAlertsCount => 
+      priceAlerts?.where((alert) => alert.isActive).length ?? 0;
 
   // 市场代码转换为完整市场名称
   static String _convertMarketCode(String stockCode, String marketCode) {

@@ -35,6 +35,12 @@ dependencies:
   html: ^0.15.4
   html2md: ^1.3.2
   web_socket_channel: ^2.4.0
+  # 本地通知
+  flutter_local_notifications: ^17.0.0
+  # 后台任务（Android WorkManager）- 升级到兼容新Kotlin的版本
+  workmanager: ^0.9.0
+  # 权限请求
+  permission_handler: ^11.0.0
 
 dev_dependencies:
   flutter_test:

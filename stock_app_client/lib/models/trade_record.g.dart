@@ -183,6 +183,7 @@ const _$TradeCategoryEnumMap = {
 const _$MarketPhaseEnumMap = {
   MarketPhase.buildingBottom: 'building_bottom',
   MarketPhase.rising: 'rising',
+  MarketPhase.consolidation: 'consolidation',
   MarketPhase.topping: 'topping',
   MarketPhase.falling: 'falling',
 };

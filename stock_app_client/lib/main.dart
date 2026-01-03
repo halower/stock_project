@@ -13,6 +13,8 @@ import 'services/providers/api_provider.dart';
 import 'services/database_service.dart';
 import 'services/stock_service.dart';
 import 'services/trade_service.dart';
+import 'services/notification_service.dart';
+import 'services/background_price_monitor.dart';
 import 'widgets/password_lock_wrapper.dart';
 // 导入WebView平台相关包
 import 'package:webview_flutter/webview_flutter.dart';
@@ -24,6 +26,33 @@ void main() async {
   
   // 初始化WebView平台
   initWebViewPlatform();
+  
+  // 初始化通知服务
+  try {
+    debugPrint('初始化通知服务...');
+    await NotificationService.initialize();
+    debugPrint('通知服务初始化成功');
+    
+    // 请求通知权限（仅Android）
+    if (Platform.isAndroid) {
+      final hasPermission = await NotificationService.requestPermission();
+      debugPrint('通知权限: ${hasPermission ? "已授予" : "未授予"}');
+    }
+  } catch (e) {
+    debugPrint('通知服务初始化失败: $e');
+  }
+  
+  // 启动后台监控服务（仅Android）
+  try {
+    if (Platform.isAndroid) {
+      debugPrint('启动后台价格监控服务...');
+      await BackgroundPriceMonitor.startMonitoring();
+      await BackgroundPriceMonitor.setMonitoringStatus(true);
+      debugPrint('后台监控服务已启动');
+    }
+  } catch (e) {
+    debugPrint('后台监控服务启动失败: $e');
+  }
   
   // 根据平台选择适当的数据库实现
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {

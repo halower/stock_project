@@ -17,6 +17,9 @@ import '../services/password_lock_service.dart';
 import '../widgets/password_lock_dialog.dart';
 import '../widgets/password_verify_dialog.dart';
 import '../utils/financial_colors.dart';
+import '../services/notification_service.dart';
+import '../models/price_alert.dart';
+import '../services/notification_settings_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -78,6 +81,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _isPasswordLockEnabled = false;
   int _passwordLockTimeout = 5;
+  
+  // 通知设置
+  bool _notificationSoundEnabled = true;
+  bool _notificationVibrationEnabled = true;
+  bool _notificationPermissionGranted = false;
 
   @override
   void initState() {
@@ -87,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadDeviceInfo();
     _loadAIConfig();
     _loadPasswordLockSettings();
+    _loadNotificationSettings();
     _startAuthCheckTimer(); // 添加授权检查
   }
 
@@ -345,6 +354,154 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 转换为天数（向上取整）
       int days = (minutes / 1440).ceil();
       return '$days天';
+    }
+  }
+
+  // 加载通知设置
+  Future<void> _loadNotificationSettings() async {
+    final soundEnabled = await NotificationSettingsService.isSoundEnabled();
+    final vibrationEnabled = await NotificationSettingsService.isVibrationEnabled();
+    final permissionGranted = await NotificationService.checkPermission();
+    
+    if (mounted) {
+      setState(() {
+        _notificationSoundEnabled = soundEnabled;
+        _notificationVibrationEnabled = vibrationEnabled;
+        _notificationPermissionGranted = permissionGranted;
+      });
+    }
+  }
+  
+  // 请求通知权限
+  Future<void> _requestNotificationPermission() async {
+    final granted = await NotificationService.requestPermission();
+    if (mounted) {
+      setState(() {
+        _notificationPermissionGranted = granted;
+      });
+      
+      if (granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ 通知权限已授予'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('❌ 通知权限被拒绝，请在系统设置中手动开启'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: '打开设置',
+              textColor: Colors.white,
+              onPressed: () {
+                NotificationService.openSettings();
+              },
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // 发送测试通知
+  void _sendTestNotification() async {
+    debugPrint('=== 用户点击测试通知按钮 ===');
+    
+    // 显示加载提示
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('正在发送测试通知...'),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+    
+    try {
+      // 发送简单的测试通知
+      await NotificationService.sendTestNotification();
+      
+      // 等待一小段时间，让通知有时间显示
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // 显示成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '✅ 测试通知已发送！',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '请下拉通知栏查看',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: '知道了',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('发送测试通知失败: $e');
+      debugPrint('堆栈跟踪: $stackTrace');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '❌ 发送测试通知失败',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '错误: $e',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -730,6 +887,158 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 16),
                 
                 _buildSettingsGroup(
+                  title: '通知设置',
+                  children: [
+                    // 通知权限状态
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: _notificationPermissionGranted 
+                            ? Colors.green.withOpacity(0.1) 
+                            : Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _notificationPermissionGranted 
+                              ? Colors.green 
+                              : Colors.orange,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _notificationPermissionGranted 
+                                ? Icons.check_circle 
+                                : Icons.warning_amber_rounded,
+                            color: _notificationPermissionGranted 
+                                ? Colors.green 
+                                : Colors.orange,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _notificationPermissionGranted 
+                                      ? '通知权限已授予' 
+                                      : '通知权限未授予',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: _notificationPermissionGranted 
+                                        ? Colors.green 
+                                        : Colors.orange,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _notificationPermissionGranted 
+                                      ? '可以正常接收价格预警通知' 
+                                      : '需要授予通知权限才能接收预警',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!_notificationPermissionGranted)
+                            ElevatedButton(
+                              onPressed: _requestNotificationPermission,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
+                              child: const Text('授权'),
+                            ),
+                        ],
+                      ),
+                    ),
+                    
+                    // 通知声音开关
+                    _buildSettingItem(
+                      title: '通知声音',
+                      subtitle: _notificationSoundEnabled ? '已开启 - 预警触发时播放提示音' : '已关闭 - 静音通知',
+                      trailing: Switch(
+                        value: _notificationSoundEnabled,
+                        onChanged: _notificationPermissionGranted ? (value) async {
+                          await NotificationSettingsService.setSoundEnabled(value);
+                          setState(() {
+                            _notificationSoundEnabled = value;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(value ? '✅ 通知声音已开启' : '🔇 通知声音已关闭'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        } : null,
+                      ),
+                    ),
+                    
+                    // 通知振动开关
+                    _buildSettingItem(
+                      title: '通知振动',
+                      subtitle: _notificationVibrationEnabled ? '已开启 - 预警触发时振动提醒' : '已关闭 - 无振动',
+                      trailing: Switch(
+                        value: _notificationVibrationEnabled,
+                        onChanged: _notificationPermissionGranted ? (value) async {
+                          await NotificationSettingsService.setVibrationEnabled(value);
+                          setState(() {
+                            _notificationVibrationEnabled = value;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(value ? '✅ 通知振动已开启' : '📵 通知振动已关闭'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        } : null,
+                      ),
+                    ),
+                    
+                    // 测试价格预警通知
+                    _buildSettingItem(
+                      title: '测试价格预警通知',
+                      subtitle: _notificationPermissionGranted 
+                          ? '发送一条测试通知，查看预警效果' 
+                          : '请先授予通知权限',
+                      trailing: Icon(
+                        Icons.notifications_active, 
+                        color: _notificationPermissionGranted ? Colors.orange : Colors.grey,
+                      ),
+                      onTap: _notificationPermissionGranted ? _sendTestNotification : null,
+                    ),
+                    
+                    // 打开系统通知设置
+                    if (_notificationPermissionGranted)
+                      _buildSettingItem(
+                        title: '系统通知设置',
+                        subtitle: '如果没有声音或振动，请在系统设置中检查',
+                        trailing: const Icon(Icons.settings, color: Colors.grey),
+                        onTap: () {
+                          NotificationService.openSettings();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('请在系统设置中确保"声音"和"振动"已开启'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                _buildSettingsGroup(
                   title: '安全',
                   children: [
                     // 注销登录选项
@@ -1104,6 +1413,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return Icons.palette;
       case 'AI服务':
         return Icons.psychology;
+      case '通知设置':
+        return Icons.notifications_active;
       case '安全':
         return Icons.security;
       case '关于':

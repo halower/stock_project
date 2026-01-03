@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../models/watchlist_item.dart';
 import '../screens/stock_detail_screen.dart';
+import '../screens/price_alert_config_screen.dart';
 import '../services/strategy_config_service.dart';
 import '../services/industry_service.dart';
+import 'price_alert_indicator.dart';
 
 class WatchlistItemWidget extends StatelessWidget {
   final WatchlistItem item;
@@ -113,6 +115,9 @@ class WatchlistItemWidget extends StatelessWidget {
                 ),
               );
             },
+            onLongPress: () {
+              _showQuickActions(context);
+            },
             splashColor: Colors.blue.withOpacity(0.1),
             highlightColor: Colors.transparent,
             child: Padding(
@@ -146,6 +151,21 @@ class WatchlistItemWidget extends StatelessWidget {
                                 if (item.hasSignal) ...[
                                   const SizedBox(width: 8),
                                   _buildSignalBadge(item, isDark),
+                                ],
+                                // 价格预警指示器
+                                if (item.hasActiveAlerts) ...[
+                                  const SizedBox(width: 8),
+                                  PriceAlertIndicator(
+                                    alerts: item.priceAlerts,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => PriceAlertConfigScreen(stock: item),
+                                        ),
+                                      ).then((_) => onWatchlistChanged?.call());
+                                    },
+                                  ),
                                 ],
                               ],
                             ),
@@ -684,5 +704,60 @@ class WatchlistItemWidget extends StatelessWidget {
     return Colors.grey;
   }
 
-
+  // 显示快捷操作菜单
+  void _showQuickActions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.add_alert, color: Colors.orange),
+              title: Text('设置价格预警'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PriceAlertConfigScreen(stock: item),
+                  ),
+                ).then((_) => onWatchlistChanged?.call());
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.show_chart, color: Colors.blue),
+              title: Text('查看详情'),
+              onTap: () {
+                Navigator.pop(context);
+                List<Map<String, String>>? availableStocks;
+                if (allWatchlistItems != null && allWatchlistItems!.isNotEmpty) {
+                  availableStocks = allWatchlistItems!.map((watchlistItem) => {
+                    'code': watchlistItem.code,
+                    'name': watchlistItem.name,
+                  }).toList();
+                }
+                
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StockDetailScreen(
+                      stockCode: item.code,
+                      stockName: item.name,
+                      strategy: item.strategy,
+                      availableStocks: availableStocks,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 } 
