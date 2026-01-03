@@ -19,6 +19,8 @@ import 'watchlist_screen.dart';
 import 'kline_replay_screen.dart';
 import 'index_analysis_screen.dart';
 import 'limit_board_screen.dart';
+import 'sector_analysis_screen.dart';
+import 'valuation_screening_screen.dart';
 
 class MenuItem {
   final String title;
@@ -108,8 +110,20 @@ class _HomeScreenState extends State<HomeScreen> {
         needsAppBar: false, // 大盘分析有自己的AppBar，不需要HomeScreen提供
       ),
       const MenuItem(
-        title: '交易概览',
+        title: '板块分析',
         icon: Icons.dashboard,
+        screen: SectorAnalysisScreen(),
+        needsAppBar: false, // 板块分析有自己的AppBar，不需要HomeScreen提供
+      ),
+      const MenuItem(
+        title: '估值分析',
+        icon: Icons.filter_alt,
+        screen: ValuationScreeningScreen(),
+        needsAppBar: false, // 估值分析有自己的AppBar，不需要HomeScreen提供
+      ),
+      const MenuItem(
+        title: '交易概览',
+        icon: Icons.analytics,
         screen: AnalysisScreen(),
           needsAppBar: false, // 交易概览有自己的AppBar，不需要HomeScreen提供
       ),
@@ -208,8 +222,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final isKLineReplayScreen = _menuItems[_selectedIndex].title == 'K线回放';
 
     if (isMobile) {
-      // 移动设备使用底部导航栏（不包含K线回放、打板分析和大盘分析，这些只在侧边栏显示）
-      final sidebarOnlyItems = ['K线回放', '打板分析', '大盘分析'];
+      // 移动设备使用底部导航栏（不包含K线回放、打板分析、大盘分析、板块分析、估值分析，这些只在侧边栏显示）
+      final sidebarOnlyItems = ['K线回放', '打板分析', '大盘分析', '板块分析', '估值分析'];
       final bottomNavItems = _menuItems.where((item) => !sidebarOnlyItems.contains(item.title)).toList();
       
       // 计算底部导航栏的选中索引

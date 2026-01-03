@@ -16,6 +16,8 @@ from app.core.logging import logger
 from app.core.config import settings
 from app.db.session import RedisCache
 from app.services.stock.stock_atomic_service import stock_atomic_service
+from app.services.sector.sector_service import SectorService
+from app.services.valuation.valuation_service import ValuationService
 
 # Redis缓存客户端
 redis_cache = RedisCache()
@@ -487,6 +489,65 @@ class RuntimeTasks:
             _task_locks['full_update'].release()
     
     @staticmethod
+    def job_update_sector_and_valuation():
+        """定时任务：更新板块和估值数据"""
+        logger.info("========== 开始更新板块和估值数据 ==========")
+        start_time = datetime.now()
+        
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                # 初始化服务
+                sector_service = SectorService()
+                valuation_service = ValuationService()
+                
+                # 1. 更新板块列表（行业和概念）
+                logger.info("更新板块列表...")
+                industry_result = loop.run_until_complete(
+                    sector_service.get_sector_list(exchange='I')
+                )
+                concept_result = loop.run_until_complete(
+                    sector_service.get_sector_list(exchange='N')
+                )
+                
+                industry_count = industry_result.get('count', 0)
+                concept_count = concept_result.get('count', 0)
+                logger.info(f"板块列表更新完成: 行业={industry_count}, 概念={concept_count}")
+                
+                # 2. 更新估值数据
+                logger.info("更新估值数据...")
+                valuation_result = loop.run_until_complete(
+                    valuation_service.get_daily_basic_data()
+                )
+                
+                valuation_count = valuation_result.get('count', 0)
+                logger.info(f"估值数据更新完成: {valuation_count}只股票")
+                
+                elapsed = (datetime.now() - start_time).total_seconds()
+                logger.info(f"========== 板块和估值数据更新完成，耗时 {elapsed:.2f}秒 ==========")
+                
+                add_job_log(
+                    'update_sector_valuation',
+                    'success',
+                    f"板块和估值数据更新完成",
+                    elapsed_seconds=round(elapsed, 2),
+                    industry_count=industry_count,
+                    concept_count=concept_count,
+                    valuation_count=valuation_count
+                )
+                
+            finally:
+                loop.close()
+                
+        except Exception as e:
+            logger.error(f"板块和估值数据更新失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            add_job_log('update_sector_valuation', 'error', f'更新失败: {str(e)}')
+    
+    @staticmethod
     def job_cleanup_charts():
         """定时任务：清理图表文件"""
         logger.info("========== 开始清理图表文件 ==========")
@@ -712,6 +773,16 @@ def start_stock_scheduler(init_mode: str = "skip", calculate_signals: bool = Fal
         replace_existing=True
     )
     logger.info("WebSocket价格推送任务已添加，间隔: 5秒（仅交易时间）")
+    
+    # 板块和估值数据更新：每日盘后18:00更新
+    scheduler.add_job(
+        func=RuntimeTasks.job_update_sector_and_valuation,
+        trigger=CronTrigger(hour=18, minute=0, day_of_week='mon-fri'),
+        id='update_sector_valuation',
+        name='板块和估值数据更新',
+        replace_existing=True
+    )
+    logger.info("板块和估值数据更新任务已添加，时间: 每日18:00（交易日）")
     
     # 4. 启动调度器
     scheduler.start()

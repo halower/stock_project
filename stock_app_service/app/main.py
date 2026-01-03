@@ -131,7 +131,7 @@ from app.api import (
     signal_management, task_management,
     stock_data_management, stock_ai_analysis, chart, chart_data, market_types,
     realtime_config, data_validation, websocket, index_analysis,
-    limit_board
+    limit_board, sector_analysis, valuation
 )
 
 # 注册路由
@@ -152,6 +152,8 @@ app.include_router(data_validation.router, tags=["数据验证"])
 app.include_router(websocket.router, tags=["WebSocket"])
 app.include_router(index_analysis.router, tags=["指数分析"])
 app.include_router(limit_board.router, prefix="/api", tags=["打板分析"])
+app.include_router(sector_analysis.router, prefix="/api", tags=["板块分析"])
+app.include_router(valuation.router, prefix="/api", tags=["估值分析"])
 
 # 基础路由
 @app.get("/ping")

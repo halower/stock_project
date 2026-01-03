@@ -70,4 +70,17 @@ class ApiConfig {
   
   // AI分析缓存查询接口 - 检查后端是否有缓存
   static String getStockAIAnalysisCacheUrl(String stockCode) => '$apiBaseUrl/stocks/ai-analysis/cache?code=$stockCode';
+  
+  // 获取请求头
+  static Map<String, String> get headers {
+    if (apiTokenEnabled) {
+      return {
+        'Content-Type': 'application/json; charset=utf-8',
+        apiTokenHeaderName: apiToken,
+      };
+    }
+    return {
+      'Content-Type': 'application/json; charset=utf-8',
+    };
+  }
 } 
