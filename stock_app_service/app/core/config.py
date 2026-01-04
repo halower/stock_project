@@ -43,10 +43,20 @@ CACHE_TTL_SHORT = 300  # 短期缓存5分钟
 CACHE_TTL_LONG = 86400  # 长期缓存24小时
 
 # 数据库初始化配置
+# ⚠️ 危险操作：RESET_TABLES=true会清空Redis所有数据
+# 注意：
+# 1. skip模式下，即使RESET_TABLES=true也不会清空（保护现有数据）
+# 2. init模式下，RESET_TABLES=true才会真正清空Redis
+# 3. 生产环境建议保持false，避免误删数据
 RESET_TABLES = os.environ.get("RESET_TABLES", "false").lower() == "true"
 
-# 注意：STOCK_INIT_MODE已废弃，不再使用
-# 新的调度器使用 start_stock_scheduler(init_mode, calculate_signals) 参数控制
+# 调度器初始化模式配置（通过环境变量设置）
+# SCHEDULER_INIT_MODE: 
+#   - skip（默认）：跳过数据初始化，保留Redis现有数据，按需自动补偿缺失数据
+#   - init：全量初始化所有股票数据（约6000只股票，耗时约30分钟）
+# SCHEDULER_CALCULATE_SIGNALS:
+#   - false（默认）：跳过信号计算
+#   - true：启动时计算买入信号
 
 # 后台任务配置 - 控制后台任务对API服务的影响（使用asyncio，无需线程池）
 BACKGROUND_TASK_PRIORITY = os.environ.get("BACKGROUND_TASK_PRIORITY", "low").lower()  # low, normal, high

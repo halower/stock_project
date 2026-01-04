@@ -109,15 +109,63 @@ async def get_chart_data(
         if not stock_info or not ts_code:
             raise HTTPException(status_code=404, detail=f"股票 {stock_code} 不存在")
         
-        # 3. 获取K线数据
+        # 3. 获取K线数据（带自动补偿）
         kline_key = f"stock_trend:{ts_code}"
         kline_data = redis_client.get(kline_key)
         
         if not kline_data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"股票 {stock_code} 没有历史数据"
-            )
+            # 🔧 自动数据补偿机制：如果Redis中没有数据，立即从Tushare获取
+            logger.warning(f"Redis中没有股票 {stock_code} 的历史数据")
+            logger.info(f"🚀 启动自动数据补偿：从Tushare获取股票 {ts_code} 的历史数据...")
+            
+            try:
+                from app.services.stock.unified_data_service import UnifiedDataService
+                import tushare as ts
+                from datetime import datetime
+                
+                unified_service = UnifiedDataService()
+                
+                # 判断是否为ETF
+                is_etf = stock_info.get('market', '') == 'ETF' or ts_code.startswith(('51', '15', '16', '56'))
+                
+                # 获取180天数据
+                logger.info(f"正在获取 {ts_code} 的180天K线数据（{'ETF' if is_etf else '股票'}）...")
+                kline_list = unified_service.fetch_historical_data(
+                    ts_code=ts_code,
+                    days=180,
+                    is_etf=is_etf
+                )
+                
+                if not kline_list or len(kline_list) < 20:
+                    logger.error(f"❌ 从Tushare获取的数据不足: {len(kline_list) if kline_list else 0} 条")
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"股票 {stock_code} 历史数据不足（获取到{len(kline_list) if kline_list else 0}条）"
+                    )
+                
+                # 存储到Redis
+                trend_data_to_store = {
+                    'ts_code': ts_code,
+                    'data': kline_list,
+                    'updated_at': datetime.now().isoformat(),
+                    'data_count': len(kline_list),
+                    'source': 'tushare_补偿'
+                }
+                
+                redis_client.set(kline_key, json.dumps(trend_data_to_store, default=str))
+                logger.info(f"✅ 数据补偿成功: {ts_code}，已存储 {len(kline_list)} 条K线数据")
+                
+                # 重新读取数据
+                kline_data = redis_client.get(kline_key)
+                
+            except Exception as e:
+                logger.error(f"❌ 自动数据补偿失败: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"股票 {stock_code} 无法获取历史数据。错误：{str(e)}"
+                )
         
         # 4. 解析并处理数据
         trend_data = json.loads(kline_data)

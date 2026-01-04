@@ -46,9 +46,19 @@ async def lifespan(app: FastAPI):
                 from app.db.redis_storage import redis_storage
                 if redis_storage.test_connection():
                     logger.info("Redis连接成功")
+                    # ⚠️ 修复：RESET_TABLES应该只在真正需要重置时使用，而不是每次启动都检查
+                    # 而且应该考虑init_mode，skip模式下绝不清空数据
                     if RESET_TABLES:
-                        redis_storage.redis_client.flushdb()
-                        logger.info("Redis数据已清理")
+                        # 从环境变量读取init_mode，默认skip
+                        init_mode = os.getenv("SCHEDULER_INIT_MODE", "skip").lower()
+                        if init_mode == "skip":
+                            logger.warning("⚠️ RESET_TABLES=true但init_mode=skip，为保护现有数据，跳过Redis清理")
+                            logger.info("如需清理Redis，请同时设置 SCHEDULER_INIT_MODE=init")
+                        else:
+                            logger.warning("🔥 警告：即将清空Redis所有数据！")
+                            logger.warning("🔥 这将删除所有股票数据、信号、缓存等")
+                            redis_storage.redis_client.flushdb()
+                            logger.info("Redis数据已清理（RESET_TABLES=true且init_mode!=skip）")
                 else:
                     logger.warning("Redis连接失败")
             except Exception as e:

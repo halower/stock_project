@@ -104,31 +104,66 @@ async def generate_stock_chart(
         kline_data = redis_client.get(kline_key)
         
         if not kline_data:
-            # 检查Redis中是否有相关的股票数据
+            # 🔧 自动数据补偿机制：如果Redis中没有数据，立即从Tushare获取
             logger.warning(f"Redis中没有找到股票 {stock_code} 的历史数据，键: {kline_key}")
+            logger.info(f"🚀 启动自动数据补偿：从Tushare获取股票 {ts_code} 的历史数据...")
             
-            # 尝试查找是否有其他格式的数据
-            all_keys = []
             try:
-                # 查找相关的键（同步方式）
-                for key in redis_client.scan_iter(match=f"stock_trend:*{stock_code[:6]}*"):
-                    all_keys.append(key)
-                    
-                if all_keys:
-                    logger.info(f"找到相关的股票数据键: {all_keys}")
-                else:
-                    logger.warning(f"Redis中没有找到任何包含 {stock_code[:6]} 的股票数据")
-                    
-                # 检查是否正在进行数据初始化
-                init_status = redis_client.get("stock_data_init_status")
-                    
-                if init_status:
-                    logger.info(f"当前股票数据初始化状态: {init_status}")
-                    
-            except Exception as scan_error:
-                logger.error(f"扫描Redis键时出错: {scan_error}")
-            
-            raise HTTPException(status_code=404, detail=f"股票 {stock_code} 没有历史数据。可能原因：1) 数据正在初始化中 2) 股票代码不存在 3) 数据获取失败")
+                # 使用UnifiedDataService获取数据（支持Tushare）
+                from app.services.stock.unified_data_service import UnifiedDataService
+                import tushare as ts
+                
+                unified_service = UnifiedDataService()
+                
+                # 判断是否为ETF
+                is_etf = stock_info.get('market', '') == 'ETF' or ts_code.startswith(('51', '15', '16', '56'))
+                
+                # 获取180天数据（满足EMA169计算需求）
+                logger.info(f"正在获取 {ts_code} 的180天K线数据（{'ETF' if is_etf else '股票'}）...")
+                
+                # 使用同步方式获取数据
+                kline_list = unified_service.fetch_historical_data(
+                    ts_code=ts_code,
+                    days=180,
+                    is_etf=is_etf
+                )
+                
+                if not kline_list or len(kline_list) < 20:
+                    logger.error(f"❌ 从Tushare获取的数据不足: {len(kline_list) if kline_list else 0} 条")
+                    raise HTTPException(
+                        status_code=404, 
+                        detail=f"股票 {stock_code} 历史数据不足（获取到{len(kline_list) if kline_list else 0}条，至少需要20条）"
+                    )
+                
+                # 存储到Redis（按照标准格式）
+                trend_data_to_store = {
+                    'ts_code': ts_code,
+                    'data': kline_list,
+                    'updated_at': datetime.now().isoformat(),
+                    'data_count': len(kline_list),
+                    'source': 'tushare_补偿'
+                }
+                
+                redis_client.set(kline_key, json.dumps(trend_data_to_store, default=str))
+                logger.info(f"✅ 数据补偿成功: {ts_code}，已存储 {len(kline_list)} 条K线数据到Redis")
+                
+                # 重新读取数据
+                kline_data = redis_client.get(kline_key)
+                
+            except ImportError as ie:
+                logger.error(f"导入模块失败: {ie}")
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"数据补偿失败：系统配置错误"
+                )
+            except Exception as e:
+                logger.error(f"❌ 自动数据补偿失败: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"股票 {stock_code} 无法获取历史数据。错误：{str(e)}"
+                )
         
         # 解析数据，处理不同的存储格式
         trend_data = json.loads(kline_data)
