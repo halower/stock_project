@@ -23,8 +23,8 @@ class NotificationService {
     }
 
     try {
-      // Android初始化设置 - 使用 drawable 中的图标
-      const androidSettings = AndroidInitializationSettings('@drawable/ic_launcher_foreground');
+      // Android初始化设置 - 不设置特定图标，使用默认
+      const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
       
       // iOS初始化设置
       const iosSettings = DarwinInitializationSettings(
@@ -198,7 +198,7 @@ class NotificationService {
         channelDescription: '$_channelDescription (声音:${soundEnabled ? "开" : "关"} 振动:${vibrationEnabled ? "开" : "关"})',
         importance: Importance.max, // 使用最高优先级
         priority: Priority.max,
-        icon: '@drawable/ic_launcher_foreground', // 指定通知图标
+        // 使用初始化时设置的图标，不需要单独指定
         playSound: soundEnabled, // 根据设置决定是否播放声音
         enableVibration: vibrationEnabled, // 根据设置决定是否振动
         // 自定义振动模式：更强烈的振动提醒
@@ -310,7 +310,7 @@ class NotificationService {
         channelDescription: '$_channelDescription (声音:${soundEnabled ? "开" : "关"} 振动:${vibrationEnabled ? "开" : "关"})',
         importance: Importance.max,
         priority: Priority.max,
-        icon: '@drawable/ic_launcher_foreground', // 指定通知图标
+        // 使用初始化时设置的图标
         playSound: soundEnabled,
         enableVibration: vibrationEnabled,
         // 自定义振动模式：振动-停止-振动-停止（更明显）
