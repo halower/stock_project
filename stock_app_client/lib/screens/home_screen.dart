@@ -526,7 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             child: Text(
-              '1.2.20+2',
+              '1.2.21+2',
               style: TextStyle(
                 fontSize: 11,
                 color: isDark ? AppDesignSystem.darkText4 : AppDesignSystem.lightText4,
