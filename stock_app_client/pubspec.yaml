@@ -72,33 +72,30 @@ flutter_launcher_icons:
 
 # 启动屏配置
 flutter_native_splash:
-  # 背景色 - 使用深蓝色渐变作为金融应用基调 (深色版本)
-  color: "#061029"
+  # 背景色 - 使用深色背景配合Logo
+  color: "#0A1628"
   
   # 暗黑模式颜色设置
-  color_dark: "#020A1A"
+  color_dark: "#0A1628"
   
-  # 前景图 - 使用应用logo
-  image: "assets/icons/app_logo.png"
+  # 前景图 - 使用专门的启动屏Logo
+  image: "assets/icons/app_logo_splash.png"
   
   # 品牌图片位置
   branding_mode: bottom
   
-  # 静态文本说明（branding_dark不是有效参数）
-  #branding_dark: "智能投资 · 稳健成长"
-  
   # Android 12 启动屏特性
   android_12:
     # 背景色
-    color: "#061029"
+    color: "#0A1628"
     # 深色模式背景色
-    color_dark: "#020A1A"
-    # 图标
-    image: "assets/icons/app_logo.png"
-    # 图标背景色
-    icon_background_color: "#2F80ED"
+    color_dark: "#0A1628"
+    # 图标 - 使用启动屏专用Logo
+    image: "assets/icons/app_logo_splash.png"
+    # 图标背景色（透明或深色）
+    icon_background_color: "#0A1628"
     # 深色模式图标背景色
-    icon_background_color_dark: "#1C5BBD"
+    icon_background_color_dark: "#0A1628"
     
   # 启动屏显示模式
   fullscreen: true
