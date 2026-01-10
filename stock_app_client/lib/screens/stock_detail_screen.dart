@@ -51,6 +51,9 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
   // 横屏状态
   bool _isLandscapeMode = false;
   
+  // K线周期状态（在父级管理，横竖屏共享）
+  String _currentPeriod = 'daily';
+  
   @override
   void initState() {
     super.initState();
@@ -274,6 +277,12 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
             onToggleLandscape: _toggleLandscapeMode,
             onStockChanged: _onStockChanged,
             availableStocks: widget.availableStocks, // 传递可选的股票列表
+            period: _currentPeriod,
+            onPeriodChanged: (newPeriod) {
+              setState(() {
+                _currentPeriod = newPeriod;
+              });
+            },
           ),
           AIAnalysisTab(stockCode: _currentStockCode, stockName: _currentStockName),
           StockNewsTab(stockCode: _currentStockCode),
@@ -292,7 +301,12 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
     
     // 获取当前主题
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(_currentStockCode, strategyToUse, isDarkMode: isDarkMode);
+    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(
+      _currentStockCode, 
+      strategyToUse, 
+      isDarkMode: isDarkMode,
+      period: _currentPeriod,
+    );
     
     // 设置横屏和隐藏系统UI
     SystemChrome.setPreferredOrientations([
@@ -305,9 +319,9 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 全屏K线图 - 使用key确保股票切换时重新加载
+          // 全屏K线图 - 使用key确保股票切换或周期变化时重新加载
           StockChartWebView(
-            key: ValueKey(_currentStockCode), // 使用股票代码作为key
+            key: ValueKey('${_currentStockCode}_$_currentPeriod'), // 包含周期
             url: chartUrl,
           ),
           
@@ -318,6 +332,13 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
             onStockChanged: _onStockChanged,
             isLandscape: true,
             availableStocks: widget.availableStocks, // 传递可选的股票列表
+          ),
+          
+          // 周期切换按钮组 - 横屏左下角
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: _buildLandscapePeriodSelector(),
           ),
           
           // 右上角按钮组（横屏模式）
@@ -429,6 +450,47 @@ class _StockDetailScreenState extends State<StockDetailScreen> with SingleTicker
       ),
     );
   }
+  
+  /// 构建横屏周期选择器（精简透明版）
+  Widget _buildLandscapePeriodSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ApiConfig.klinePeriods.map((period) {
+          final isSelected = period['key'] == _currentPeriod;
+          return GestureDetector(
+            onTap: () {
+              if (period['key'] != _currentPeriod) {
+                setState(() {
+                  _currentPeriod = period['key']!;
+                });
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.blue.withOpacity(0.8) : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                period['name']!,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white60,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 }
 
 /// K线走势图选项卡
@@ -438,6 +500,8 @@ class KLineChartTab extends StatefulWidget {
   final VoidCallback? onToggleLandscape;
   final Function(String stockCode, String stockName)? onStockChanged;
   final List<Map<String, String>>? availableStocks; // 添加可选的股票列表参数
+  final String? period; // K线周期参数
+  final Function(String)? onPeriodChanged; // 周期变化回调
   
   const KLineChartTab({
     Key? key,
@@ -446,6 +510,8 @@ class KLineChartTab extends StatefulWidget {
     this.onToggleLandscape,
     this.onStockChanged,
     this.availableStocks, // 可选股票列表参数
+    this.period,
+    this.onPeriodChanged,
   }) : super(key: key);
   
   @override
@@ -462,6 +528,11 @@ class _KLineChartTabState extends State<KLineChartTab> with AutomaticKeepAliveCl
   String? _currentStockCode; // 跟踪当前股票代码
   Key _webViewKey = UniqueKey(); // 用于强制重建WebView
   
+  // K线周期状态（优先使用父级传入的值）
+  String _localPeriod = 'daily'; // 本地周期状态
+  
+  String get _currentPeriod => widget.period ?? _localPeriod;
+  
   @override
   bool get wantKeepAlive => true; // 保持状态，避免重新加载
   
@@ -469,6 +540,7 @@ class _KLineChartTabState extends State<KLineChartTab> with AutomaticKeepAliveCl
   void initState() {
     super.initState();
     _currentStockCode = widget.stockCode;
+    _localPeriod = widget.period ?? 'daily';
   }
   
   @override
@@ -525,9 +597,14 @@ class _KLineChartTabState extends State<KLineChartTab> with AutomaticKeepAliveCl
     
     // 获取当前主题
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(_currentStockCode ?? widget.stockCode, strategyToUse, isDarkMode: isDarkMode);
+    final String chartUrl = ApiConfig.getStockChartWithStrategyUrl(
+      _currentStockCode ?? widget.stockCode, 
+      strategyToUse, 
+      isDarkMode: isDarkMode,
+      period: _currentPeriod,
+    );
     
-    debugPrint('加载K线图: $chartUrl, 使用策略: $strategyToUse, 主题: ${isDarkMode ? "暗色" : "亮色"}');
+    debugPrint('加载K线图: $chartUrl, 使用策略: $strategyToUse, 周期: $_currentPeriod, 主题: ${isDarkMode ? "暗色" : "亮色"}');
     
     return AbsorbPointer(
       absorbing: false, // 不吸收点击事件，允许WebView接收触摸
@@ -539,10 +616,17 @@ class _KLineChartTabState extends State<KLineChartTab> with AutomaticKeepAliveCl
             height: MediaQuery.of(context).size.height,
                     child: Stack(
           children: [
-            // K线图WebView - 使用key确保股票切换时重新加载
+            // K线图WebView - 使用key确保股票切换或周期变化时重新加载
             StockChartWebView(
-              key: ValueKey(_currentStockCode ?? widget.stockCode),
+              key: ValueKey('${_currentStockCode ?? widget.stockCode}_$_currentPeriod'),
               url: chartUrl,
+            ),
+            
+            // 周期切换按钮组 - 左下角
+            Positioned(
+              bottom: 20,
+              left: 16,
+              child: _buildPeriodSelector(),
             ),
             
                           // 紧凑型滑动切换器
@@ -621,6 +705,62 @@ class _KLineChartTabState extends State<KLineChartTab> with AutomaticKeepAliveCl
             
 
         ],
+      ),
+    );
+  }
+  
+  /// 构建周期选择器（精简透明版）
+  Widget _buildPeriodSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ApiConfig.klinePeriods.map((period) {
+          final isSelected = period['key'] == _currentPeriod;
+          return GestureDetector(
+            onTap: () {
+              if (period['key'] != _currentPeriod) {
+                // 通知父级周期变化（如果有回调）
+                if (widget.onPeriodChanged != null) {
+                  widget.onPeriodChanged!(period['key']!);
+                } else {
+                  // 否则使用本地状态
+                  setState(() {
+                    _localPeriod = period['key']!;
+                    _isLoading = true;
+                  });
+                }
+                // 延迟更新加载状态
+                Future.delayed(const Duration(seconds: 2), () {
+                  if (mounted) {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  }
+                });
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.blue.withOpacity(0.8) : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                period['name']!,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white60,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

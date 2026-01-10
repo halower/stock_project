@@ -91,30 +91,61 @@ class IndicatorAutoRenderer:
             return None
     
     @classmethod
-    def _get_time_string(cls, df: pd.DataFrame, idx: int) -> str:
+    def _get_time_string(cls, df: pd.DataFrame, idx: int):
         """
-        获取指定索引的时间字符串
+        获取指定索引的时间值（分钟级数据返回时间戳，日线返回字符串）
         
         Args:
             df: DataFrame
             idx: 索引
             
         Returns:
-            时间字符串（YYYY-MM-DD格式）
+            时间值（字符串或时间戳）
         """
+        from datetime import datetime
+        
         try:
+            # 检测是否为分钟级数据
+            is_minute_data = False
+            if len(df) > 1 and 'date' in df.columns:
+                try:
+                    first_date = df.iloc[0]['date']
+                    second_date = df.iloc[1]['date']
+                    if hasattr(first_date, 'date') and hasattr(second_date, 'date'):
+                        if first_date.date() == second_date.date() and first_date != second_date:
+                            is_minute_data = True
+                    elif isinstance(first_date, str) and ' ' in first_date:
+                        is_minute_data = True
+                except Exception:
+                    pass
+            
             if 'date' in df.columns:
                 date_value = df.iloc[idx]['date']
                 if pd.notna(date_value):
-                    if hasattr(date_value, 'strftime'):
-                        return date_value.strftime('%Y-%m-%d')
+                    if is_minute_data:
+                        # 分钟级数据返回时间戳
+                        if hasattr(date_value, 'timestamp'):
+                            return int(date_value.timestamp())
+                        elif isinstance(date_value, str):
+                            try:
+                                dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                            except ValueError:
+                                try:
+                                    dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M')
+                                except ValueError:
+                                    return str(idx)
+                            return int(dt.timestamp())
                     else:
-                        return str(date_value).split(' ')[0]
+                        # 日线返回字符串
+                        if hasattr(date_value, 'strftime'):
+                            return date_value.strftime('%Y-%m-%d')
+                        else:
+                            return str(date_value).split(' ')[0]
             
             # 降级：使用索引
             return str(idx)
         except Exception as e:
-            logger.warning(f"获取时间字符串失败 (idx={idx}): {e}")
+            logger.warning(f"获取时间值失败 (idx={idx}): {e}")
             return str(idx)
     
     @classmethod

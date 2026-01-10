@@ -581,4 +581,142 @@ async def _fetch_realtime_prices(codes_list: list, redis_cache) -> list:
                 error=f"获取失败: {str(e)}"
             ))
     
-    return result_data 
+    return result_data
+
+
+# ==================== 多周期K线API ====================
+
+class MultiPeriodKlineData(BaseModel):
+    """多周期K线数据项"""
+    date: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    amount: Optional[float] = None
+    change_pct: Optional[float] = None
+
+
+class MultiPeriodKlineResponse(BaseModel):
+    """多周期K线响应"""
+    success: bool
+    data: Optional[List[MultiPeriodKlineData]] = None
+    period: Optional[str] = None
+    period_name: Optional[str] = None
+    count: Optional[int] = None
+    from_cache: Optional[bool] = None
+    error: Optional[str] = None
+
+
+class SupportedPeriodsResponse(BaseModel):
+    """支持的周期列表响应"""
+    success: bool
+    periods: Dict[str, str]
+
+
+@router.get("/api/stocks/{stock_code}/kline",
+           response_model=MultiPeriodKlineResponse,
+           summary="获取多周期K线数据",
+           dependencies=[Depends(verify_token)])
+async def get_multi_period_kline(
+    stock_code: str,
+    period: str = Query(
+        default="daily",
+        description="K线周期: daily(日线), weekly(周线), monthly(月线), 15min(15分钟), 30min(30分钟), 60min(60分钟)"
+    ),
+    limit: int = Query(
+        default=200,
+        ge=10,
+        le=500,
+        description="返回数据条数，范围10-500"
+    )
+) -> MultiPeriodKlineResponse:
+    """
+    获取指定股票的多周期K线数据
+    
+    支持的周期：
+    - daily: 日线（数据源：Tushare）
+    - weekly: 周线（数据源：AKShare）
+    - monthly: 月线（数据源：AKShare）
+    - 15min: 15分钟（数据源：AKShare）
+    - 30min: 30分钟（数据源：AKShare）
+    - 60min: 60分钟（数据源：AKShare）
+    
+    缓存策略：
+    - 日线：24小时
+    - 周线：1小时（非交易时间24小时）
+    - 月线：2小时（非交易时间24小时）
+    - 分钟级：5-15分钟（非交易时间1小时）
+    
+    Args:
+        stock_code: 股票代码（如：000001 或 000001.SZ）
+        period: K线周期
+        limit: 返回数据条数
+        
+    Returns:
+        K线数据列表
+    """
+    try:
+        from app.services.stock.multi_period_kline_service import multi_period_kline_service
+        
+        logger.info(f"获取 {stock_code} {period} K线数据，limit={limit}")
+        
+        result = await multi_period_kline_service.get_kline_data(
+            stock_code=stock_code,
+            period=period,
+            limit=limit
+        )
+        
+        if not result['success']:
+            return MultiPeriodKlineResponse(
+                success=False,
+                error=result.get('error', '获取K线数据失败')
+            )
+        
+        return MultiPeriodKlineResponse(
+            success=True,
+            data=result['data'],
+            period=result['period'],
+            period_name=result['period_name'],
+            count=result['count'],
+            from_cache=result.get('from_cache', False)
+        )
+        
+    except Exception as e:
+        logger.error(f"获取多周期K线数据失败: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return MultiPeriodKlineResponse(
+            success=False,
+            error=f"获取K线数据失败: {str(e)}"
+        )
+
+
+@router.get("/api/stocks/kline/periods",
+           response_model=SupportedPeriodsResponse,
+           summary="获取支持的K线周期列表",
+           dependencies=[Depends(verify_token)])
+async def get_supported_periods() -> SupportedPeriodsResponse:
+    """
+    获取支持的K线周期列表
+    
+    Returns:
+        支持的周期字典，key为周期代码，value为周期名称
+    """
+    try:
+        from app.services.stock.multi_period_kline_service import multi_period_kline_service
+        
+        periods = multi_period_kline_service.get_supported_periods()
+        
+        return SupportedPeriodsResponse(
+            success=True,
+            periods=periods
+        )
+        
+    except Exception as e:
+        logger.error(f"获取支持的周期列表失败: {e}")
+        return SupportedPeriodsResponse(
+            success=False,
+            periods={}
+        )

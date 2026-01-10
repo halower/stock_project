@@ -74,8 +74,10 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             return ""
     
     @classmethod
-    def _get_time_string(cls, df: pd.DataFrame, idx: int) -> str:
-        """获取时间字符串（YYYY-MM-DD 格式）"""
+    def _get_time_value(cls, df: pd.DataFrame, idx: int):
+        """获取时间值（自动识别日线或分钟级格式，分钟级返回时间戳）"""
+        from datetime import datetime
+        
         try:
             if idx < 0 or idx >= len(df):
                 return str(idx)
@@ -87,16 +89,45 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
             else:
                 return str(idx)
             
-            if hasattr(date_value, 'strftime'):
-                return date_value.strftime('%Y-%m-%d')
+            # 检测是否为分钟级数据
+            is_minute_data = False
+            if len(df) > 1 and 'date' in df.columns:
+                try:
+                    first_date = df.iloc[0]['date']
+                    second_date = df.iloc[1]['date']
+                    if hasattr(first_date, 'date') and hasattr(second_date, 'date'):
+                        if first_date.date() == second_date.date() and first_date != second_date:
+                            is_minute_data = True
+                    elif isinstance(first_date, str) and ' ' in first_date:
+                        is_minute_data = True
+                except Exception:
+                    pass
+            
+            # 分钟级数据返回时间戳，日线返回字符串
+            if is_minute_data:
+                if hasattr(date_value, 'timestamp'):
+                    return int(date_value.timestamp())
+                elif isinstance(date_value, str):
+                    try:
+                        dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        try:
+                            dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M')
+                        except ValueError:
+                            return str(idx)
+                    return int(dt.timestamp())
+                return str(idx)
             else:
-                date_str = str(date_value)
-                if len(date_str) == 8:  # 20251128 格式
-                    return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-                return date_str
+                if hasattr(date_value, 'strftime'):
+                    return date_value.strftime('%Y-%m-%d')
+                else:
+                    date_str = str(date_value)
+                    if len(date_str) == 8:  # 20251128 格式
+                        return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                    return date_str
                 
         except Exception as e:
-            logger.warning(f"获取时间字符串失败: {e}")
+            logger.warning(f"获取时间值失败: {e}")
             return str(idx)
     
     @classmethod
@@ -111,6 +142,22 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
         Returns:
             格式化的EMA数据列表
         """
+        from datetime import datetime
+        
+        # 检测是否为分钟级数据
+        is_minute_data = False
+        if len(df) > 1 and 'date' in df.columns:
+            try:
+                first_date = df.iloc[0]['date']
+                second_date = df.iloc[1]['date']
+                if hasattr(first_date, 'date') and hasattr(second_date, 'date'):
+                    if first_date.date() == second_date.date() and first_date != second_date:
+                        is_minute_data = True
+                elif isinstance(first_date, str) and ' ' in first_date:
+                    is_minute_data = True
+            except Exception:
+                pass
+        
         ema_data = []
         if ema_column in df.columns:
             for _, row in df.iterrows():
@@ -122,19 +169,33 @@ class VolumeWaveChartStrategy(BaseChartStrategy):
                     if pd.isna(date_value) or date_value is None:
                         continue
                     
-                    # 转换为字符串格式
-                    if hasattr(date_value, 'strftime'):
-                        date_str = date_value.strftime('%Y-%m-%d')
-                    else:
-                        date_str = str(date_value)
-                        # 检查转换后的字符串是否有效
-                        if date_str == 'nan' or date_str == 'NaT':
+                    # 分钟级数据使用时间戳，日线使用字符串
+                    if is_minute_data:
+                        if hasattr(date_value, 'timestamp'):
+                            time_value = int(date_value.timestamp())
+                        elif isinstance(date_value, str):
+                            try:
+                                dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                            except ValueError:
+                                try:
+                                    dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M')
+                                except ValueError:
+                                    continue
+                            time_value = int(dt.timestamp())
+                        else:
                             continue
+                    else:
+                        if hasattr(date_value, 'strftime'):
+                            time_value = date_value.strftime('%Y-%m-%d')
+                        else:
+                            time_value = str(date_value)
+                            if time_value == 'nan' or time_value == 'NaT':
+                                continue
                     
                     # 检查EMA值是否有效
                     if not pd.isna(row[ema_column]):
                         ema_data.append({
-                            "time": date_str,
+                            "time": time_value,
                             "value": float(row[ema_column])
                         })
                 except Exception as e:

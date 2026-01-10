@@ -359,7 +359,8 @@ async def generate_stock_chart(
 async def view_stock_chart(
     stock_code: str,
     strategy: str = Query("volume_wave", description="图表策略类型: volume_wave(动量守恒) 或 volume_wave_enhanced(动量守恒增强版)"),
-    theme: str = Query("dark", description="图表主题: light(亮色) 或 dark(暗色)")
+    theme: str = Query("dark", description="图表主题: light(亮色) 或 dark(暗色)"),
+    period: str = Query("daily", description="K线周期: daily(日线), weekly(周线), monthly(月线), 15min(15分钟), 30min(30分钟), 60min(60分钟)")
 ):
     """
     查看指定股票的K线图表页面
@@ -368,6 +369,7 @@ async def view_stock_chart(
         stock_code: 股票代码
         strategy: 策略类型，可选 'volume_wave'(动量守恒) 或 'volume_wave_enhanced'(动量守恒增强版)
         theme: 图表主题，可选 'light'(亮色背景) 或 'dark'(暗色背景)，默认暗色
+        period: K线周期，可选 'daily'(日线) 或 'weekly'(周线) 或 'monthly'(月线) 或 '15min'/'30min'/'60min'(分钟级)
         
     Returns:
         重定向到图表HTML页面
@@ -382,9 +384,14 @@ async def view_stock_chart(
     if theme not in ["light", "dark"]:
         theme = "dark"  # 默认暗色主题
     
+    # 检查周期类型
+    supported_periods = ["daily", "weekly", "monthly", "15min", "30min", "60min"]
+    if period not in supported_periods:
+        raise HTTPException(status_code=400, detail=f"不支持的K线周期: {period}，支持的周期: {supported_periods}")
+    
     try:
-        # 生成图表，传递主题参数
-        chart_result = await generate_stock_chart(stock_code, strategy, theme)
+        # 生成图表，传递主题和周期参数
+        chart_result = await generate_stock_chart_with_period(stock_code, strategy, theme, period)
         chart_url = chart_result.get('chart_url')
         
         if not chart_url:
@@ -458,3 +465,201 @@ def cleanup_old_charts(max_files: int = 100):
             os.remove(file)
     except Exception as e:
         print(f"清理旧图表失败: {e}")
+
+
+async def generate_stock_chart_with_period(
+    stock_code: str,
+    strategy: str = "volume_wave",
+    theme: str = "dark",
+    period: str = "daily"
+) -> Dict[str, Any]:
+    """
+    生成带周期参数的股票K线图表
+    
+    支持周期:
+    - daily: 日线（数据源：Tushare/Redis缓存）
+    - weekly: 周线（数据源：AKShare）
+    - 15min: 15分钟（数据源：AKShare）
+    
+    Args:
+        stock_code: 股票代码
+        strategy: 策略类型
+        theme: 图表主题
+        period: K线周期
+        
+    Returns:
+        图表URL和其他信息
+    """
+    logger.info(f"📊 生成多周期图表: {stock_code}, 周期: {period}, 策略: {strategy}")
+    
+    # 日线使用原有逻辑（Tushare数据，支持策略信号）
+    if period == "daily":
+        return await generate_stock_chart(stock_code, strategy, theme)
+    
+    # 非日线周期使用AKShare获取数据
+    try:
+        from app.services.stock.multi_period_kline_service import multi_period_kline_service
+        
+        # 获取股票信息
+        redis_client = get_sync_redis_client()
+        stock_codes_key = "stocks:codes:all"
+        stock_codes_data = redis_client.get(stock_codes_key)
+        
+        if not stock_codes_data:
+            raise HTTPException(status_code=500, detail="股票代码数据不可用")
+        
+        stock_codes = json.loads(stock_codes_data)
+        stock_info = None
+        
+        for stock in stock_codes:
+            if stock.get('ts_code') == stock_code or \
+               stock.get('symbol') == stock_code or \
+               stock.get('ts_code', '').split('.')[0] == stock_code:
+                stock_info = stock
+                break
+        
+        if not stock_info:
+            raise HTTPException(status_code=404, detail=f"股票代码 {stock_code} 不存在")
+        
+        # 使用多周期服务获取数据
+        kline_result = await multi_period_kline_service.get_kline_data(
+            stock_code=stock_code,
+            period=period,
+            limit=200
+        )
+        
+        if not kline_result['success']:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"获取{period}数据失败: {kline_result.get('error', '未知错误')}"
+            )
+        
+        kline_data = kline_result['data']
+        
+        if not kline_data or len(kline_data) < 10:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"股票 {stock_code} {period} 数据不足"
+            )
+        
+        # 转换为DataFrame
+        df = pd.DataFrame(kline_data)
+        
+        # 统一字段格式
+        df['date'] = pd.to_datetime(df['date'])
+        
+        # 确保volume字段有效
+        if 'volume' in df.columns:
+            df['volume'] = df['volume'].fillna(1000)
+            df['volume'] = df['volume'].apply(lambda x: max(x, 1) if x != 0 else 1000)
+        else:
+            df['volume'] = 1000
+        
+        # 确保必要字段存在
+        required_columns = ['close', 'open', 'high', 'low', 'volume']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise HTTPException(status_code=400, detail=f"数据缺少必要列: {missing_columns}")
+        
+        logger.info(f"获取到 {len(df)} 条 {period} K线数据")
+        
+        # 应用策略（非日线周期也可以应用策略信号）
+        try:
+            processed_df, signals = apply_strategy(strategy, df)
+            logger.info(f"策略应用成功: 生成 {len(signals)} 个信号")
+        except Exception as e:
+            logger.warning(f"策略应用失败（使用原始数据）: {e}")
+            processed_df = df
+            signals = []
+        
+        # 周期名称映射
+        period_names = {
+            'daily': '日线',
+            'weekly': '周线',
+            '15min': '15分钟',
+            '30min': '30分钟',
+            '60min': '60分钟',
+            'monthly': '月线'
+        }
+        period_name = period_names.get(period, period)
+        
+        # 准备图表数据
+        stock_data = {
+            'stock': {
+                'code': stock_code,
+                'name': f"{stock_info.get('name', stock_code)} ({period_name})"
+            },
+            'data': processed_df,
+            'signals': signals,
+            'strategy': strategy,
+            'theme': theme,
+            'period': period  # 添加周期标识
+        }
+        
+        # 清理旧图表文件
+        cleanup_old_charts()
+        
+        # 生成图表（复用现有函数，稍作修改以支持周期标识）
+        chart_url = await generate_chart_from_redis_data_with_period(stock_data, period)
+        
+        if not chart_url:
+            raise HTTPException(status_code=500, detail=f"生成图表失败")
+        
+        logger.info(f"✅ {period} 图表生成成功: {chart_url}")
+        
+        return {
+            "code": stock_code,
+            "name": stock_info.get('name', stock_code),
+            "chart_url": chart_url,
+            "strategy": strategy,
+            "period": period,
+            "period_name": period_name,
+            "signals_count": len(signals),
+            "generated_time": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"多周期图表生成失败: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"图表生成错误: {str(e)}")
+
+
+async def generate_chart_from_redis_data_with_period(stock_data: Dict[str, Any], period: str) -> str:
+    """
+    从数据生成带周期标识的图表
+    
+    Args:
+        stock_data: 图表数据
+        period: K线周期
+        
+    Returns:
+        图表URL
+    """
+    try:
+        stock = stock_data['stock']
+        strategy = stock_data['strategy']
+        theme = stock_data.get('theme', 'dark')
+        
+        # 生成唯一文件名（包含周期标识）
+        chart_file = f"{stock['code']}_{strategy}_{period}_{theme}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.html"
+        chart_path = os.path.join(CHART_DIR, chart_file)
+        
+        # 生成HTML内容
+        html_content = generate_chart_html(strategy, stock_data, theme=theme)
+        
+        if not html_content:
+            return None
+        
+        # 写入文件
+        _write_chart_file(chart_path, html_content)
+        
+        return f"/static/charts/{chart_file}"
+        
+    except Exception as e:
+        logger.error(f"生成周期图表时出错: {str(e)}")
+        import traceback
+        logger.error(f"详细错误: {traceback.format_exc()}")
+        return None

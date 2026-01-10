@@ -154,7 +154,27 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
         Returns:
             格式化的图表数据列表
         """
+        import time as time_module
+        from datetime import datetime
+        
         chart_data = []
+        
+        # 检测是否为分钟级数据（通过检查同一天是否有多条数据）
+        is_minute_data = False
+        if len(df) > 1 and 'date' in df.columns:
+            try:
+                first_date = df.iloc[0]['date']
+                second_date = df.iloc[1]['date']
+                if hasattr(first_date, 'date') and hasattr(second_date, 'date'):
+                    # 如果两条数据在同一天但时间不同，则是分钟级数据
+                    if first_date.date() == second_date.date() and first_date != second_date:
+                        is_minute_data = True
+                elif isinstance(first_date, str) and ' ' in first_date:
+                    # 字符串格式包含空格（日期时间格式）
+                    is_minute_data = True
+            except Exception:
+                pass
+        
         for _, row in df.iterrows():
             try:
                 # 处理日期字段，确保格式正确
@@ -165,15 +185,34 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     logger.warning(f"跳过无效日期行: {row}")
                     continue
                 
-                # 转换为字符串格式
-                if hasattr(date_value, 'strftime'):
-                    date_str = date_value.strftime('%Y-%m-%d')
-                else:
-                    date_str = str(date_value)
-                    # 检查转换后的字符串是否有效
-                    if date_str == 'nan' or date_str == 'NaT':
-                        logger.warning(f"跳过无效日期: {date_str}")
+                # 分钟级数据使用Unix时间戳，日线数据使用字符串格式
+                # Lightweight Charts对分钟级数据需要时间戳格式
+                if is_minute_data:
+                    # 转换为Unix时间戳
+                    if hasattr(date_value, 'timestamp'):
+                        time_value = int(date_value.timestamp())
+                    elif isinstance(date_value, str):
+                        # 解析字符串日期时间
+                        try:
+                            dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                        except ValueError:
+                            try:
+                                dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M')
+                            except ValueError:
+                                dt = datetime.strptime(date_value[:19], '%Y-%m-%d %H:%M:%S')
+                        time_value = int(dt.timestamp())
+                    else:
                         continue
+                else:
+                    # 日线数据使用字符串格式
+                    if hasattr(date_value, 'strftime'):
+                        time_value = date_value.strftime('%Y-%m-%d')
+                    else:
+                        date_str = str(date_value)
+                        if date_str == 'nan' or date_str == 'NaT':
+                            logger.warning(f"跳过无效日期: {date_str}")
+                            continue
+                        time_value = date_str
                 
                 # 验证其他数值字段
                 if any(pd.isna(row[col]) for col in ['open', 'high', 'low', 'close', 'volume']):
@@ -181,7 +220,7 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     continue
                 
                 chart_data.append({
-                    "time": date_str,
+                    "time": time_value,
                     "open": float(row['open']),
                     "high": float(row['high']),
                     "low": float(row['low']),
@@ -207,9 +246,25 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
         Returns:
             格式化的标记列表
         """
+        from datetime import datetime
+        
         # 如果没有传入colors，使用默认颜色
         if colors is None:
             colors = cls.get_theme_colors('dark')
+        
+        # 检测是否为分钟级数据
+        is_minute_data = False
+        if len(df) > 1 and 'date' in df.columns:
+            try:
+                first_date = df.iloc[0]['date']
+                second_date = df.iloc[1]['date']
+                if hasattr(first_date, 'date') and hasattr(second_date, 'date'):
+                    if first_date.date() == second_date.date() and first_date != second_date:
+                        is_minute_data = True
+                elif isinstance(first_date, str) and ' ' in first_date:
+                    is_minute_data = True
+            except Exception:
+                pass
         
         markers = []
         for signal in signals:
@@ -228,19 +283,32 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     logger.warning(f"跳过无效日期的标记: signal={signal}")
                     continue
                 
-                # 转换为字符串格式
-                if hasattr(date_value, 'strftime'):
-                    date_str = date_value.strftime('%Y-%m-%d')
-                else:
-                    date_str = str(date_value)
-                    # 检查转换后的字符串是否有效
-                    if date_str == 'nan' or date_str == 'NaT':
-                        logger.warning(f"跳过无效日期的标记: {date_str}")
+                # 分钟级数据使用时间戳，日线使用字符串
+                if is_minute_data:
+                    if hasattr(date_value, 'timestamp'):
+                        time_value = int(date_value.timestamp())
+                    elif isinstance(date_value, str):
+                        try:
+                            dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                        except ValueError:
+                            try:
+                                dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M')
+                            except ValueError:
+                                continue
+                        time_value = int(dt.timestamp())
+                    else:
                         continue
+                else:
+                    if hasattr(date_value, 'strftime'):
+                        time_value = date_value.strftime('%Y-%m-%d')
+                    else:
+                        time_value = str(date_value)
+                        if time_value == 'nan' or time_value == 'NaT':
+                            continue
                 
                 if signal['type'] == 'buy':
                     markers.append({
-                        "time": date_str,
+                        "time": time_value,
                         "position": "belowBar",
                         "color": colors['buySignal'],  # 使用主题配色
                         "shape": "arrowUp",
@@ -248,7 +316,7 @@ class BaseChartStrategy(ABC, IndicatorPoolMixin):
                     })
                 else:
                     markers.append({
-                        "time": date_str,
+                        "time": time_value,
                         "position": "aboveBar",
                         "color": colors['sellSignal'],  # 使用主题配色
                         "shape": "arrowDown",

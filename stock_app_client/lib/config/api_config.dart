@@ -60,10 +60,17 @@ class ApiConfig {
   static String getStockNewsUrl(String symbol) => '$stockNewsEndpoint?symbol=$symbol';
   
   // 获取带策略和主题的图表URL
-  static String getStockChartWithStrategyUrl(String stockCode, String strategy, {bool isDarkMode = false}) {
+  static String getStockChartWithStrategyUrl(String stockCode, String strategy, {bool isDarkMode = false, String period = 'daily'}) {
     final theme = isDarkMode ? 'dark' : 'light';
-    return '$stockChartEndpoint$stockCode?strategy=$strategy&theme=$theme';
+    return '$stockChartEndpoint$stockCode?strategy=$strategy&theme=$theme&period=$period';
   }
+  
+  // 支持的K线周期（精简三级：周线定方向 → 日线看趋势 → 15分钟找入场）
+  static const List<Map<String, String>> klinePeriods = [
+    {'key': '15min', 'name': '15分'},
+    {'key': 'daily', 'name': '日K'},
+    {'key': 'weekly', 'name': '周K'},
+  ];
   
   // AI分析POST接口 - 后端统一处理
   static String getStockAIAnalysisPostUrl() => '$apiBaseUrl/stocks/ai-analysis/simple';
