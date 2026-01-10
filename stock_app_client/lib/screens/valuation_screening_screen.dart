@@ -443,6 +443,12 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
           ],
         ),
         onTap: () {
+          // 将当前筛选结果转换为股票列表格式
+          final availableStocks = _results.map((s) => {
+            'code': s.stockCode,
+            'name': s.stockName,
+          }).toList();
+          
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -450,6 +456,7 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
                 stockCode: stock.stockCode,
                 stockName: stock.stockName,
                 strategy: 'volume_wave', // 使用动量守恒策略，确保图表能正常加载
+                availableStocks: availableStocks, // 传递当前筛选结果作为可切换的股票列表
               ),
             ),
           );
