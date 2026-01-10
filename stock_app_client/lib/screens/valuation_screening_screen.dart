@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/valuation.dart';
 import '../services/valuation_service.dart';
 import '../utils/financial_colors.dart';
+import '../widgets/shimmer_loading.dart';
 import 'stock_detail_screen.dart';
 
 class ValuationScreeningScreen extends StatefulWidget {
@@ -344,7 +345,7 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
 
   Widget _buildResultList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const ValuationListSkeleton();
     }
 
     if (_error.isNotEmpty) {
@@ -399,6 +400,16 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
   }
 
   Widget _buildStockCard(ValuationData stock) {
+    // 根据涨跌幅确定颜色
+    final priceColor = stock.pctChg >= 0 
+        ? const Color(0xFFE53935) // 红色（涨）
+        : const Color(0xFF4CAF50); // 绿色（跌）
+    
+    // 格式化涨跌幅显示
+    final pctChgText = stock.pctChg >= 0 
+        ? '+${stock.pctChg.toStringAsFixed(2)}%'
+        : '${stock.pctChg.toStringAsFixed(2)}%';
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -411,12 +422,27 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
-            Text(
-              '¥${stock.close.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+            // 价格和涨跌幅
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '¥${stock.close.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: priceColor,
+                  ),
+                ),
+                Text(
+                  pctChgText,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: priceColor,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -437,7 +463,7 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
                 const SizedBox(width: 8),
                 _buildTag('PS', stock.psTtm?.toStringAsFixed(2) ?? '-', Colors.orange),
                 const SizedBox(width: 8),
-                _buildTag('股息', stock.dividendYieldTtm != null ? '${stock.dividendYieldTtm!.toStringAsFixed(2)}%' : '-', Colors.red),
+                _buildTag('股息', stock.dividendYieldTtm != null ? '${stock.dividendYieldTtm!.toStringAsFixed(2)}%' : '-', Colors.purple),
               ],
             ),
           ],

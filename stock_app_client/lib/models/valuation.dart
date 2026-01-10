@@ -6,6 +6,8 @@ class ValuationData {
   final String stockName;
   final String tradeDate;
   final double close;
+  final double pctChg;  // 涨跌幅（%）
+  final double change;  // 涨跌额
   final double? pe;
   final double? peTtm;
   final double? pb;
@@ -25,6 +27,8 @@ class ValuationData {
     required this.stockName,
     required this.tradeDate,
     required this.close,
+    this.pctChg = 0,
+    this.change = 0,
     this.pe,
     this.peTtm,
     this.pb,
@@ -46,6 +50,8 @@ class ValuationData {
       stockName: json['stock_name'] ?? '',
       tradeDate: json['trade_date'] ?? '',
       close: (json['close'] ?? 0).toDouble(),
+      pctChg: (json['pct_chg'] ?? 0).toDouble(),
+      change: (json['change'] ?? 0).toDouble(),
       pe: json['pe'] != null ? (json['pe']).toDouble() : null,
       peTtm: json['pe_ttm'] != null ? (json['pe_ttm']).toDouble() : null,
       pb: json['pb'] != null ? (json['pb']).toDouble() : null,
@@ -68,6 +74,8 @@ class ValuationData {
       'stock_name': stockName,
       'trade_date': tradeDate,
       'close': close,
+      'pct_chg': pctChg,
+      'change': change,
       'pe': pe,
       'pe_ttm': peTtm,
       'pb': pb,

@@ -54,11 +54,12 @@ class ValuationService:
             if not trade_date:
                 trade_date = datetime.now().strftime('%Y%m%d')
             
-            # 先尝试获取"最新交易日"的缓存
-            latest_cache_key = "valuation:daily_basic:latest"
+            # 修改缓存键名（添加v2版本），使包含涨跌幅的新数据生效
+            # 性能优化：缓存5分钟，避免频繁调用API
+            latest_cache_key = "valuation:daily_basic:latest:v2"
             cached_latest = self.redis_cache.get_cache(latest_cache_key)
             if cached_latest and isinstance(cached_latest, dict):
-                logger.info(f"从缓存获取最新交易日数据: {cached_latest.get('trade_date')}")
+                logger.info(f"从缓存获取最新交易日数据（含涨跌幅）: {cached_latest.get('trade_date')}")
                 return {
                     'success': True,
                     'data': cached_latest.get('data', []),
@@ -68,11 +69,11 @@ class ValuationService:
                     'from_cache': True
                 }
             
-            # 尝试从指定日期的缓存获取
-            cache_key = f"valuation:daily_basic:{trade_date}"
+            # 尝试从指定日期的缓存获取（添加v2版本）
+            cache_key = f"valuation:daily_basic:{trade_date}:v2"
             cached_data = self.redis_cache.get_cache(cache_key)
             if cached_data:
-                logger.info(f"从缓存获取每日指标数据: {trade_date}")
+                logger.info(f"从缓存获取每日指标数据（含涨跌幅）: {trade_date}")
                 return {
                     'success': True,
                     'data': cached_data,
@@ -117,13 +118,38 @@ class ValuationService:
                         'count': 0
                     }
             
+            # 获取涨跌幅数据（从daily接口）
+            pct_chg_map = {}
+            try:
+                logger.info(f"开始获取 {trade_date} 的涨跌幅数据...")
+                df_daily = self.pro.daily(trade_date=trade_date, fields='ts_code,pct_chg,change')
+                logger.info(f"Daily接口返回 {len(df_daily) if not df_daily.empty else 0} 条数据")
+                if not df_daily.empty:
+                    for _, row in df_daily.iterrows():
+                        ts_code = row.get('ts_code', '')
+                        pct_chg = float(row.get('pct_chg', 0)) if pd.notna(row.get('pct_chg')) else 0
+                        change = float(row.get('change', 0)) if pd.notna(row.get('change')) else 0
+                        pct_chg_map[ts_code] = {
+                            'pct_chg': pct_chg,
+                            'change': change
+                        }
+                    logger.info(f"成功获取 {len(pct_chg_map)} 只股票的涨跌幅数据，示例: {list(pct_chg_map.items())[:3]}")
+                else:
+                    logger.warning(f"Daily接口返回空数据，交易日期: {trade_date}")
+            except Exception as e:
+                logger.error(f"获取涨跌幅数据失败: {e}", exc_info=True)
+            
             # 转换数据格式
             valuation_data = []
             for _, row in df.iterrows():
+                ts_code = row.get('ts_code', '')
+                pct_info = pct_chg_map.get(ts_code, {})
                 data = {
-                    'ts_code': row.get('ts_code', ''),
+                    'ts_code': ts_code,
                     'trade_date': row.get('trade_date', ''),
                     'close': float(row.get('close', 0)) if pd.notna(row.get('close')) else 0,
+                    'pct_chg': pct_info.get('pct_chg', 0),  # 涨跌幅
+                    'change': pct_info.get('change', 0),   # 涨跌额
                     'turnover_rate': float(row.get('turnover_rate', 0)) if pd.notna(row.get('turnover_rate')) else 0,
                     'volume_ratio': float(row.get('volume_ratio', 0)) if pd.notna(row.get('volume_ratio')) else 0,
                     'pe': float(row.get('pe', 0)) if pd.notna(row.get('pe')) else None,
@@ -138,15 +164,15 @@ class ValuationService:
                 }
                 valuation_data.append(data)
             
-            # 缓存数据（24小时）
-            self.redis_cache.set_cache(cache_key, valuation_data, ttl=86400)
+            # 缓存数据（5分钟）- 性能优化：平衡数据新鲜度和API调用频率
+            self.redis_cache.set_cache(cache_key, valuation_data, ttl=300)
             
-            # 同时缓存为"最新交易日"数据（24小时）
+            # 同时缓存为"最新交易日"数据（5分钟）
             latest_data = {
                 'data': valuation_data,
                 'trade_date': trade_date
             }
-            self.redis_cache.set_cache(latest_cache_key, latest_data, ttl=86400)
+            self.redis_cache.set_cache(latest_cache_key, latest_data, ttl=300)
             
             logger.info(f"成功获取 {len(valuation_data)} 只股票的估值数据（交易日: {trade_date}）")
             
@@ -206,8 +232,8 @@ class ValuationService:
             }
         """
         try:
-            # 构建缓存键
-            cache_key = f"valuation:screening:{pe_min}_{pe_max}_{pb_min}_{pb_max}_{ps_min}_{ps_max}_{dividend_yield_min}_{market_value_min}_{market_value_max}_{limit}"
+            # 构建缓存键（添加v2版本，支持涨跌幅）
+            cache_key = f"valuation:screening:v2:{pe_min}_{pe_max}_{pb_min}_{pb_max}_{ps_min}_{ps_max}_{dividend_yield_min}_{market_value_min}_{market_value_max}_{limit}"
             
             # 尝试从缓存获取（5分钟）
             cached_data = self.redis_cache.get_cache(cache_key)
@@ -338,7 +364,7 @@ class ValuationService:
             }
         """
         try:
-            cache_key = f"valuation:ranking:{rank_by}_{order}_{limit}"
+            cache_key = f"valuation:ranking:v2:{rank_by}_{order}_{limit}"
             
             # 尝试从缓存获取（5分钟）
             cached_data = self.redis_cache.get_cache(cache_key)

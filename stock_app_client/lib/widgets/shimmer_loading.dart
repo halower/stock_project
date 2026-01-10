@@ -595,3 +595,115 @@ Widget _buildShimmerBox({
   );
 }
 
+/// 估值分析列表骨架屏
+class ValuationListSkeleton extends StatelessWidget {
+  const ValuationListSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 8,
+      itemBuilder: (context, index) {
+        return const ValuationCardSkeleton();
+      },
+    );
+  }
+}
+
+/// 估值卡片骨架屏
+class ValuationCardSkeleton extends StatelessWidget {
+  const ValuationCardSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return ShimmerLoading(
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 顶部：股票名称和价格
+              Row(
+                children: [
+                  // 股票名称
+                  Container(
+                    width: 100,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const Spacer(),
+                  // 价格和涨跌幅
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        width: 70,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 50,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // 代码和市值
+              Container(
+                width: 150,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 估值标签行
+              Row(
+                children: [
+                  _buildTagSkeleton(isDark),
+                  const SizedBox(width: 8),
+                  _buildTagSkeleton(isDark),
+                  const SizedBox(width: 8),
+                  _buildTagSkeleton(isDark),
+                  const SizedBox(width: 8),
+                  _buildTagSkeleton(isDark),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagSkeleton(bool isDark) {
+    return Container(
+      width: 60,
+      height: 24,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+}
+
