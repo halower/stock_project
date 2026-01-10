@@ -153,10 +153,23 @@ class SectorService {
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         if (data['success'] == true) {
+          // 调试日志：检查API返回的原始数据
+          final membersList = data['members'] as List;
+          if (membersList.isNotEmpty) {
+            debugPrint('📊 板块成分股原始数据: ${membersList[0]}');
+          }
+          
+          final members = membersList
+              .map((m) => SectorMember.fromJson(m))
+              .toList();
+          
+          // 调试日志：检查解析后的数据
+          if (members.isNotEmpty) {
+            debugPrint('📊 解析后: name=${members[0].name}, price=${members[0].price}, changePct=${members[0].changePct}');
+          }
+          
           return {
-            'members': (data['members'] as List)
-                .map((json) => SectorMember.fromJson(json))
-                .toList(),
+            'members': members,
             'strength': data['strength'] != null
                 ? SectorStrength.fromJson(data['strength'])
                 : null,

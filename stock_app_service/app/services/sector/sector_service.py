@@ -151,14 +151,28 @@ class SectorService:
             # 尝试从缓存获取
             cached_data = self.redis_cache.get_cache(cache_key)
             if cached_data:
-                logger.info(f"从缓存获取板块成分股: {sector_code}")
-                return {
-                    'success': True,
-                    'sector_code': sector_code,
-                    'data': cached_data,
-                    'count': len(cached_data),
-                    'from_cache': True
-                }
+                # 检查缓存数据是否包含价格字段（如果没有则是旧缓存，需要刷新）
+                if isinstance(cached_data, list) and len(cached_data) > 0:
+                    first_item = cached_data[0]
+                    logger.info(f"📊 缓存数据检查: {sector_code}, 第一条数据keys: {list(first_item.keys()) if isinstance(first_item, dict) else 'NOT_DICT'}")
+                    
+                    has_price = isinstance(first_item, dict) and 'price' in first_item and 'change_pct' in first_item
+                    if has_price:
+                        logger.info(f"✅ 从缓存获取板块成分股(含价格): {sector_code}, price={first_item.get('price')}")
+                        return {
+                            'success': True,
+                            'sector_code': sector_code,
+                            'data': cached_data,
+                            'count': len(cached_data),
+                            'from_cache': True
+                        }
+                    else:
+                        # 旧缓存数据没有价格字段，删除并重新获取
+                        logger.warning(f"⚠️ 板块 {sector_code} 缓存数据格式过旧(无price字段)，清除并重新获取")
+                        self.redis_cache.delete_cache(cache_key)
+                else:
+                    logger.warning(f"⚠️ 板块 {sector_code} 缓存数据格式异常，清除: type={type(cached_data)}")
+                    self.redis_cache.delete_cache(cache_key)
             
             # 从sector_code中提取行业名称（格式：IND_行业名）
             if sector_code.startswith('IND_'):
@@ -187,23 +201,65 @@ class SectorService:
                     'count': 0
                 }
             
-            # 转换数据格式
+            # 转换数据格式并获取最新K线数据（价格和涨跌幅）
             members = []
             for _, row in industry_stocks.iterrows():
+                ts_code = row['ts_code']
+                
+                # 获取该股票的最新K线数据
+                price = 0
+                change_pct = 0
+                change_amount = 0
+                
+                try:
+                    # 从Redis获取K线数据
+                    kline_key = f"stock_trend:{ts_code}"
+                    kline_data = self.redis_cache.get_cache(kline_key)
+                    
+                    if kline_data:
+                        # 解析K线数据
+                        if isinstance(kline_data, dict):
+                            data_list = kline_data.get('data', [])
+                        elif isinstance(kline_data, list):
+                            data_list = kline_data
+                        else:
+                            data_list = []
+                        
+                        # 获取最后一条K线（最新交易日数据）
+                        if data_list and len(data_list) > 0:
+                            latest_kline = data_list[-1]
+                            price = float(latest_kline.get('close', 0))
+                            change_pct = float(latest_kline.get('pct_chg', 0))
+                            # 计算涨跌额（如果没有提供）
+                            if 'change' in latest_kline:
+                                change_amount = float(latest_kline.get('change', 0))
+                            elif price > 0 and change_pct != 0:
+                                # 根据涨跌幅计算涨跌额
+                                change_amount = price * change_pct / (100 + change_pct)
+                except Exception as e:
+                    logger.debug(f"获取 {ts_code} 的K线数据失败: {e}")
+                    # 继续处理，使用默认值0
+                
                 member = {
-                    'ts_code': row['ts_code'],
+                    'ts_code': ts_code,
                     'stock_code': row['symbol'],
                     'name': row['name'],
                     'weight': 0,  # 行业分类没有权重
+                    'price': round(price, 2),
+                    'change_pct': round(change_pct, 2),
+                    'change_amount': round(change_amount, 2),
                     'in_date': '',
                     'out_date': ''
                 }
                 members.append(member)
             
-            # 缓存数据（24小时）
-            self.redis_cache.set_cache(cache_key, members, ttl=86400)
+            # 按涨跌幅排序（从高到低）
+            members.sort(key=lambda x: x.get('change_pct', 0), reverse=True)
             
-            logger.info(f"成功获取行业 {industry_name} 的 {len(members)} 只成分股")
+            # 缓存数据（5分钟，因为包含实时价格）
+            self.redis_cache.set_cache(cache_key, members, ttl=300)
+            
+            logger.info(f"成功获取行业 {industry_name} 的 {len(members)} 只成分股（含价格数据）")
             
             return {
                 'success': True,

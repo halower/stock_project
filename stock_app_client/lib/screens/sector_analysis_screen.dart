@@ -417,20 +417,68 @@ class _SectorAnalysisScreenState extends State<SectorAnalysisScreen> with Single
                         itemCount: members.length,
                         itemBuilder: (context, index) {
                           final member = members[index];
+                          // 判断是否有价格数据（只要price字段存在就显示，即使为0）
+                          final hasPrice = member.price != null;
+                          final price = member.price ?? 0;
+                          final changePct = member.changePct ?? 0;
+                          final isPositive = changePct > 0;
+                          final isNegative = changePct < 0;
+                          
+                          // 调试日志
+                          if (index == 0) {
+                            debugPrint('📊 第一个成分股: ${member.name}, price=$price, changePct=$changePct, hasPrice=$hasPrice');
+                          }
+                          
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
                               title: Text(member.name),
                               subtitle: Text(member.stockCode),
-                              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                              trailing: hasPrice
+                                  ? Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        // 显示价格
+                                        Text(
+                                          price > 0 ? '¥${price.toStringAsFixed(2)}' : '--',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        // 显示涨跌幅（带颜色）
+                                        Text(
+                                          '${isPositive ? '+' : ''}${changePct.toStringAsFixed(2)}%',
+                                          style: TextStyle(
+                                            color: isPositive
+                                                ? Colors.red
+                                                : isNegative
+                                                    ? Colors.green
+                                                    : Colors.grey,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : const Icon(Icons.arrow_forward_ios, size: 16),
                               onTap: () {
                                 Navigator.pop(context);
+                                // 构建板块股票列表
+                                final stockList = members.map((m) => {
+                                  'code': m.stockCode,
+                                  'name': m.name,
+                                }).toList();
+                                
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => StockDetailScreen(
                                       stockCode: member.stockCode,
                                       stockName: member.name,
+                                      availableStocks: stockList,
                                     ),
                                   ),
                                 );

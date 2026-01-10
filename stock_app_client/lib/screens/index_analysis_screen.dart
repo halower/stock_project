@@ -3,6 +3,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
 import '../config/api_config.dart';
 import '../services/http_client.dart' as http_client;
+import '../widgets/fullscreen_chart_page.dart';
 
 /// 大盘分析页面 - TradingView级别的专业图表和分析
 /// 仅支持三大核心指数：上证指数、深证成指、创业板指
@@ -1424,6 +1425,43 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            ),
+          
+          // 全屏横屏按钮（右上角）
+          if (!_isLoading && !_isError)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    openFullscreenChart(
+                      context,
+                      chartUrl: _chartUrl,
+                      title: '$_selectedIndexName 走势图',
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.fullscreen,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),

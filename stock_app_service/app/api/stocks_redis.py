@@ -310,7 +310,7 @@ async def get_batch_stock_price(
     """
     批量获取股票最新价格
     
-    从Redis缓存中获取股票的最新K线数据，返回最新价格信息
+    优先从Redis缓存获取，如果没有则实时从Tushare获取
     
     Args:
         codes: 股票代码列表，逗号分隔
@@ -335,6 +335,7 @@ async def get_batch_stock_price(
         redis_cache = RedisCache()
         
         result_data = []
+        codes_need_realtime = []  # 需要实时获取的股票代码
         
         for code in code_list:
             try:
@@ -355,10 +356,8 @@ async def get_batch_stock_price(
                 cached_data = redis_cache.get_cache(cache_key)
                 
                 if not cached_data:
-                    result_data.append(StockPriceData(
-                        code=code,
-                        error="暂无数据"
-                    ))
+                    # 记录需要实时获取的股票
+                    codes_need_realtime.append((code, ts_code))
                     continue
                 
                 # 解析缓存数据
@@ -369,10 +368,7 @@ async def get_batch_stock_price(
                     kline_data = cached_data.get('data', [])
                 
                 if not kline_data or len(kline_data) == 0:
-                    result_data.append(StockPriceData(
-                        code=code,
-                        error="K线数据为空"
-                    ))
+                    codes_need_realtime.append((code, ts_code))
                     continue
                 
                 # 获取最新一条K线数据
@@ -425,6 +421,12 @@ async def get_batch_stock_price(
                     error=str(e)
                 ))
         
+        # 对于Redis中没有数据的股票，尝试从Tushare实时获取
+        if codes_need_realtime:
+            logger.info(f"🔄 需要实时获取 {len(codes_need_realtime)} 只股票的价格")
+            realtime_results = await _fetch_realtime_prices(codes_need_realtime, redis_cache)
+            result_data.extend(realtime_results)
+        
         logger.info(f"批量获取价格完成，成功 {sum(1 for d in result_data if d.price is not None)} 只")
         
         return BatchPriceResponse(
@@ -438,4 +440,145 @@ async def get_batch_stock_price(
         raise
     except Exception as e:
         logger.error(f"批量获取股票价格失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"批量获取股票价格失败: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"批量获取股票价格失败: {str(e)}")
+
+
+async def _fetch_realtime_prices(codes_list: list, redis_cache) -> list:
+    """
+    从Tushare实时获取股票价格
+    
+    Args:
+        codes_list: [(code, ts_code), ...] 股票代码列表
+        redis_cache: Redis缓存实例
+    
+    Returns:
+        StockPriceData列表
+    """
+    result_data = []
+    
+    try:
+        import tushare as ts
+        from app.core.config import settings
+        
+        # 初始化tushare
+        pro = ts.pro_api(settings.TUSHARE_TOKEN)
+        
+        # 获取最近交易日
+        from datetime import datetime, timedelta
+        today = datetime.now()
+        start_date = (today - timedelta(days=10)).strftime('%Y%m%d')
+        end_date = today.strftime('%Y%m%d')
+        
+        for code, ts_code in codes_list:
+            try:
+                # 获取最近的日线数据
+                df = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+                
+                if df is None or df.empty:
+                    logger.warning(f"Tushare未返回 {ts_code} 的数据")
+                    result_data.append(StockPriceData(
+                        code=code,
+                        error="暂无交易数据"
+                    ))
+                    continue
+                
+                # 获取最新一条数据
+                latest = df.iloc[0]
+                
+                close_price = float(latest['close'])
+                pre_close = float(latest['pre_close'])
+                
+                # 计算涨跌
+                change = 0.0
+                change_percent = 0.0
+                if pre_close > 0:
+                    change = close_price - pre_close
+                    change_percent = (change / pre_close) * 100
+                
+                # 获取成交量
+                volume = float(latest.get('vol', 0)) * 100  # vol是手，转为股
+                
+                # 获取股票名称
+                stock_name = None
+                try:
+                    stock_codes_data = redis_cache.get_cache("stocks:codes:all")
+                    if stock_codes_data:
+                        if isinstance(stock_codes_data, str):
+                            stock_codes = json.loads(stock_codes_data)
+                        else:
+                            stock_codes = stock_codes_data
+                        
+                        for stock in stock_codes:
+                            if stock.get('symbol') == code or stock.get('ts_code') == ts_code:
+                                stock_name = stock.get('name')
+                                break
+                except Exception as e:
+                    logger.warning(f"获取股票名称失败: {e}")
+                
+                result_data.append(StockPriceData(
+                    code=code,
+                    name=stock_name,
+                    price=close_price,
+                    change=round(change, 2),
+                    change_percent=round(change_percent, 2),
+                    volume=volume if volume > 0 else None
+                ))
+                
+                logger.info(f"✅ 实时获取 {ts_code} 价格成功: {close_price}")
+                
+                # 同时缓存到Redis，避免下次再查询
+                try:
+                    kline_list = []
+                    for _, row in df.iterrows():
+                        kline_list.append({
+                            'trade_date': row['trade_date'],
+                            'open': float(row['open']),
+                            'high': float(row['high']),
+                            'low': float(row['low']),
+                            'close': float(row['close']),
+                            'pre_close': float(row['pre_close']),
+                            'vol': float(row['vol']),
+                            'amount': float(row['amount']),
+                        })
+                    
+                    # 按日期排序（从旧到新）
+                    kline_list.reverse()
+                    
+                    cache_data = {
+                        'ts_code': ts_code,
+                        'data': kline_list,
+                        'updated_at': datetime.now().isoformat(),
+                        'data_count': len(kline_list),
+                        'source': 'tushare_realtime'
+                    }
+                    
+                    cache_key = f"stock_trend:{ts_code}"
+                    redis_cache.set_cache(cache_key, cache_data, expire=3600)  # 缓存1小时
+                    logger.info(f"📦 已缓存 {ts_code} 的K线数据")
+                    
+                except Exception as cache_error:
+                    logger.warning(f"缓存 {ts_code} 数据失败: {cache_error}")
+                
+            except Exception as e:
+                logger.error(f"实时获取 {ts_code} 价格失败: {e}")
+                result_data.append(StockPriceData(
+                    code=code,
+                    error=f"获取失败: {str(e)}"
+                ))
+    
+    except ImportError:
+        logger.error("Tushare未安装，无法实时获取价格")
+        for code, ts_code in codes_list:
+            result_data.append(StockPriceData(
+                code=code,
+                error="服务暂不可用"
+            ))
+    except Exception as e:
+        logger.error(f"实时获取价格失败: {e}")
+        for code, ts_code in codes_list:
+            result_data.append(StockPriceData(
+                code=code,
+                error=f"获取失败: {str(e)}"
+            ))
+    
+    return result_data 

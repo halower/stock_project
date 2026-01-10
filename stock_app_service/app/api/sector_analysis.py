@@ -277,3 +277,55 @@ async def get_sector_detail(
         logger.error(f"获取板块详情API异常: {e}")
         raise HTTPException(status_code=500, detail=f"获取板块详情失败: {str(e)}")
 
+
+@router.delete("/sector/cache/clear",
+              summary="清除板块缓存",
+              dependencies=[Depends(verify_token)])
+async def clear_sector_cache() -> Dict[str, Any]:
+    """
+    清除所有板块相关缓存，强制下次请求重新获取数据
+    
+    Returns:
+        清除结果
+    """
+    try:
+        from app.db.session import cache
+        
+        # 清除所有板块成分股缓存
+        deleted_count = cache.delete_pattern("sector:members:*")
+        logger.info(f"清除板块成分股缓存: {deleted_count} 个")
+        
+        # 清除板块强度缓存
+        deleted_strength = cache.delete_pattern("sector:strength:*")
+        logger.info(f"清除板块强度缓存: {deleted_strength} 个")
+        
+        # 清除板块列表缓存
+        deleted_list = cache.delete_pattern("sector:list:*")
+        logger.info(f"清除板块列表缓存: {deleted_list} 个")
+        
+        # 清除热门概念缓存
+        deleted_hot = cache.delete_pattern("sector:hot:*")
+        logger.info(f"清除热门概念缓存: {deleted_hot} 个")
+        
+        # 清除板块排名缓存
+        deleted_ranking = cache.delete_pattern("sector:ranking:*")
+        logger.info(f"清除板块排名缓存: {deleted_ranking} 个")
+        
+        total_deleted = deleted_count + deleted_strength + deleted_list + deleted_hot + deleted_ranking
+        
+        return {
+            'success': True,
+            'message': f'成功清除 {total_deleted} 个缓存项',
+            'details': {
+                'members_cache': deleted_count,
+                'strength_cache': deleted_strength,
+                'list_cache': deleted_list,
+                'hot_cache': deleted_hot,
+                'ranking_cache': deleted_ranking
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"清除板块缓存失败: {e}")
+        raise HTTPException(status_code=500, detail=f"清除缓存失败: {str(e)}")
+

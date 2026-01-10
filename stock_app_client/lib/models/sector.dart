@@ -47,6 +47,10 @@ class SectorMember {
   final double weight;
   final String inDate;
   final String outDate;
+  // 新增字段：价格和涨跌幅
+  final double? price;
+  final double? changePct;
+  final double? changeAmount;
 
   SectorMember({
     required this.tsCode,
@@ -55,6 +59,9 @@ class SectorMember {
     required this.weight,
     required this.inDate,
     required this.outDate,
+    this.price,
+    this.changePct,
+    this.changeAmount,
   });
 
   factory SectorMember.fromJson(Map<String, dynamic> json) {
@@ -65,6 +72,9 @@ class SectorMember {
       weight: (json['weight'] ?? 0).toDouble(),
       inDate: json['in_date'] ?? '',
       outDate: json['out_date'] ?? '',
+      price: json['price'] != null ? (json['price'] as num).toDouble() : null,
+      changePct: json['change_pct'] != null ? (json['change_pct'] as num).toDouble() : null,
+      changeAmount: json['change_amount'] != null ? (json['change_amount'] as num).toDouble() : null,
     );
   }
 }
