@@ -12,25 +12,29 @@ class AuthCodeGenerator extends StatefulWidget {
 }
 
 class _AuthCodeGeneratorState extends State<AuthCodeGenerator> {
-  final int _months = 1;
   String? _generatedCode;
   bool _isGenerating = false;
   String? _deviceFingerprint;
   bool _isAdvancedMode = false;
   final _fingerprintController = TextEditingController();
+  final _customDaysController = TextEditingController();
   bool _deviceVerified = false;
   int _deviceSecurityLevel = 0;
   
-  // 授权期限选项：7天、1个月、6个月、1年
+  // 授权期限选项：7天、1个月、6个月、1年、自定义
   final List<Map<String, dynamic>> _durationOptions = [
     {'label': '7天', 'days': 7, 'months': 0},
     {'label': '1个月', 'days': 0, 'months': 1},
     {'label': '6个月', 'days': 0, 'months': 6},
     {'label': '1年', 'days': 0, 'months': 12},
+    {'label': '自定义天数', 'days': -1, 'months': 0}, // -1 表示自定义
   ];
   
   // 默认选择1个月
   String _selectedDurationLabel = '1个月';
+  
+  // 是否为自定义天数模式
+  bool get _isCustomDays => _selectedDurationLabel == '自定义天数';
   
   // 根据标签获取选项
   Map<String, dynamic> _getDurationByLabel(String label) {
@@ -46,6 +50,7 @@ class _AuthCodeGeneratorState extends State<AuthCodeGenerator> {
   @override
   void dispose() {
     _fingerprintController.dispose();
+    _customDaysController.dispose();
     super.dispose();
   }
   
@@ -96,6 +101,33 @@ class _AuthCodeGeneratorState extends State<AuthCodeGenerator> {
       }
     }
     
+    // 验证自定义天数（如果选择了自定义模式）
+    if (_isCustomDays) {
+      final customDaysText = _customDaysController.text.trim();
+      if (customDaysText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('请输入自定义天数'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      final customDays = int.tryParse(customDaysText);
+      if (customDays == null || customDays <= 0 || customDays > 3650) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('请输入有效的天数（1-3650天）'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() {
       _isGenerating = true;
     });
@@ -106,8 +138,13 @@ class _AuthCodeGeneratorState extends State<AuthCodeGenerator> {
       final selectedOption = _getDurationByLabel(_selectedDurationLabel);
       
       // 获取选择的天数和月数
-      final days = selectedOption['days'] as int;
+      int days = selectedOption['days'] as int;
       final months = selectedOption['months'] as int;
+      
+      // 如果是自定义天数，使用输入的值
+      if (_isCustomDays) {
+        days = int.parse(_customDaysController.text.trim());
+      }
       
       if (_isAdvancedMode) {
         // 使用输入的设备指纹生成绑定的授权码
@@ -299,8 +336,84 @@ class _AuthCodeGeneratorState extends State<AuthCodeGenerator> {
     );
   }
   
+  // 自定义天数输入
+  Widget _buildCustomDaysInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _customDaysController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(4), // 最多4位数字
+          ],
+          decoration: InputDecoration(
+            labelText: '自定义天数',
+            hintText: '请输入有效期天数',
+            helperText: '支持1-3650天（约10年）',
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.calendar_today),
+            suffixText: '天',
+            suffixStyle: TextStyle(
+              color: Theme.of(context).primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _generatedCode = null; // 清除之前生成的授权码
+            });
+          },
+        ),
+        const SizedBox(height: 8),
+        // 快捷选项按钮
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildQuickDayButton(3, '3天'),
+            _buildQuickDayButton(15, '15天'),
+            _buildQuickDayButton(30, '30天'),
+            _buildQuickDayButton(45, '45天'),
+            _buildQuickDayButton(60, '60天'),
+            _buildQuickDayButton(90, '90天'),
+            _buildQuickDayButton(180, '180天'),
+            _buildQuickDayButton(365, '1年'),
+          ],
+        ),
+      ],
+    );
+  }
+  
+  // 快捷天数按钮
+  Widget _buildQuickDayButton(int days, String label) {
+    final isSelected = _customDaysController.text == days.toString();
+    return ActionChip(
+      label: Text(label),
+      backgroundColor: isSelected 
+          ? Theme.of(context).primaryColor.withOpacity(0.2) 
+          : null,
+      side: isSelected 
+          ? BorderSide(color: Theme.of(context).primaryColor) 
+          : null,
+      onPressed: () {
+        setState(() {
+          _customDaysController.text = days.toString();
+          _generatedCode = null;
+        });
+      },
+    );
+  }
+  
   // 生成结果文本
   String _getDurationText() {
+    // 如果是自定义天数，使用输入的值
+    if (_isCustomDays) {
+      final customDays = _customDaysController.text.trim();
+      return '$customDays 天';
+    }
+    
     final selectedOption = _getDurationByLabel(_selectedDurationLabel);
     final days = selectedOption['days'] as int;
     final months = selectedOption['months'] as int;
@@ -380,6 +493,12 @@ class _AuthCodeGeneratorState extends State<AuthCodeGenerator> {
             
             // 月份选择
             _buildDurationSelector(),
+            
+            // 自定义天数输入
+            if (_isCustomDays) ...[
+              const SizedBox(height: 16),
+              _buildCustomDaysInput(),
+            ],
             
             // 高级模式：设备指纹输入
             if (_isAdvancedMode) ...[
