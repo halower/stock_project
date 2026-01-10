@@ -5,6 +5,7 @@ import 'dart:io' show Platform;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/login_screen.dart';
 import 'screens/ai_settings_screen.dart';
+import 'widgets/celebration_overlay.dart';
 import 'services/providers/trade_provider.dart';
 import 'services/providers/strategy_provider.dart';
 import 'services/providers/stock_provider.dart';
@@ -169,8 +170,11 @@ class MyApp extends StatelessWidget {
       routes: {
         '/ai_settings': (context) => const AISettingsScreen(),
       },
-      home: const PasswordLockWrapper(
-        child: LoginScreen(), 
+      home: CelebrationOverlay(
+        key: CelebrationOverlay.globalKey,
+        child: const PasswordLockWrapper(
+          child: LoginScreen(), 
+        ),
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import '../widgets/settlement/stock_info_card.dart';
 import '../widgets/settlement/transaction_summary.dart';
 import '../widgets/settlement/trade_analysis_card.dart';
+import '../widgets/celebration_overlay.dart';
 
 /// 重构后的交易结算页面
 /// 
@@ -1172,6 +1173,21 @@ class _SettlementScreenState extends State<SettlementScreen> {
 
       if (mounted) {
         Navigator.pop(context);
+        
+        // 🎉 盈利时触发庆祝动画
+        if (netProfit > 0) {
+          // 计算收益率
+          final profitPercent = planAmount > 0 ? (netProfit / planAmount) * 100 : 0.0;
+          
+          // 延迟一小会让页面切换完成
+          Future.delayed(const Duration(milliseconds: 300), () {
+            CelebrationService.checkAndCelebrate(
+              profitAmount: netProfit,
+              profitPercent: profitPercent,
+            );
+          });
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(

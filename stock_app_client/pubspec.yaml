@@ -41,6 +41,10 @@ dependencies:
   workmanager: ^0.9.0
   # 权限请求
   permission_handler: ^11.0.0
+  # 骨架屏加载效果
+  shimmer: ^3.0.0
+  # 庆祝动画（撒花/烟花）
+  confetti: ^0.7.0
 
 dev_dependencies:
   flutter_test:

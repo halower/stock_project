@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../config/api_config.dart';
 import '../services/http_client.dart' as http_client;
 import '../widgets/fullscreen_chart_page.dart';
+import '../widgets/shimmer_loading.dart';
 
 /// 大盘分析页面 - TradingView级别的专业图表和分析
 /// 仅支持三大核心指数：上证指数、深证成指、创业板指
@@ -283,15 +284,8 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
   /// 构建专业分析面板
   Widget _buildStatisticsCard() {
     if (_keyMetrics == null) {
-      return const Card(
-        margin: EdgeInsets.all(16),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Center(
-            child: Text('正在加载专业分析数据...'),
-          ),
-        ),
-      );
+      // 使用骨架屏替代简单的加载提示
+      return const IndexAnalysisSkeleton();
     }
 
     return SingleChildScrollView(

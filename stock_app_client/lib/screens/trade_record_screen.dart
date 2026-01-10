@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/trade_record.dart';
 import '../services/providers/trade_provider.dart';
+import '../widgets/shimmer_loading.dart';
 import 'add_trade_screen.dart';
 import 'settlement_screen.dart';
 
@@ -122,18 +123,8 @@ class _TradeRecordScreenState extends State<TradeRecordScreen> with SingleTicker
     return Consumer<TradeProvider>(
       builder: (context, tradeProvider, child) {
         if (tradeProvider.isLoading) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF667EEA)),
-                ),
-                SizedBox(height: 16),
-                Text('加载交易计划中...'),
-              ],
-            ),
-          );
+          // 使用骨架屏替代简单的加载圈
+          return const TradeRecordListSkeleton(itemCount: 5);
         }
 
         final tradePlans = tradeProvider.tradeRecords.where((record) => 
@@ -173,18 +164,8 @@ class _TradeRecordScreenState extends State<TradeRecordScreen> with SingleTicker
     return Consumer<TradeProvider>(
       builder: (context, tradeProvider, child) {
         if (tradeProvider.isLoading) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF667EEA)),
-                ),
-                SizedBox(height: 16),
-                Text('加载交割单中...'),
-              ],
-            ),
-          );
+          // 使用骨架屏替代简单的加载圈
+          return const TradeRecordListSkeleton(itemCount: 5);
         }
 
         final settlements = tradeProvider.tradeRecords.where((record) => 

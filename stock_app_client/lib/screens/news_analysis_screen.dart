@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../services/api_service.dart';
 import '../services/ai_config_service.dart';
+import '../widgets/shimmer_loading.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import './news_web_view_screen.dart';
@@ -276,7 +277,7 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
         children: [
           // 最新财经资讯 - 专业金融风格
           _isLoadingNews
-              ? _buildFinancialLoadingIndicator()
+              ? const NewsListSkeleton(itemCount: 6) // 使用骨架屏替代
               : _latestNews.isEmpty
                   ? _buildEmptyNewsState()
                   : ListView.builder(

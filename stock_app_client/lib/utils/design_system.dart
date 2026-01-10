@@ -37,23 +37,24 @@ class AppDesignSystem {
   static const Color info = Color(0xFF3B82F6);
   static const Color infoLight = Color(0xFF93C5FD);
 
-  // ========== 暗色模式色板 ==========
+  // ========== 暗色模式色板 (AMOLED 真黑优化) ==========
   
-  /// 暗色背景层级
-  static const Color darkBg1 = Color(0xFF0A0E14);  // 最深背景
-  static const Color darkBg2 = Color(0xFF111827);  // 次级背景
-  static const Color darkBg3 = Color(0xFF1F2937);  // 卡片背景
-  static const Color darkBg4 = Color(0xFF374151);  // 浮层背景
+  /// 暗色背景层级 - AMOLED 优化版
+  /// 使用纯黑色作为最深背景，节省OLED屏幕电量，视觉更沉浸
+  static const Color darkBg1 = Color(0xFF000000);  // 纯黑背景 (AMOLED优化)
+  static const Color darkBg2 = Color(0xFF0A0A0A);  // 次级背景 (微妙提升)
+  static const Color darkBg3 = Color(0xFF141414);  // 卡片背景 (层次分明)
+  static const Color darkBg4 = Color(0xFF1F1F1F);  // 浮层背景 (悬浮元素)
   
-  /// 暗色文字层级
-  static const Color darkText1 = Color(0xFFF9FAFB);  // 主要文字
-  static const Color darkText2 = Color(0xFFD1D5DB);  // 次要文字
-  static const Color darkText3 = Color(0xFF9CA3AF);  // 辅助文字
-  static const Color darkText4 = Color(0xFF6B7280);  // 禁用文字
+  /// 暗色文字层级 - 高对比度优化
+  static const Color darkText1 = Color(0xFFFFFFFF);  // 主要文字 (纯白，最高对比)
+  static const Color darkText2 = Color(0xFFE5E5E5);  // 次要文字 (柔和白)
+  static const Color darkText3 = Color(0xFFA3A3A3);  // 辅助文字 (中灰)
+  static const Color darkText4 = Color(0xFF737373);  // 禁用文字 (深灰)
   
-  /// 暗色边框
-  static const Color darkBorder1 = Color(0xFF374151);
-  static const Color darkBorder2 = Color(0xFF4B5563);
+  /// 暗色边框 - 微妙层次
+  static const Color darkBorder1 = Color(0xFF262626);  // 主边框 (微妙可见)
+  static const Color darkBorder2 = Color(0xFF333333);  // 次边框 (稍明显)
 
   // ========== 亮色模式色板 ==========
   
@@ -96,11 +97,18 @@ class AppDesignSystem {
     colors: [Color(0xFF0EA5E9), Color(0xFF8B5CF6)],
   );
   
-  /// 暗色背景渐变
+  /// 暗色背景渐变 - AMOLED优化
   static const LinearGradient darkBgGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [darkBg1, darkBg2],
+    colors: [Color(0xFF000000), Color(0xFF050505)],
+  );
+  
+  /// 暗色微光渐变 (用于卡片悬浮效果)
+  static const LinearGradient darkGlowGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1A1A1A), Color(0xFF0D0D0D)],
   );
   
   /// 上涨渐变

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../services/limit_board_service.dart';
 import '../models/limit_board_data.dart';
 import '../utils/design_system.dart';
+import '../widgets/shimmer_loading.dart';
 import 'stock_detail_screen.dart';
 
 class LimitBoardScreen extends StatefulWidget {
@@ -144,7 +145,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildLoadingSkeleton(isDark)
           : _errorMessage != null
               ? Center(
                   child: Column(
@@ -173,6 +174,75 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
     );
   }
   
+  /// 构建加载骨架屏
+  Widget _buildLoadingSkeleton(bool isDark) {
+    return ShimmerLoading(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 统计卡片骨架
+            Row(
+              children: List.generate(3, (index) => Expanded(
+                child: Container(
+                  margin: EdgeInsets.only(left: index > 0 ? 12 : 0),
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              )),
+            ),
+            const SizedBox(height: 24),
+            
+            // 连板梯队骨架
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: List.generate(5, (index) => Container(
+                width: 90,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              )),
+            ),
+            const SizedBox(height: 24),
+            
+            // 最强板块骨架
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(6, (index) => Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              height: 78,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 构建概览标签页
   Widget _buildOverviewTab(bool isDark) {
     if (_summary == null) {
@@ -687,6 +757,8 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
     }
     
     final color = getColorByCount(sector.count);
+    // 涨幅颜色：正数红色，负数绿色
+    final changeColor = sector.avgPctChg >= 0 ? AppDesignSystem.upColor : AppDesignSystem.downColor;
     
     return GestureDetector(
       onTap: () => _showSectorDetail(sector, isDark),
@@ -756,11 +828,20 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
                   const SizedBox(height: 4),
                   Row(
                     children: [
+                      // 平均涨幅 - 红色显示
                       Text(
-                        '平均涨幅 ${sector.avgPctChg.toStringAsFixed(2)}%',
+                        '平均涨幅 ',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: isDark ? AppDesignSystem.darkText3 : AppDesignSystem.lightText3,
+                        ),
+                      ),
+                      Text(
+                        '${sector.avgPctChg >= 0 ? '+' : ''}${sector.avgPctChg.toStringAsFixed(2)}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: changeColor,
                         ),
                       ),
                       if (sector.highContinuousCount > 0) ...[

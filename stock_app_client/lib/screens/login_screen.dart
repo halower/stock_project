@@ -853,101 +853,31 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 新的现代化Logo设计 - 喜庆红色金融风格
+                // Logo - 使用品牌图片
                 GestureDetector(
                   onTap: _handleLogoTap,
                   child: Container(
-                    width: 100,
-                    height: 100,
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFFFF6B6B), // 浅红色
-                          Color(0xFFE53935), // 中国红
-                          Color(0xFFC62828), // 深红色
-                        ],
-                        stops: [0.0, 0.5, 1.0],
-                      ),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFE53935).withOpacity(0.6),
-                          blurRadius: 25,
-                          spreadRadius: 3,
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFFFF6B6B).withOpacity(0.4),
-                          blurRadius: 35,
-                          spreadRadius: 0,
+                          color: const Color(0xFFE53935).withOpacity(0.4),
+                          blurRadius: 30,
+                          spreadRadius: 5,
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: Transform.scale(
-                        scale: _pulseAnimation.value * 0.85,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // 多层图标组合 - 更专业的金融感
-                            Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // 背景圆形
-                                Container(
-                                  width: 55,
-                                  height: 55,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withOpacity(0.15),
-                                  ),
-                                ),
-                                // 主图标 - 上涨趋势
-                            const Icon(
-                              Icons.trending_up,
-                              color: Colors.white,
-                                  size: 45,
-                                ),
-                                // 辅助图标 - K线
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.candlestick_chart,
-                                      color: Color(0xFFE53935),
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // 脉冲光环
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 600),
-                              width: 70 * _pulseAnimation.value,
-                              height: 70 * _pulseAnimation.value,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.4),
-                                  width: 3,
-                                ),
-                              ),
-                            ),
-                          ],
+                    child: Transform.scale(
+                      scale: _pulseAnimation.value * 0.95,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset(
+                          'assets/icons/app_logo_splash.png',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),

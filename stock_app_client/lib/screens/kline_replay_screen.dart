@@ -8,6 +8,7 @@ import '../services/providers/theme_provider.dart';
 import '../services/providers/api_provider.dart';
 import '../widgets/replay_control_panel.dart';
 import '../widgets/stock_k_line_chart.dart';
+import '../widgets/shimmer_loading.dart';
 import '../models/replay_training_session.dart';
 import 'dart:async';
 import 'dart:math';
@@ -373,13 +374,131 @@ class _EnhancedKLineReplayScreenState extends State<EnhancedKLineReplayScreen> w
     );
   }
   
+  /// 构建K线图骨架屏
+  Widget _buildKLineChartSkeleton(bool isDark) {
+    return ShimmerLoading(
+      child: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            // 顶部标题栏骨架
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 100,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 60,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: 80,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // K线图区域骨架
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List.generate(30, (index) {
+                    // 模拟K线的随机高度
+                    final height = 50.0 + ((index * 17) % 150);
+                    return Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        height: height,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // 成交量区域骨架
+            Expanded(
+              flex: 1,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List.generate(30, (index) {
+                    final height = 20.0 + ((index * 13) % 40);
+                    return Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        height: height,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 底部控制栏骨架
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(5, (index) => Container(
+                  width: 50,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                )),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 构建图表区域
   Widget _buildChartArea(ThemeProvider themeProvider) {
     if (_isLoading) {
-      return Container(
-        color: themeProvider.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-        child: const Center(child: CircularProgressIndicator()),
-      );
+      // 使用骨架屏替代加载圈
+      return _buildKLineChartSkeleton(themeProvider.isDarkMode);
     }
     
     if (_errorMessage != null) {

@@ -7,6 +7,7 @@ import '../services/providers/theme_provider.dart';
 import '../services/websocket_service.dart';
 import '../widgets/ai_filter_panel.dart';
 import '../widgets/stock_list_item.dart';
+import '../widgets/shimmer_loading.dart';
 import 'stock_detail_screen.dart';
 import 'watchlist_screen.dart';
 import '../services/strategy_config_service.dart';
@@ -691,9 +692,8 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
     return Consumer<ApiProvider>(
       builder: (context, apiProvider, child) {
         if (apiProvider.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          // 使用骨架屏替代简单的加载圈
+          return const StockListSkeleton(itemCount: 10);
         }
 
         if (apiProvider.error.isNotEmpty) {
