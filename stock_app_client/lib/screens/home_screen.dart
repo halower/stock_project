@@ -136,11 +136,20 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    // 加载数据
+    // 加载数据 - 优化版：延迟加载大数据量接口
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ✅ 立即加载轻量级数据
       context.read<TradeProvider>().loadTradeRecords();
       context.read<StrategyProvider>().loadStrategies();
-      context.read<StockProvider>().loadStocks();
+      
+      // ✅ 延迟3秒后台静默加载股票列表（5576只股票数据量大）
+      // 这样不会阻塞首页渲染和其他关键API调用
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          debugPrint('🔄 开始后台加载股票列表...');
+          context.read<StockProvider>().loadStocks();
+        }
+      });
     });
 
     // 启动定期检查授权状态的定时器（每分钟检查一次）

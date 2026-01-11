@@ -175,7 +175,11 @@ class _StockScannerScreenState extends State<StockScannerScreen> {
       debugPrint('同步后的市场: $_selectedMarket');
       debugPrint('同步后的策略: $_selectedStrategy');
       
-      // 加载市场类型列表
+      // ✅ 等待ApiProvider初始化完成（避免重复请求market-types）
+      // ApiProvider构造函数已经在加载market-types，稍等一下让它完成
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // 加载市场类型列表（会自动检查是否已加载）
       await _loadMarketTypes();
       
       // 首次进入时，检查是否需要加载数据

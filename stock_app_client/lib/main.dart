@@ -145,10 +145,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     
-    // 初始化API数据
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ApiProvider>().initialize();
-    });
+    // ❌ 移除全局initialize调用，避免重复请求
+    // 各页面会在需要时自己加载数据
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   context.read<ApiProvider>().initialize();
+    // });
     
     return MaterialApp(
       title: '交易大陆',

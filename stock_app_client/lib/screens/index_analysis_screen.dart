@@ -15,11 +15,15 @@ class IndexAnalysisScreen extends StatefulWidget {
   State<IndexAnalysisScreen> createState() => _IndexAnalysisScreenState();
 }
 
-class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
+class _IndexAnalysisScreenState extends State<IndexAnalysisScreen>
+    with AutomaticKeepAliveClientMixin {
   WebViewController? _controller;
   bool _isLoading = true;
   bool _isError = false;
   String _errorMessage = '';
+  
+  // ✅ 懒加载标志
+  bool _dataLoaded = false;
   
   // 当前选中的指数
   String _selectedIndexCode = '000001.SH';
@@ -40,10 +44,28 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
   @override
   void initState() {
     super.initState();
-    _loadIndexList();
-    _initChartUrl();
-    _initWebView();
-    _loadStatistics();
+    // ❌ 不要在initState中立即加载，改为在build中懒加载
+    // _loadIndexList();
+    // _initChartUrl();
+    // _initWebView();
+    // _loadStatistics();
+    _initChartUrl(); // 只初始化URL，不请求数据
+  }
+  
+  @override
+  bool get wantKeepAlive => true; // 保持状态，避免重复加载
+  
+  /// 懒加载数据
+  void _lazyLoadData() {
+    if (!_dataLoaded && mounted) {
+      _dataLoaded = true;
+      debugPrint('🔄 大盘分析页面：开始懒加载数据...');
+      Future.microtask(() {
+        _loadIndexList();
+        _initWebView();
+        _loadStatistics();
+      });
+    }
   }
 
   /// 初始化图表URL
@@ -1251,6 +1273,11 @@ class _IndexAnalysisScreenState extends State<IndexAnalysisScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin required
+    
+    // ✅ 懒加载数据（只在第一次build时加载）
+    _lazyLoadData();
+    
     // 检测横竖屏
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     

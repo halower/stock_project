@@ -129,6 +129,11 @@ app = FastAPI(
     redoc_url="/docs-cn"
 )
 
+# ✅ 添加gzip压缩中间件（提升网络传输性能）
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # 大于1KB的响应才压缩
+logger.info("✅ GZip压缩中间件已启用（minimum_size=1KB）")
+
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
