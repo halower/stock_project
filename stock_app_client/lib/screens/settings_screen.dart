@@ -1219,8 +1219,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_isAdmin) {
       statusText = '管理员账号 (永久授权)';
       statusIcon = Icons.verified_user;
-      statusColor = Colors.green;
-      gradientColors = [Colors.green.shade400, Colors.green.shade600];
+      statusColor = Colors.blue;
+      gradientColors = [Colors.blue.shade400, Colors.blue.shade600];
     } else if (_remainingDays > 0) {
       statusText = '授权有效，剩余 $_remainingDays 天';
       statusIcon = Icons.check_circle;

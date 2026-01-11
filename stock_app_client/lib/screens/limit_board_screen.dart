@@ -22,6 +22,7 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
   bool _isLoading = true;
   String? _errorMessage;
   LimitBoardSummary? _summary;
+  bool _dataLoaded = false;  // ✅ 懒加载标志
   
   // 选中的日期
   DateTime _selectedDate = DateTime.now();
@@ -32,7 +33,17 @@ class _LimitBoardScreenState extends State<LimitBoardScreen> with SingleTickerPr
     _tabController = TabController(length: 4, vsync: this);
     // 初始化时自动调整到最后一个交易日
     _selectedDate = _getLastTradeDate(DateTime.now());
-    _loadData();
+    // ❌ 不要立即加载数据
+    // _loadData();
+    
+    // ✅ 懒加载：切换到此Tab时才加载
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dataLoaded && mounted) {
+        _dataLoaded = true;
+        debugPrint('🔄 打板分析Tab：首次加载数据...');
+        _loadData();
+      }
+    });
   }
   
   /// 获取最后一个交易日（排除周末）

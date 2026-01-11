@@ -21,6 +21,7 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
   String _errorMessage = '';
   List<Map<String, dynamic>> _latestNews = [];
   bool _isLoadingNews = false;
+  bool _dataLoaded = false;  // ✅ 懒加载标志
   
   // 动画控制器
   late AnimationController _animationController;
@@ -56,8 +57,17 @@ class _NewsAnalysisScreenState extends State<NewsAnalysisScreen> with TickerProv
       }
     });
     
-    // 只在初始化时加载最新财经资讯，不加载AI分析
-    _loadLatestNews();
+    // ❌ 不要立即加载新闻
+    // _loadLatestNews();
+    
+    // ✅ 懒加载：切换到此Tab时才加载
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dataLoaded && mounted) {
+        _dataLoaded = true;
+        debugPrint('🔄 消息量化Tab：首次加载数据...');
+        _loadLatestNews();
+      }
+    });
   }
   
   @override

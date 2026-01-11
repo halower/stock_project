@@ -16,11 +16,21 @@ class TradeRecordScreen extends StatefulWidget {
 
 class _TradeRecordScreenState extends State<TradeRecordScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _dataLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this); // 只有2个Tab
+    
+    // ✅ 懒加载：切换到此Tab时才加载交易记录
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dataLoaded && mounted) {
+        _dataLoaded = true;
+        debugPrint('🔄 交易记录Tab：首次加载数据...');
+        context.read<TradeProvider>().loadTradeRecords();
+      }
+    });
   }
 
   @override

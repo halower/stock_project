@@ -136,17 +136,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    // 加载数据 - 优化版：延迟加载大数据量接口
+    // 🚀 最优策略：首次打开只加载"技术量化"页面需要的接口
+    // 其他Tab的数据在切换到对应Tab时才加载
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ 立即加载轻量级数据
-      context.read<TradeProvider>().loadTradeRecords();
-      context.read<StrategyProvider>().loadStrategies();
+      // ❌ 移除不必要的全局加载
+      // TradeProvider 只在"交易记录"Tab需要，切换时再加载
+      // StrategyProvider 只在"交易策略"Tab需要，切换时再加载
+      // context.read<TradeProvider>().loadTradeRecords();
+      // context.read<StrategyProvider>().loadStrategies();
       
-      // ✅ 延迟3秒后台静默加载股票列表（5576只股票数据量大）
-      // 这样不会阻塞首页渲染和其他关键API调用
-      Future.delayed(const Duration(seconds: 3), () {
+      // ✅ 技术量化页面需要的数据：
+      // 1. ApiProvider的strategies和marketTypes - 已在ApiProvider构造时自动加载
+      // 2. 股票信号数据 - 在StockScannerScreen的initState中加载
+      // 3. StockProvider（搜索用）- 延迟加载，不影响首屏
+      
+      // ✅ 延迟5秒后台静默加载股票列表（用于全局搜索功能）
+      Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
-          debugPrint('🔄 开始后台加载股票列表...');
+          debugPrint('🔄 后台加载股票列表（用于搜索）...');
           context.read<StockProvider>().loadStocks();
         }
       });

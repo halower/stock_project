@@ -17,6 +17,7 @@ class _SectorAnalysisScreenState extends State<SectorAnalysisScreen> with Single
   late TabController _tabController;
   bool _isLoading = false;
   String _error = '';
+  bool _dataLoaded = false;  // ✅ 懒加载标志
 
   // 板块排名数据
   List<SectorRanking> _sectorRankings = [];
@@ -29,7 +30,17 @@ class _SectorAnalysisScreenState extends State<SectorAnalysisScreen> with Single
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadData();
+    // ❌ 不要立即加载数据
+    // _loadData();
+    
+    // ✅ 懒加载：切换到此Tab时才加载
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dataLoaded && mounted) {
+        _dataLoaded = true;
+        debugPrint('🔄 板块分析Tab：首次加载数据...');
+        _loadData();
+      }
+    });
   }
 
   @override

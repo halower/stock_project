@@ -19,6 +19,7 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
   String _error = '';
   List<ValuationData> _results = [];
   String _currentPreset = 'low-value'; // 当前选中的预设
+  bool _dataLoaded = false;  // ✅ 懒加载标志
 
   // 筛选条件
   double _peMin = 0;
@@ -32,7 +33,17 @@ class _ValuationScreeningScreenState extends State<ValuationScreeningScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPresetData('low-value'); // 默认加载低估值蓝筹
+    // ❌ 不要立即加载数据
+    // _loadPresetData('low-value'); // 默认加载低估值蓝筹
+    
+    // ✅ 懒加载：切换到此Tab时才加载
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dataLoaded && mounted) {
+        _dataLoaded = true;
+        debugPrint('🔄 估值分析Tab：首次加载数据...');
+        _loadPresetData('low-value');
+      }
+    });
   }
 
   Future<void> _loadPresetData(String preset) async {
