@@ -216,9 +216,17 @@ class MultiPeriodKlineService:
             start_date = (datetime.now() - timedelta(days=limit * 2)).strftime('%Y%m%d')
             
             # 判断是否ETF
-            if ts_code.startswith('5') or ts_code.startswith('15'):
+            # 上海ETF: 5开头（如510300.SH）
+            # 深圳ETF: 15开头（如159915.SZ）
+            code = ts_code.split('.')[0]
+            is_etf = (len(code) == 6 and 
+                     (code.startswith('5') or code.startswith('15')))
+            
+            if is_etf:
+                logger.debug(f"ETF {ts_code} 使用 fund_daily 接口")
                 df = pro.fund_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
             else:
+                logger.debug(f"股票 {ts_code} 使用 daily 接口")
                 df = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
             
             if df is None or df.empty:
@@ -233,7 +241,7 @@ class MultiPeriodKlineService:
             return None
     
     async def _fetch_akshare_daily(self, symbol: str, period: str, limit: int = 200) -> Optional[List[Dict]]:
-        """从AKShare获取日线/周线/月线数据"""
+        """从AKShare获取日线/周线/月线数据（支持股票和ETF）"""
         try:
             import akshare as ak
             
@@ -248,15 +256,32 @@ class MultiPeriodKlineService:
             else:
                 start_date = (datetime.now() - timedelta(days=limit * 2)).strftime('%Y%m%d')
             
-            logger.info(f"AKShare获取 {symbol} {period} 数据...")
+            # 判断是否为ETF
+            # 上海ETF: 5开头（如510300）
+            # 深圳ETF: 15开头（如159915）
+            is_etf = (len(symbol) == 6 and 
+                     (symbol.startswith('5') or symbol.startswith('15')))
             
-            df = ak.stock_zh_a_hist(
-                symbol=symbol,
-                period=period,
-                start_date=start_date,
-                end_date=end_date,
-                adjust="qfq"  # 前复权
-            )
+            logger.info(f"AKShare获取 {'ETF' if is_etf else '股票'} {symbol} {period} 数据...")
+            
+            if is_etf:
+                # ETF使用专用接口
+                df = ak.fund_etf_hist_em(
+                    symbol=symbol,
+                    period=period,
+                    start_date=start_date,
+                    end_date=end_date,
+                    adjust="qfq"  # 前复权
+                )
+            else:
+                # 股票使用原接口
+                df = ak.stock_zh_a_hist(
+                    symbol=symbol,
+                    period=period,
+                    start_date=start_date,
+                    end_date=end_date,
+                    adjust="qfq"  # 前复权
+                )
             
             if df is None or df.empty:
                 logger.warning(f"AKShare返回空数据: {symbol} {period}")
@@ -271,19 +296,34 @@ class MultiPeriodKlineService:
             return None
     
     async def _fetch_akshare_minute(self, symbol: str, period: str, limit: int = 200) -> Optional[List[Dict]]:
-        """从AKShare获取分钟级数据"""
+        """从AKShare获取分钟级数据（支持股票和ETF）"""
         try:
             import akshare as ak
             
             self._wait_for_rate_limit()
             
-            logger.info(f"AKShare获取 {symbol} {period}分钟 数据...")
+            # 判断是否为ETF
+            # 上海ETF: 5开头（如510300）
+            # 深圳ETF: 15开头（如159915）
+            is_etf = (len(symbol) == 6 and 
+                     (symbol.startswith('5') or symbol.startswith('15')))
             
-            df = ak.stock_zh_a_hist_min_em(
-                symbol=symbol,
-                period=period,
-                adjust="qfq"  # 前复权
-            )
+            logger.info(f"AKShare获取 {'ETF' if is_etf else '股票'} {symbol} {period}分钟 数据...")
+            
+            if is_etf:
+                # ETF使用专用接口
+                df = ak.fund_etf_hist_min_em(
+                    symbol=symbol,
+                    period=period,
+                    adjust="qfq"  # 前复权
+                )
+            else:
+                # 股票使用原接口
+                df = ak.stock_zh_a_hist_min_em(
+                    symbol=symbol,
+                    period=period,
+                    adjust="qfq"  # 前复权
+                )
             
             if df is None or df.empty:
                 logger.warning(f"AKShare返回空数据: {symbol} {period}min")

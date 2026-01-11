@@ -85,7 +85,7 @@ class IndicatorPoolMixin:
             'volume_profile_pivot',  # 成交量分布：✅ 已实现JS版本，前端计算
             'support_resistance_channels',  # 支撑阻力通道：前端计算
             'smart_money_concepts',  # 聪明钱概念：前端计算
-            'zigzag',  # 自动转折线：前端计算
+            'zigzag',  # 价格轨迹：前端计算
             'harmonic_patterns',  # 谐波形态识别：前端计算
         }
         
@@ -1363,42 +1363,10 @@ class IndicatorPoolMixin:
                 console.log(`   - 已绘制 ${zzData.lines.length} 条ZigZag线段`);
             }
             
-            // 2. 渲染标签（HH/HL/LH/LL）
-            if (showLabels && zzData.pivots && zzData.pivots.length > 0) {
-                const labelMarkers = [];
-                
-                zzData.pivots.forEach(pivot => {
-                    if (pivot.label) {
-                        const isHigh = pivot.type === 'high';
-                        const color = isHigh ? bearColor : bullColor;
-                        
-                        labelMarkers.push({
-                            time: pivot.time,
-                            position: isHigh ? 'aboveBar' : 'belowBar',
-                            color: color,
-                            shape: isHigh ? 'arrowDown' : 'arrowUp',
-                            text: pivot.label,  // 使用原始英文标签（HH/HL/LH/LL）
-                            size: 1
-                        });
-                    }
-                });
-                
-                if (window.candleSeries && labelMarkers.length > 0) {
-                    try {
-                        const existingMarkers = window.initialMarkers || [];
-                        const allMarkers = [...existingMarkers, ...labelMarkers];
-                        window.candleSeries.setMarkers(allMarkers);
-                        
-                        // 保存ZigZag标签，以便关闭时清理
-                        if (!window.zzMarkers) window.zzMarkers = [];
-                        window.zzMarkers = labelMarkers;
-                        
-                        console.log(`   - 已添加 ${labelMarkers.length} 个结构标签`);
-                    } catch (e) {
-                        console.error('   - 添加标签失败:', e);
-                    }
-                }
-            }
+            // 2. 不渲染标签和圆点（只保留折线，更简洁）
+            // if (showLabels && zzData.pivots && zzData.pivots.length > 0) {
+            //     // 已移除标记渲染，只保留折线
+            // }
             
             // 3. 渲染背景颜色（显示当前趋势方向）
             if (showBackground && zzData.direction !== 0) {
@@ -1979,10 +1947,10 @@ class IndicatorPoolMixin:
                     indicatorSeries.set(id, elements);
                     console.log('✅ [启用指标] 支撑阻力通道渲染完成');
                 } else if (config.renderFunction === 'renderZigZag') {
-                    console.log('🎯 [启用指标] 自动转折线');
+                    console.log('🎯 [启用指标] 价格轨迹');
                     const elements = renderZigZag(config.data, chart);
                     indicatorSeries.set(id, elements);
-                    console.log('✅ [启用指标] 自动转折线渲染完成');
+                    console.log('✅ [启用指标] 价格轨迹渲染完成');
                 } else if (config.renderFunction === 'renderHarmonicPatterns') {
                     console.log('🎯 [启用指标] 谐波形态识别');
                     const elements = renderHarmonicPatterns(config.data, chart);
@@ -2245,7 +2213,7 @@ class IndicatorPoolMixin:
         visible_indicators = [
             'ma_combo',                       # 移动均线组合
             'vegas_tunnel',                   # Vegas隧道
-            'zigzag',                         # 自动转折线
+            'zigzag',                         # 价格轨迹
             'harmonic_patterns',              # 谐波形态识别（新）
             'volume_profile_pivot',           # Volume Profile
             'support_resistance_channels',    # 支撑阻力通道

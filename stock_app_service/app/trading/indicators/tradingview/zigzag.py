@@ -31,9 +31,9 @@ from app.trading.indicators.indicator_registry import register_indicator
 
 @register_indicator(
     id='zigzag',
-    name='自动转折线',
+    name='价格轨迹',
     category='trend',
-    description='智能识别价格转折点并自动画线连接。显示市场结构（HH/HL/LH/LL），帮助判断趋势方向。基于MT4经典算法。前端实时计算。',
+    description='智能识别价格转折点并自动画线连接。通过彩色圆点标注转折位置，帮助判断趋势方向。基于MT4经典算法。前端实时计算。',
     render_type='overlay',
     enabled_by_default=False,
     default_params={
@@ -44,8 +44,8 @@ from app.trading.indicators.indicator_registry import register_indicator
         
         # 显示参数
         'line_thickness': 2,    # 线条粗细
-        'show_labels': True,    # 显示HH/HL/LH/LL标签
-        'label_size': 'normal', # 标签大小：tiny/small/normal/large/huge
+        'show_labels': True,    # 显示转折点标记（彩色圆点）
+        'label_size': 'normal', # 标记大小：tiny/small/normal/large/huge
         'extend_line': False,   # 延伸最后一条线到右侧
         'repaint': True,        # 重绘模式（实时更新 vs 确认后显示）
         'show_background': False, # 显示背景颜色（趋势方向）- 默认关闭
